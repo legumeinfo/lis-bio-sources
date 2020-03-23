@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+
+<!-- MRNA.gene -->
+<!-- CDS.mRNA -->
+<!-- FivePrimeUTR.mRNA -->
+<!-- ThreePrimeUTR.mRNA -->
+
+<classes>
+  
+  <class name="MRNA" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000234">
+    <reference name="fivePrimeUTR" referenced-type="FivePrimeUTR" reverse-reference="mRNA"/>
+    <reference name="threePrimeUTR" referenced-type="ThreePrimeUTR" reverse-reference="mRNA"/>
+    <reference name="cds" referenced-type="CDS" reverse-reference="mRNA"/>
+  </class>
+
+  <!-- associate InterPro terms with genes -->
+  <class name="Gene" is-interface="true">
+    <collection name="proteinDomains" referenced-type="ProteinDomain"/>
+  </class>
+
+  <class name="ProteinDomain" extends="BioEntity" is-interface="true"/>
+
+  <class name="CDS" is-interface="true">
+    <reference name="mRNA" referenced-type="MRNA" reverse-reference="cds"/>
+  </class>		 
+
+  <class name="FivePrimeUTR" is-interface="true">
+    <reference name="mRNA" referenced-type="MRNA" reverse-reference="fivePrimeUTR"/>
+  </class>
+
+  <class name="ThreePrimeUTR" is-interface="true">
+    <reference name="mRNA" referenced-type="MRNA" reverse-reference="threePrimeUTR"/>
+  </class>
+  
+</classes>

@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<classes>
+
+  <class name="SyntenyBlock" is-interface="true">
+    <attribute name="medianKs" type="java.lang.Double"/>
+  </class>
+
+</classes>

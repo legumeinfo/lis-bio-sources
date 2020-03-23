@@ -1,0 +1,13 @@
+rootProject.name = 'bio-sources-lis'
+
+include ':bio-source-lis-expression',
+	':bio-source-lis-gff',
+	':bio-source-lis-fasta',
+	':bio-source-lis-datastore',
+	':bio-source-lis-synteny-gff'
+
+project(':bio-source-lis-expression').projectDir = new File(settingsDir, 'lis-expression')
+project(':bio-source-lis-gff').projectDir = new File(settingsDir, 'lis-gff')
+project(':bio-source-lis-fasta').projectDir = new File(settingsDir, 'lis-fasta')
+project(':bio-source-lis-datastore').projectDir = new File(settingsDir, 'lis-datastore')
+project(':bio-source-lis-synteny-gff').projectDir = new File(settingsDir, 'lis-synteny-gff')
