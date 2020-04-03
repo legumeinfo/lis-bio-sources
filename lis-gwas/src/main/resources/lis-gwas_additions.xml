@@ -1,0 +1,60 @@
+<?xml version="1.0"?>
+<classes>
+
+  <!-- <class name="Annotatable" is-interface="true"> -->
+  <!--   <attribute name="primaryIdentifier" type="java.lang.String" term="http://semanticscience.org/resource/SIO_000675"/> -->
+  <!--   <collection name="ontologyAnnotations" referenced-type="OntologyAnnotation" reverse-reference="subject"/> -->
+  <!--   <collection name="publications" referenced-type="Publication" reverse-reference="entities"/> -->
+  <!-- </class> -->
+
+
+  <!-- GWAS extends Annotatable for the standard Publication support (and there's probably an ontology with GWAS in it) -->  
+  <!-- TaxonID	3847 -->
+  <!-- Strain	Williams82 -->
+  <!-- Name	KGK20170707.1 -->
+  <!-- PlatformName	IlluminaGoldenGate -->
+  <!-- PlatformDetails	 -->
+  <!-- DOI	10.1111/pbr.12305 -->
+  <class name="GWAS" extends="Annotatable" is-interface="true">
+    <reference name="organism" referenced-type="Organism"/>
+    <reference name="dataSource" referenced-type="DataSource"/>
+    <reference name="dataSet" referenced-type="DataSet"/>
+    <attribute name="platformName" type="java.lang.String"/>
+    <attribute name="platformDetails" type="java.lang.String"/>
+    <collection name="results" referenced-type="GWASResult" reverse-reference="gwas"/>
+  </class>
+
+  <!-- GWASResult connects a marker to a phenotype -->
+  <class name="GWASResult" is-interface="true">
+    <attribute name="identifier" type="java.lang.String"/>
+    <attribute name="pValue" type="java.lang.Double"/>
+    <reference name="phenotype" referenced-type="Phenotype"/>
+    <reference name="gwas" referenced-type="GWAS" reverse-reference="results"/>
+    <reference name="marker" referenced-type="GeneticMarker" reverse-reference="gwasResults"/>
+    <!-- <collection name="associatedGenes" referenced-type="Gene"/> -->
+  </class>
+
+  <!-- associate a phenotype with its measured values and ontology annotation -->
+  <class name="Phenotype" extends="Annotatable" is-interface="true" term="http://semanticscience.org/resource/SIO_010056">
+    <attribute name="name" type="java.lang.String" term="http://edamontology.org/data_3275"/>
+    <collection name="gwasResults" referenced-type="GWASResult" reverse-reference="phenotype"/>
+    <!-- <collection name="phenotypeValues" referenced-type="PhenotypeValue" reverse-reference="phenotype"/> -->
+  </class>
+
+  <!-- <!-\- phenotype measurements can be all sorts of things, and refer to a Strain -\-> -->
+  <!-- <class name="PhenotypeValue" is-interface="true"> -->
+  <!--   <!-\- future core model -\-> -->
+  <!--   <reference name="phenotype" referenced-type="Phenotype" reverse-reference="phenotypeValues"/> -->
+  <!--   <reference name="strain" referenced-type="Strain"/> -->
+  <!--   <attribute name="textValue" type="java.lang.String"/> -->
+  <!--   <attribute name="numericValue" type="java.lang.Double"/> -->
+  <!--   <attribute name="booleanValue" type="java.lang.Boolean"/> -->
+  <!-- </class> -->
+
+  <!-- the marker type will typically be "SNP", but could be another type -->
+  <class name="GeneticMarker" extends="SequenceFeature" is-interface="true">
+    <attribute name="type" type="java.lang.String"/>
+    <collection name="gwasResults" referenced-type="GWASResult" reverse-reference="marker"/>
+  </class>
+
+</classes>

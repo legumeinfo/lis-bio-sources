@@ -19,6 +19,13 @@ import org.intermine.xml.full.Item;
  * @author Sam Hokin
  */
 public class DatastoreFileConverter extends FileConverter {
+
+    // defaults for LIS datasource
+    public static final String DEFAULT_DATASOURCE_NAME = "LIS Datastore";
+    public static final String DEFAULT_DATASOURCE_URL = "https://legumeinfo.org/data/public/";
+    public static final String DEFAULT_DATASOURCE_DESCRIPTION =
+        "A collaborative, community resource to facilitate crop improvement by integrating genetic, genomic, and trait data across legume species.";
+    public static final String DEFAULT_DATASET_LICENCE = "ODC Public Domain Dedication and Licence (PDDL)";
 	
     // store Items in maps if they may be read more than once
     Map<String,Item> organisms = new HashMap<>();
@@ -95,9 +102,9 @@ public class DatastoreFileConverter extends FileConverter {
         if (dataSource==null) {
             // set defaults for LIS if not given
             if (dataSourceName==null) {
-		dataSourceName = DatastoreUtils.DEFAULT_DATASOURCE_NAME;
-                dataSourceUrl = DatastoreUtils.DEFAULT_DATASOURCE_URL;
-                dataSourceDescription = DatastoreUtils.DEFAULT_DATASOURCE_DESCRIPTION;
+		dataSourceName = DEFAULT_DATASOURCE_NAME;
+                dataSourceUrl = DEFAULT_DATASOURCE_URL;
+                dataSourceDescription = DEFAULT_DATASOURCE_DESCRIPTION;
             }
             // create the DataSource once
             dataSource = createItem("DataSource");
@@ -122,17 +129,18 @@ public class DatastoreFileConverter extends FileConverter {
 	// support optional data.set.name in project.xml
 	String assemblyVersion = null;
 	String annotationVersion = null;
-	if (dataSetName==null) {
-	    dataSetName = getCurrentFile().getName();
-	    assemblyVersion = DatastoreUtils.extractAssemblyVersion(dataSetName);
-	    annotationVersion = DatastoreUtils.extractAnnotationVersion(dataSetName);
+	String name = dataSetName;
+	if (name==null) {
+	    name = getCurrentFile().getName();
+	    assemblyVersion = extractAssemblyVersion(name);
+	    annotationVersion = extractAnnotationVersion(name);
 	}
-	if (dataSetLicence==null) dataSetLicence = DatastoreUtils.DEFAULT_DATASET_LICENCE;
+	if (dataSetLicence==null) dataSetLicence = DEFAULT_DATASET_LICENCE;
 	// return an existing DataSet
-        if (dataSets.containsKey(dataSetName)) return dataSets.get(dataSetName);
+        if (dataSets.containsKey(name)) return dataSets.get(name);
 	// create and return a new DataSet
 	Item dataSet = createItem("DataSet");
-	dataSet.setAttribute("name", dataSetName);
+	dataSet.setAttribute("name", name);
         dataSet.setAttribute("url", dataSetUrl);
 	dataSet.setAttribute("description", dataSetDescription);
 	dataSet.setAttribute("licence", dataSetLicence);
@@ -142,8 +150,15 @@ public class DatastoreFileConverter extends FileConverter {
 	    dataSet.setAttribute("version", assemblyVersion);
 	}
 	dataSet.setReference("dataSource", dataSource);
-	dataSets.put(dataSetName, dataSet);
+	dataSets.put(name, dataSet);
 	return dataSet;
+    }
+
+    /**
+     * Get/add the organism Item by extracting gensp value from the current filename.
+     */
+    Item getOrganism() {
+	return getOrganism(extractGensp(getCurrentFile().getName()));
     }
     
     /**
@@ -195,5 +210,99 @@ public class DatastoreFileConverter extends FileConverter {
             strains.put(strainId, strain);
         }
         return strain;
+    }
+
+    /**
+     * Extract the gensp string from the given filename.
+     * gensp.strain.assy.anno.key.content.ext
+     */
+    public static String extractGensp(String filename) {
+	String[] fields = filename.split("\\.");
+	if (fields.length>1) {
+	    return fields[0];
+	} else {
+	    return null;
+	}
+    }
+
+    /**
+     * Extract the Strain identifier from the given filename.
+     * gensp.strain.assy.anno.key.content.ext
+     */
+    public static String extractStrainIdentifier(String filename) {
+	String[] fields = filename.split("\\.");
+	if (fields.length>1) {
+	    return fields[1];
+	} else {
+	    return null;
+	}
+    }
+
+    /**
+     * Extract the assembly version from the given filename.
+     * gensp.strain.assy.anno.key.content.ext
+     */
+    public static String extractAssemblyVersion(String filename) {
+        String[] fields = filename.split("\\.");
+        if (fields.length>2 && fields[2].startsWith("gnm")) {
+            return fields[2];
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Extract the annotation version from the given filename.
+     * gensp.strain.assy.anno.key.content.ext
+     */
+    public static String extractAnnotationVersion(String filename) {
+        String[] fields = filename.split("\\.");
+        if (fields.length>3 && fields[3].startsWith("ann")) {
+            return fields[3];
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Extract the secondaryIdentifier from a full-yuck LIS identifier.
+     * Set isAnnotationFeature=true if this is an annotation feature (at least five dot-separated parts) as opposed to an assembly feature (at least four dot-separated parts).
+     *
+     * isAnnotationFeature==true:
+     * 0      1      2   3 
+     * genesp.strain.gnm.secondaryIdentifier
+     *
+     * isAnnotationFeature==false:
+     * 0      1      2   3   4
+     * genesp.strain.gnm.ann.secondaryIdentifier
+     *
+     * @param   lisIdentifier the LIS full-yuck identifier
+     * @param   isAnnotationFeature true if this is an annotation feature with five or more dot-separated parts
+     * @returns the secondaryIdentifier
+     */
+    public static String extractSecondaryIdentifier(String lisIdentifier, boolean isAnnotationFeature) {
+	String[] fields = lisIdentifier.split("\\.");
+	if (isAnnotationFeature && fields.length>=5) {
+	    String secondaryIdentifier = fields[4];
+	    for (int i=5; i<fields.length; i++) {
+		secondaryIdentifier += "."+fields[i];
+	    }
+	    return secondaryIdentifier;
+	} else if (!isAnnotationFeature && fields.length>=4) {
+	    String secondaryIdentifier = fields[3];
+	    for (int i=4; i<fields.length; i++) {
+		secondaryIdentifier += "."+fields[i];
+	    }
+	    return secondaryIdentifier;
+	} else {
+	    return null;
+	}
+    }
+
+    /**
+     * Form a primaryIdentifier from the secondaryIdentifier, gensp, strain, assembly and annotation
+     */
+    public static String formPrimaryIdentifier(String gensp, String strain, String assembly, String annotation, String secondaryIdentifier) {
+        return gensp+"."+strain+"."+assembly+"."+annotation+"."+secondaryIdentifier;
     }
 }

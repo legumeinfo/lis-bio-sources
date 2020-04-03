@@ -108,7 +108,7 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
             // set other standard attributes
             feature.setAttribute("assemblyVersion", assemblyVersion);
             feature.setAttribute("annotationVersion", annotationVersion);
-	    feature.setAttribute("secondaryIdentifier", DatastoreUtils.extractSecondaryIdentifier(id, true));
+	    feature.setAttribute("secondaryIdentifier", DatastoreFileConverter.extractSecondaryIdentifier(id, true));
 
             // add marker type = SNP if it is a marker with length 1
             if (type.equals("genetic_marker") && (record.getStart()-record.getEnd())==0) {

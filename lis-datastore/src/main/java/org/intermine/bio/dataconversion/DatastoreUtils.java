@@ -10,19 +10,11 @@ import java.util.HashMap;
 import java.util.Properties;
 
 /**
- * Utility methods for data store.
+ * Utility non-static methods for datastore loaders. 
  *
  * @author Sam Hokin
  */
 public class DatastoreUtils {
-
-    // defaults for LIS datasource
-    public static final String DEFAULT_DATASOURCE_NAME = "LIS Datastore";
-    public static final String DEFAULT_DATASOURCE_URL = "https://legumeinfo.org/data/public/";
-    public static final String DEFAULT_DATASOURCE_DESCRIPTION =
-        "A collaborative, community resource to facilitate crop improvement by integrating genetic, genomic, and trait data across legume species.";
-
-    public static final String DEFAULT_DATASET_LICENCE = "ODC Public Domain Dedication and Licence (PDDL)";
         
     static final String ORGANISM_PROP_FILE = "organism_config.properties";
     static final String DATASTORE_PROP_FILE = "datastore_config.properties";
@@ -145,125 +137,5 @@ public class DatastoreUtils {
             if (primaryIdentifier.contains(matchString)) return true;
         }
         return false;
-        // String lc = primaryIdentifier.toLowerCase();
-	// if (lc.contains("scaffold")
-        //     || lc.contains("contig")
-        //     || lc.contains("pilon")
-        //     || primaryIdentifier.contains("Aipa")
-        //     || primaryIdentifier.contains("Adur")) {
-	//     return true;
-        // }
-	// // tricky ones
-	// String[] parts = primaryIdentifier.split("\\.");
-        // if (parts.length>=4) {
-        //     // 0     1           2    3
-        //     // cicar.CDCFrontier.gnm1.C11044140
-        //     if (parts[3].length()==9 && parts[3].charAt(0)=='C') return true;
-        //     // 0     1   2    3
-        //     // glyma.Lee.gnm1.sc119
-        //     if (parts[1].equals("Lee") && parts[3].startsWith("sc")) return true;
-        //     // 0     1        2    3
-        //     // glyso.PI483463.gnm1.sc255
-        //     if (parts[0].equals("glyso") && parts[3].startsWith("sc")) return true;
-        //     // 0     1            2    3
-        //     // medtr.jemalong_A17.gnm5.MtrunA17Chr0c01
-        //     if (parts[3].contains("Chr0c")) return true;
-        // }
-	// // it's a chromosome!
-	// return false;
-    }
-
-    /**
-     * Extract the gensp string from the given filename.
-     * gensp.strain.assy.anno.key.content.ext
-     */
-    public static String extractGensp(String filename) {
-	String[] fields = filename.split("\\.");
-	if (fields.length>1) {
-	    return fields[0];
-	} else {
-	    return null;
-	}
-    }
-
-    /**
-     * Extract the Strain identifier from the given filename.
-     * gensp.strain.assy.anno.key.content.ext
-     */
-    public static String extractStrainIdentifier(String filename) {
-	String[] fields = filename.split("\\.");
-	if (fields.length>1) {
-	    return fields[1];
-	} else {
-	    return null;
-	}
-    }
-
-    /**
-     * Extract the annotation version from the given filename.
-     * gensp.strain.assy.anno.key.content.ext
-     */
-    public static String extractAnnotationVersion(String filename) {
-        String[] fields = filename.split("\\.");
-        if (fields[3].startsWith("ann")) {
-            return fields[3];
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Extract the assembly version from the given filename.
-     * gensp.strain.assy.anno.key.content.ext
-     */
-    public static String extractAssemblyVersion(String filename) {
-        String[] fields = filename.split("\\.");
-        if (fields[2].startsWith("gnm")) {
-            return fields[2];
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Extract the secondaryIdentifier from a full-yuck LIS identifier.
-     * Set isAnnotationFeature=true if this is an annotation feature (at least five dot-separated parts) as opposed to an assembly feature (at least four dot-separated parts).
-     *
-     * isAnnotationFeature==true:
-     * 0      1      2   3 
-     * genesp.strain.gnm.secondaryIdentifier
-     *
-     * isAnnotationFeature==false:
-     * 0      1      2   3   4
-     * genesp.strain.gnm.ann.secondaryIdentifier
-     *
-     * @param   lisIdentifier the LIS full-yuck identifier
-     * @param   isAnnotationFeature true if this is an annotation feature with five or more dot-separated parts
-     * @returns the secondaryIdentifier
-     */
-    public static String extractSecondaryIdentifier(String lisIdentifier, boolean isAnnotationFeature) {
-	String[] fields = lisIdentifier.split("\\.");
-	if (isAnnotationFeature && fields.length>=5) {
-	    String secondaryIdentifier = fields[4];
-	    for (int i=5; i<fields.length; i++) {
-		secondaryIdentifier += "."+fields[i];
-	    }
-	    return secondaryIdentifier;
-	} else if (!isAnnotationFeature && fields.length>=4) {
-	    String secondaryIdentifier = fields[3];
-	    for (int i=4; i<fields.length; i++) {
-		secondaryIdentifier += "."+fields[i];
-	    }
-	    return secondaryIdentifier;
-	} else {
-	    return null;
-	}
-    }
-
-    /**
-     * Form a primaryIdentifier from the secondaryIdentifier, gensp, strain, assembly and annotation
-     */
-    public static String formPrimaryIdentifier(String gensp, String strain, String assembly, String annotation, String secondaryIdentifier) {
-        return gensp+"."+strain+"."+assembly+"."+annotation+"."+secondaryIdentifier;
     }
 }
