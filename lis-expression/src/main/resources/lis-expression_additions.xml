@@ -38,7 +38,8 @@
     <reference name="source" referenced-type="ExpressionSource" reverse-reference="samples"/>
   </class>
 
-  <class name="ExpressionValue" is-interface="true">
+  <!-- simple object since id not needed -->
+  <class name="ExpressionValue" is-interface="false" extends="java.lang.Object">
     <attribute name="value" type="java.lang.Double"/>
     <reference name="sample" referenced-type="ExpressionSample"/>
     <reference name="gene" referenced-type="Gene"/>

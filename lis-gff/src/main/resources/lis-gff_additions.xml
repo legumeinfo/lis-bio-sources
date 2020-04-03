@@ -7,10 +7,14 @@
 
 <classes>
   
-  <class name="MRNA" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000234">
+  <class name="MRNA" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO_0000234">
     <reference name="fivePrimeUTR" referenced-type="FivePrimeUTR" reverse-reference="mRNA"/>
     <reference name="threePrimeUTR" referenced-type="ThreePrimeUTR" reverse-reference="mRNA"/>
     <reference name="cds" referenced-type="CDS" reverse-reference="mRNA"/>
+  </class>
+
+  <class name="GeneticMarker" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO_0001645">
+    <attribute name="type" type="java.lang.String"/>
   </class>
 
   <!-- associate InterPro terms with genes -->

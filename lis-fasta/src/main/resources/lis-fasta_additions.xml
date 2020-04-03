@@ -1,9 +1,12 @@
 <?xml version="1.0"?>
 <classes>
 
-  <class name="MRNA" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000234"/>
+  <class name="MRNA" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO_0000234"/>
   
+  <!-- Protein already extends BioEntity -->
   <class name="Protein" is-interface="true">
+    <attribute name="assemblyVersion" type="java.lang.String"/>
+    <attribute name="annotationVersion" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
   </class>
   

@@ -68,6 +68,8 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     String annotationVersion; // extracted from filename
     String className;
 
+    File fastaFile;           // the FASTA file being processed
+
     String dataSourceName, dataSourceUrl, dataSourceDescription;
     String dataSetName, dataSetUrl, dataSetDescription, dataSetVersion;
 
@@ -278,6 +280,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         System.out.println("Reading "+sequenceType+" sequences from: "+file);
         System.out.println("##################################################################################################################################################");
         LOG.info("LISFastaLoaderTask loading file "+file.getName());
+	this.fastaFile = file;
         datastoreUtils = new DatastoreUtils();
         // extract the assembly and annotation versions if possible
         assemblyVersion = datastoreUtils.extractAssemblyVersion(file.getName());
@@ -342,21 +345,28 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     }
 
     /**
-     * Store and/or return the DataSource set in project.xml.
+     * Get/add the DataSet Item. dataSetUrl and dataSetDescription MUST be set in project.xml.
      * @return the DataSet
      * @throws ObjectStoreException if there is an ObjectStore problem
      */
     DataSet getDataSet() throws ObjectStoreException {
-        if (dataSet==null) {
-            dataSet = getDirectDataLoader().createObject(DataSet.class);
-            dataSet.setName(dataSetName);
+	if (dataSet==null) {
+	    if (dataSetUrl==null || dataSetDescription==null) {
+		throw new RuntimeException("You must set lis-fasta.dataSetUrl and lis-fasta.dataSetDescription and  in project.xml.");
+	    }
+	    dataSet = getDirectDataLoader().createObject(DataSet.class);
+            dataSet.setName(fastaFile.getName());
             dataSet.setDataSource(getDataSource());
-            if (dataSetUrl!=null) dataSet.setUrl(dataSetUrl);
-            if (dataSetDescription!=null) dataSet.setDescription(dataSetDescription);
-            if (dataSetVersion!=null) dataSet.setVersion(dataSetVersion);
+            dataSet.setUrl(dataSetUrl);
+            dataSet.setDescription(dataSetDescription);
+	    if (assemblyVersion!=null && annotationVersion!=null) {
+		dataSet.setVersion(assemblyVersion+"_"+annotationVersion);
+	    } else if (assemblyVersion!=null) {
+		dataSet.setVersion(assemblyVersion);
+	    }
             getDirectDataLoader().store(dataSet);
-        }
-        return dataSet;
+	}
+	return dataSet;
     }
 
     /**
@@ -367,6 +377,11 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     DataSource getDataSource() throws ObjectStoreException {
         if (dataSource==null) {
             dataSource = getDirectDataLoader().createObject(DataSource.class);
+	    if (dataSourceName==null) {
+		dataSourceName = DatastoreUtils.DEFAULT_DATASOURCE_NAME;
+		dataSourceUrl = DatastoreUtils.DEFAULT_DATASOURCE_URL;
+		dataSourceDescription = DatastoreUtils.DEFAULT_DATASOURCE_DESCRIPTION;
+	    }
             dataSource.setName(dataSourceName);
             if (dataSourceUrl!=null) dataSource.setUrl(dataSourceUrl);
             if (dataSourceDescription!=null) dataSource.setDescription(dataSourceDescription);
@@ -585,6 +600,8 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             // def=Putative RNA-directed DNA polymerase
             Protein feature = (Protein) getDirectDataLoader().createObject(imClass);
             setCommonAttributes(feature);
+	    if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
+	    if (annotationVersion!=null) feature.setAnnotationVersion(annotationVersion);
 	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
             // secondaryIdentifier
@@ -623,8 +640,6 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         feature.addDataSets(getDataSet());
         feature.setOrganism(getOrganism());
         if (strainIdentifier!=null) feature.setStrain(getStrain());
-        if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
-        if (annotationVersion!=null) feature.setAnnotationVersion(annotationVersion);
     }
 
     /**

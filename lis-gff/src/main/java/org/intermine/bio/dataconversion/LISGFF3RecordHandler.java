@@ -108,18 +108,7 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
             // set other standard attributes
             feature.setAttribute("assemblyVersion", assemblyVersion);
             feature.setAttribute("annotationVersion", annotationVersion);
-            if (attributesMap.containsKey("Name")) {
-                // Name=vigun.Vigun01g000700;
-                String name = attributesMap.get("Name").get(0);
-                feature.setAttribute("secondaryIdentifier", name);
-            } else {
-                String nameFromId = gensp+"."+parts[4];
-                if (parts.length>5) nameFromId += "."+parts[5];
-                if (parts.length>6) nameFromId += "."+parts[6];
-                if (parts.length>7) nameFromId += "."+parts[7];
-                if (parts.length>8) nameFromId += "."+parts[8];
-                feature.setAttribute("secondaryIdentifier", nameFromId);
-            }
+	    feature.setAttribute("secondaryIdentifier", DatastoreUtils.extractSecondaryIdentifier(id, true));
 
             // add marker type = SNP if it is a marker with length 1
             if (type.equals("genetic_marker") && (record.getStart()-record.getEnd())==0) {

@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<classes>
+
+  <!-- abbreviation=gensp -->
+  <class name="Organism" is-interface="true">
+    <attribute name="abbreviation" type="java.lang.String"/>
+    <collection name="dataSources" referenced-type="DataSource"/>
+    <collection name="dataSets" referenced-type="DataSet"/>
+  </class>
+  
+  <class name="Strain" is-interface="true">
+    <attribute name="origin" type="java.lang.String"/>
+    <collection name="dataSources" referenced-type="DataSource"/>
+    <collection name="dataSets" referenced-type="DataSet"/>
+  </class>
+
+</classes>

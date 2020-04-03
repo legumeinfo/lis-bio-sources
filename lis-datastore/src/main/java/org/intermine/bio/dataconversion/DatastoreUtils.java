@@ -17,10 +17,12 @@ import java.util.Properties;
 public class DatastoreUtils {
 
     // defaults for LIS datasource
-    public static final String DEFAULT_DATASOURCE_NAME = "Legume Information System";
-    public static final String DEFAULT_DATASOURCE_URL = "https://legumeinfo.org/";
+    public static final String DEFAULT_DATASOURCE_NAME = "LIS Datastore";
+    public static final String DEFAULT_DATASOURCE_URL = "https://legumeinfo.org/data/public/";
     public static final String DEFAULT_DATASOURCE_DESCRIPTION =
         "A collaborative, community resource to facilitate crop improvement by integrating genetic, genomic, and trait data across legume species.";
+
+    public static final String DEFAULT_DATASET_LICENCE = "ODC Public Domain Dedication and Licence (PDDL)";
         
     static final String ORGANISM_PROP_FILE = "organism_config.properties";
     static final String DATASTORE_PROP_FILE = "datastore_config.properties";
@@ -172,12 +174,34 @@ public class DatastoreUtils {
     }
 
     /**
+     * Extract the gensp string from the given filename.
+     * gensp.strain.assy.anno.key.content.ext
+     */
+    public static String extractGensp(String filename) {
+	String[] fields = filename.split("\\.");
+	if (fields.length>1) {
+	    return fields[0];
+	} else {
+	    return null;
+	}
+    }
+
+    /**
+     * Extract the Strain identifier from the given filename.
+     * gensp.strain.assy.anno.key.content.ext
+     */
+    public static String extractStrainIdentifier(String filename) {
+	String[] fields = filename.split("\\.");
+	if (fields.length>1) {
+	    return fields[1];
+	} else {
+	    return null;
+	}
+    }
+
+    /**
      * Extract the annotation version from the given filename.
-     *
-     * gensp.strain------.assy.anno.keyy.content.ext
-     * 0----.1-----------.2---.3---.4---.5------.6--
-     * vigun.IT97K-499-35.gnm1.ann1.zb5D.protein.faa
-     * vigun.IT97K-499-35.gnm1.ann1.zb5D.gene_models_main.gff3
+     * gensp.strain.assy.anno.key.content.ext
      */
     public static String extractAnnotationVersion(String filename) {
         String[] fields = filename.split("\\.");
@@ -190,15 +214,7 @@ public class DatastoreUtils {
 
     /**
      * Extract the assembly version from the given filename.
-     *
-     * gensp.strain------.assy.anno.keyy.content.ext
-     * 0----.1-----------.2---.3---.4---.5------.6--
-     * vigun.IT97K-499-35.gnm1.ann1.zb5D.protein.faa
-     * vigun.IT97K-499-35.gnm1.ann1.zb5D.gene_models_main.gff3
-     *
-     * gensp.strain------.assy.keyy.content.ext
-     * 0----.1-----------.2---.3---.4------.5--
-     * vigun.IT97K-499-35.gnm1.QnBw.genome_main.fna
+     * gensp.strain.assy.anno.key.content.ext
      */
     public static String extractAssemblyVersion(String filename) {
         String[] fields = filename.split("\\.");

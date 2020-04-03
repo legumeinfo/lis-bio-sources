@@ -55,6 +55,8 @@ import org.intermine.xml.full.Item;
  * GEO_SERIES	
  * #Associated publication at NCBI	
  * BIOPROJ_PUBLICATION	Pazhamala, L. T., Purohit, S., Saxena, R. K., Garg, V., Krishnamurthy, L., Verdier, J., & Varshney, R. K. (2017). Gene expression...
+ * # PubMed ID
+ * PUB_PMID     123456
  * #Link to Pub	
  * PUB_LINK	https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5429002/
  * #Link to full publication	
@@ -82,9 +84,7 @@ public class ExpressionFileConverter extends BioFileConverter {
 
     // DataSource is set in project.xml; URL and description are optional since may already exist from other loads.
     Item dataSource;
-    String dataSourceName;
-    String dataSourceUrl;
-    String dataSourceDescription;
+    String dataSourceName, dataSourceUrl, dataSourceDescription;
 
     // this particular directory creates a DataSet and ExpressionSource and other stuff for a single experiment
     Item dataSet;
@@ -133,8 +133,8 @@ public class ExpressionFileConverter extends BioFileConverter {
     public void process(Reader reader) throws Exception {
         if (dataSource==null) {
             // set defaults for LIS if not given
-            if (dataSourceName==null) dataSourceName = DatastoreUtils.DEFAULT_DATASOURCE_NAME;
-            if (dataSourceName.equals(DatastoreUtils.DEFAULT_DATASOURCE_NAME)) {
+            if (dataSourceName==null) {
+		dataSourceName = DatastoreUtils.DEFAULT_DATASOURCE_NAME;
                 dataSourceUrl = DatastoreUtils.DEFAULT_DATASOURCE_URL;
                 dataSourceDescription = DatastoreUtils.DEFAULT_DATASOURCE_DESCRIPTION;
             }
@@ -195,16 +195,18 @@ public class ExpressionFileConverter extends BioFileConverter {
      * SRA_PROJ_ACC	SRP097728
      * GEO_SERIES	
      * BIOPROJ_PUBLICATION	Pazhamala, L. T., Purohit, S., Saxena, R. K., Garg, V., Krishnamurthy, L., Verdier, J., & Varshney, R. K. (2017). Gene expression...
+     * PUB_PMID 123456
      * PUB_LINK	https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5429002/
      * PUB_FULLLINK	https://academic.oup.com/jxb/article/68/8/2037/3051749/Gene-expression-atlas-of-pigeonpea-and-its
      */
     void processSource(Reader reader) throws IOException, ObjectStoreException {
         dataSet = createItem("DataSet");
-        if (dataSource!=null) dataSet.setReference("dataSource", dataSource);
+        dataSet.setReference("dataSource", dataSource);
         expressionSource = createItem("ExpressionSource");
         expressionSource.setAttribute("unit", "TPM"); // NOTE: assume TPM
         expressionSource.setReference("dataSet", dataSet);
-        // we'll favor the pubLink, which is likely a free PMC article
+        // we'll favor pubMedId
+	String pubMedId = null;
         String pubLink = null;
         String pubFullLink = null;
         // create BioProject only if BIOPROJ lines exist
@@ -236,6 +238,9 @@ public class ExpressionFileConverter extends BioFileConverter {
                 case "SRA_PROJ_ACC" :
                     dataSet.setAttribute("sra", parts[1]);
                     break;
+		case "PUB_PMID" :
+		    pubMedId = parts[1];
+		    break;
                 case "PUB_LINK" :
                     pubLink = parts[1];
                     break;
@@ -263,9 +268,11 @@ public class ExpressionFileConverter extends BioFileConverter {
                 }
             }
         }
-        if (pubLink!=null || pubFullLink!=null) {
+        if (pubMedId!=null || pubLink!=null || pubFullLink!=null) {
             Item pub = createItem("Publication");
-            if (pubLink!=null) {
+	    if (pubMedId!=null) {
+		pub.setAttribute("pubMedId", pubMedId);
+	    } else if (pubLink!=null) {
                 pub.setAttribute("url", pubLink);
             } else if (pubFullLink!=null) {
                 pub.setAttribute("url", pubFullLink);
