@@ -62,7 +62,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 
     String sequenceType = "dna"; // default, or "protein"
 
-    String taxonId = null;
+    String taxonId;
     String strainIdentifier;
     String assemblyVersion;   // extracted from filename
     String annotationVersion; // extracted from filename
@@ -70,15 +70,14 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 
     File fastaFile;           // the FASTA file being processed
 
+    DataSource dataSource;
     String dataSourceName, dataSourceUrl, dataSourceDescription;
-    String dataSetName, dataSetUrl, dataSetDescription, dataSetVersion;
+
+    DataSet dataSet;
+    String dataSetName, dataSetUrl, dataSetDescription, dataSetVersion, dataSetLicence;
 
     Organism organism;
     Strain strain;
-    DataSource dataSource;
-    DataSet dataSet;
-
-    DatastoreUtils datastoreUtils;
 
     String idAttribute, geneAttribute, proteinAttribute, transcriptAttribute, descriptionAttribute;
 
@@ -154,14 +153,6 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     }
 
     /**
-     * If a value is specified this title will used when a DataSet is created.
-     * @param dataSetName the title of the DataSet of any new features
-     */
-    public void setDataSetName(String dataSetName) {
-        this.dataSetName = dataSetName;
-    }
-
-    /**
      * If a value is specified this url will used when a DataSet is created.
      * @param dataSetUrl the title of the DataSet of any new features
      */
@@ -175,6 +166,14 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
      */
     public void setDataSetDescription(String dataSetDescription) {
         this.dataSetDescription = dataSetDescription;
+    }
+
+    /**
+     * If a value is specified this description will used when a DataSet is created.
+     * @param dataSetVersion the version of the DataSet
+     */
+    public void setDataSetVersion(String dataSetVersion) {
+        this.dataSetVersion = dataSetVersion;
     }
 
     /**
@@ -254,12 +253,6 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         if (className==null || className.trim().length()==0) {
             throw new RuntimeException("className must be set in project.xml.");
         }
-        if (dataSourceName==null || dataSourceName.trim().length()==0) {
-            throw new RuntimeException("dataSourceName must be set in project.xml.");
-        }
-        if (dataSetName==null || dataSetName.trim().length()==0) {
-            throw new RuntimeException("dataSetName must be set in project.xml.");
-        }
         // optional but recommended project.xml parameters
         if (strainIdentifier==null || strainIdentifier.trim().length()==0) {
             System.out.println("NOTE: strainIdentifier is missing in project.xml.");
@@ -281,10 +274,8 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         System.out.println("##################################################################################################################################################");
         LOG.info("LISFastaLoaderTask loading file "+file.getName());
 	this.fastaFile = file;
-        datastoreUtils = new DatastoreUtils();
-        // extract the assembly and annotation versions if possible
-        assemblyVersion = datastoreUtils.extractAssemblyVersion(file.getName());
-        annotationVersion = datastoreUtils.extractAnnotationVersion(file.getName());
+	assemblyVersion = DatastoreFileConverter.extractAssemblyVersion(file.getName());
+	annotationVersion = DatastoreFileConverter.extractAnnotationVersion(file.getName());
         try {
             // process FASTA file
             if (sequenceType.equalsIgnoreCase("dna")) {
@@ -351,19 +342,15 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
      */
     DataSet getDataSet() throws ObjectStoreException {
 	if (dataSet==null) {
-	    if (dataSetUrl==null || dataSetDescription==null) {
-		throw new RuntimeException("You must set lis-fasta.dataSetUrl and lis-fasta.dataSetDescription and  in project.xml.");
+	    if (dataSetUrl==null || dataSetDescription==null || dataSetVersion==null) {
+		throw new RuntimeException("You must set lis-fasta.dataSetUrl, lis-fasta.dataSetDescription and lis-fasta.dataSetVersion in project.xml.");
 	    }
 	    dataSet = getDirectDataLoader().createObject(DataSet.class);
             dataSet.setName(fastaFile.getName());
             dataSet.setDataSource(getDataSource());
             dataSet.setUrl(dataSetUrl);
             dataSet.setDescription(dataSetDescription);
-	    if (assemblyVersion!=null && annotationVersion!=null) {
-		dataSet.setVersion(assemblyVersion+"_"+annotationVersion);
-	    } else if (assemblyVersion!=null) {
-		dataSet.setVersion(assemblyVersion);
-	    }
+	    dataSet.setVersion(dataSetVersion);
             getDirectDataLoader().store(dataSet);
 	}
 	return dataSet;
@@ -378,13 +365,17 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         if (dataSource==null) {
             dataSource = getDirectDataLoader().createObject(DataSource.class);
 	    if (dataSourceName==null) {
-		dataSourceName = DatastoreUtils.DEFAULT_DATASOURCE_NAME;
-		dataSourceUrl = DatastoreUtils.DEFAULT_DATASOURCE_URL;
-		dataSourceDescription = DatastoreUtils.DEFAULT_DATASOURCE_DESCRIPTION;
+		dataSourceName = DatastoreFileConverter.DEFAULT_DATASOURCE_NAME;
+	    }
+	    if (dataSourceUrl==null) {
+		dataSourceUrl = DatastoreFileConverter.DEFAULT_DATASOURCE_URL;
+	    }
+	    if (dataSourceDescription==null) {
+		dataSourceDescription = DatastoreFileConverter.DEFAULT_DATASOURCE_DESCRIPTION;
 	    }
             dataSource.setName(dataSourceName);
-            if (dataSourceUrl!=null) dataSource.setUrl(dataSourceUrl);
-            if (dataSourceDescription!=null) dataSource.setDescription(dataSourceDescription);
+            dataSource.setUrl(dataSourceUrl);
+            dataSource.setDescription(dataSourceDescription);
             getDirectDataLoader().store(dataSource);
         }
         return dataSource;
@@ -509,6 +500,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 
         // HACK: set the className to "Chromosome" or "Supercontig" based on identifier and identifying supercontig matching strings.
         if (className.equals("org.intermine.model.bio.Chromosome") || className.equals("org.intermine.model.bio.Supercontig")) {
+	    DatastoreUtils datastoreUtils = new DatastoreUtils();
             if (datastoreUtils.isSupercontig(taxonId,strainIdentifier,identifier)) {
                 className = "org.intermine.model.bio.Supercontig";
             } else {
@@ -540,7 +532,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
 	    // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, false);
+	    String secondaryIdentifier = DatastoreFileConverter.extractSecondaryIdentifier(identifier, false);
 	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
             // name from ID attribute
             if (idAttribute!=null) {
@@ -556,7 +548,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
             // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, false);
+	    String secondaryIdentifier = DatastoreFileConverter.extractSecondaryIdentifier(identifier, false);
 	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
 	    // name from idAttribute
             if (idAttribute!=null) {
@@ -571,7 +563,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 	    // primaryIdentifier
 	    feature.setPrimaryIdentifier(identifier);
             // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, true);
+	    String secondaryIdentifier = DatastoreFileConverter.extractSecondaryIdentifier(identifier, true);
 	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
 	    // name from idAttribute
             if (idAttribute!=null) {
@@ -586,7 +578,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
             // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, true);
+	    String secondaryIdentifier = DatastoreFileConverter.extractSecondaryIdentifier(identifier, true);
 	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
 	    // name from idAttribute
             if (idAttribute!=null) {
@@ -605,7 +597,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
             // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, true);
+	    String secondaryIdentifier = DatastoreFileConverter.extractSecondaryIdentifier(identifier, true);
 	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
 	    // name from idAttribute
             if (idAttribute!=null) {

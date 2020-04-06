@@ -11,8 +11,11 @@ package org.intermine.bio.dataconversion;
  */
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.Reader;
 
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -44,15 +47,15 @@ public class GWASFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(GWASFileConverter.class);
 
-    // store items in maps to avoid duplicates
-    Map<String,Item> phenotypeMap = new HashMap<String,Item>();
-    Map<String,Item> markerMap = new HashMap<String,Item>();
-
+    // things to store
     Item organism;
-    Item dataSource;
-    
-    String dataSourceName, dataSourceUrl, dataSourceDescription;
-    
+    List<Item> dataSets = new ArrayList<>();
+    List<Item> publications = new ArrayList<>();
+    List<Item> gwases = new ArrayList<>();
+    List<Item> gwasResults = new ArrayList<>();
+    Map<String,Item> phenotypeMap = new HashMap<>();
+    Map<String,Item> markerMap = new HashMap<>();
+
     /**
      * Create a new GWASFileConverter
      * @param writer the ItemWriter to write out new items
@@ -67,7 +70,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
      * Process the marker-chromosome relationships by reading in from a tab-delimited file.
      */
     @Override
-    public void process(Reader reader) throws Exception {
+    public void process(Reader reader) throws IOException {
         // don't process README files
         if (getCurrentFile().getName().contains("README")) return;
         LOG.info("Processing file "+getCurrentFile().getName()+"...");
@@ -75,18 +78,16 @@ public class GWASFileConverter extends DatastoreFileConverter {
         // create Organism only once, all files are under same organism
 	if (organism==null) {
 	    organism = getOrganism();
-	    store(organism);
 	}
 
 	// create DataSource only once, all files belong to same DataSource
 	if (dataSource==null) {
 	    dataSource = getDataSource();
-	    store(dataSource);
 	}
 
 	// create DataSet for this particular file
 	Item dataSet = getDataSet();
-	store(dataSet);
+	dataSets.add(dataSet);
 	
 	// header items
         Item gwas = createItem("GWAS");
@@ -124,7 +125,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
                 int pmid = Integer.parseInt(value);
                 publication = createItem("Publication");
                 publication.setAttribute("pubMedId", String.valueOf(pmid));
-                store(publication);
+		publications.add(publication);
                 LOG.info("Stored publication PMID="+pmid);
                 gwas.addToCollection("publications", publication);
 
@@ -132,14 +133,13 @@ public class GWASFileConverter extends DatastoreFileConverter {
                 String doi = value;
                 publication = createItem("Publication");
                 publication.setAttribute("doi", doi);
-                store(publication);
+		publications.add(publication);
                 LOG.info("Stored publication DOI="+doi);
                 gwas.addToCollection("publications", publication);
 
             } else {
                 // process a GWASResult record //
                 GWASFileRecord rec = new GWASFileRecord(line);
-
                 Item marker = markerMap.get(rec.marker);
 		if (marker==null) {
                     marker = createItem("GeneticMarker");
@@ -148,7 +148,6 @@ public class GWASFileConverter extends DatastoreFileConverter {
                     markerMap.put(rec.marker, marker);
                 }
 		marker.addToCollection("publications", publication);
-
                 Item phenotype = phenotypeMap.get(rec.phenotype);
 		if (phenotype==null) {
                     phenotype = createItem("Phenotype");
@@ -156,19 +155,18 @@ public class GWASFileConverter extends DatastoreFileConverter {
                     phenotypeMap.put(rec.phenotype, phenotype);
                 }
                 phenotype.addToCollection("publications", publication);
-
                 Item gwasResult = createItem("GWASResult");
 		gwasResult.setAttribute("identifier", rec.identifier);
                 gwasResult.setAttribute("pValue", String.valueOf(rec.pvalue));
                 gwasResult.setReference("gwas", gwas);
                 gwasResult.setReference("phenotype", phenotype);
                 gwasResult.setReference("marker", marker);
-                store(gwasResult);
+		gwasResults.add(gwasResult);
             }
         }
 
         // finally store this GWAS experiment
-        store(gwas);
+	gwases.add(gwas);
         
 	// and close its file
         bufferedReader.close();
@@ -178,7 +176,13 @@ public class GWASFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     @Override
-    public void close() throws Exception {
+    public void close() throws ObjectStoreException {
+	store(dataSource);
+	store(dataSets);
+	store(organism);
+	store(publications);
+	store(gwases);
+	store(gwasResults);
 	store(markerMap.values());
         store(phenotypeMap.values());
     }

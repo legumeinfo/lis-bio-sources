@@ -36,7 +36,6 @@ public class AboutFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(AboutFileConverter.class);
 
-    Item dataSource;
     Item dataSet;
     Item organism;
     Map<String,Item> strainMap = new HashMap<>();
@@ -54,7 +53,7 @@ public class AboutFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     @Override
-    public void process(Reader reader) throws Exception {
+    public void process(Reader reader) throws IOException {
 	// DataSet attributes are given entirely in project.xml.
 	dataSource = getDataSource();
 	dataSet = getDataSet();
@@ -93,7 +92,7 @@ public class AboutFileConverter extends DatastoreFileConverter {
      * organism.commonName:	common bean
      * organism.description:	Common bean was likely domesticated independently both in Central America and in the Andes....
      */
-    void processDescriptionFile(Reader reader) throws IOException, ObjectStoreException {
+    void processDescriptionFile(Reader reader) throws IOException {
         // get the organism
         String[] dotparts = getCurrentFile().getName().split("\\.");
         String[] dashparts = dotparts[0].split("_");
@@ -146,7 +145,7 @@ public class AboutFileConverter extends DatastoreFileConverter {
      * strain.origin:	CIAT
      * strain.description:	Accession BAT93 is a Mesomarican line that has been used in numerous breeding projects and trait-mapping studies.
      */
-    void processStrainsFile(Reader reader) throws IOException, ObjectStoreException {
+    void processStrainsFile(Reader reader) throws IOException {
         // get the organism
         String[] dotparts = getCurrentFile().getName().split("\\.");
         String[] dashparts = dotparts[0].split("_");

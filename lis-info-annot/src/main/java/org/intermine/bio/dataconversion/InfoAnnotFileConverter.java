@@ -34,20 +34,17 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(InfoAnnotFileConverter.class);
 
-    // store Items in maps if they may be read more than once
+    // things to store
+    Item dataSet;
+    Item organism;
+    Item strain;
     Map<String,Item> genes = new HashMap<>();
     Map<String,Item> proteins = new HashMap<>();
     Map<String,Item> mRNAs = new HashMap<>();
     Map<String,Item> ontologyTerms = new HashMap<>();
     Map<String,Item> ontologyAnnotations = new HashMap<>(); // keyed by identifier_version_subject
 
-    // should be only one file per directory
-    Item dataSource;
-    Item dataSet;
-    Item organism;
-    Item strain;
-
-    // we store some odd ontologies here
+    // we store some ontologies here
     Item geneOntology;
     Item pfamOntology;
     Item pantherOntology;
@@ -92,7 +89,7 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     @Override
-    public void process(Reader reader) throws Exception {
+    public void process(Reader reader) throws IOException {
         if (getCurrentFile().getName().endsWith(".info_annot.txt")) {
 	    dataSource = getDataSource();
 	    dataSet = getDataSet();
@@ -104,7 +101,7 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     @Override
-    public void close() throws Exception {
+    public void close() throws ObjectStoreException {
         store(geneOntology);
         store(pfamOntology);
         store(pantherOntology);
@@ -208,7 +205,7 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
      * pacId locusName transcriptName peptideName Pfam Panther KOG ec KO GO Best-hit-arabi-name arabi-symbol arabi-defline
      * 37170591 Phvul.001G000400 Phvul.001G000400.1 Phvul.001G000400.1.p PF00504 PTHR21649,PTHR21649:SF24 1.10.3.9 K14172 GO:0016020,GO:0009765 AT1G76570.1 Chlorophyll family protein
      */
-    void processInfoAnnotFile(Reader reader) throws IOException, ObjectStoreException {
+    void processInfoAnnotFile(Reader reader) throws IOException {
         String assemblyVersion = extractAssemblyVersion(getCurrentFile().getName());
         String annotationVersion = extractAnnotationVersion(getCurrentFile().getName());
 	String gensp = extractGensp(getCurrentFile().getName());

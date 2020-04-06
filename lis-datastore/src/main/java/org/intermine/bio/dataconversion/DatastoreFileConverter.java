@@ -1,6 +1,7 @@
 package org.intermine.bio.dataconversion;
 
 import java.io.File;
+import java.io.IOException;
 import java.io.Reader;
 
 import java.util.Map;
@@ -82,7 +83,7 @@ public class DatastoreFileConverter extends FileConverter {
      * {@inheritDoc}
      */
     @Override
-    public void process(Reader reader) throws Exception {
+    public void process(Reader reader) throws IOException {
 	// do nothing here
     }
 
@@ -124,7 +125,7 @@ public class DatastoreFileConverter extends FileConverter {
 	    throw new RuntimeException("DataSource is not initialized.");
 	}
 	if (dataSetUrl==null || dataSetDescription==null) {
-	    throw new RuntimeException("You must set dataset.url and dataset.description in project.xml.");
+	    throw new RuntimeException("You must set dataSetUrl and dataSetDescription in project.xml.");
 	}
 	// support optional data.set.name in project.xml
 	String assemblyVersion = null;
@@ -158,7 +159,8 @@ public class DatastoreFileConverter extends FileConverter {
      * Get/add the organism Item by extracting gensp value from the current filename.
      */
     Item getOrganism() {
-	return getOrganism(extractGensp(getCurrentFile().getName()));
+	String gensp = extractGensp(getCurrentFile().getName());
+	return getOrganism(gensp);
     }
     
     /**
@@ -195,6 +197,14 @@ public class DatastoreFileConverter extends FileConverter {
         return getOrganism(gensp);
     }
 
+    /**
+     * Get/add the strainItem associated with the current filename and organism.
+     */
+    Item getStrain(Item organism) {
+	String strainId = extractStrainIdentifier(getCurrentFile().getName());
+	return getStrain(strainId, organism);
+    }
+    
     /**
      * Get/add the strain Item associated with the given strain name.
      * Sets the organism reference if created.

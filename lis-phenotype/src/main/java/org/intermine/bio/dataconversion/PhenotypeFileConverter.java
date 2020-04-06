@@ -11,8 +11,11 @@ package org.intermine.bio.dataconversion;
  */
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.Reader;
 
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -32,16 +35,15 @@ import org.intermine.xml.full.Item;
  *
  * @author Sam Hokin
  */
-public class PhenotypeFileConverter extends BioFileConverter {
+public class PhenotypeFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(PhenotypeFileConverter.class);
 
+    // things to store
+    List<Item> dataSets = new ArrayList<>();
+    List<Item> phenotypes = new ArrayList<>();
+    List<Item> ontologyAnnotations = new ArrayList<>();
     Map<String,Item> ontologyTermMap = new HashMap<>();
-
-    Item dataSource;
-    String dataSourceName;
-    String dataSourceUrl;
-    String dataSourceDescription;
 
     /**
      * Create a new PhenotypeFileConverter
@@ -51,37 +53,15 @@ public class PhenotypeFileConverter extends BioFileConverter {
     public PhenotypeFileConverter(ItemWriter writer, Model model) {
         super(writer, model);
     }
-
-    // Set DataSource fields in project.xml
-    public void setDataSourceName(String name) {
-        this.dataSourceName = name;
-    }
-    public void setDataSourceUrl(String url) {
-        this.dataSourceUrl = url;
-    }
-    public void setDataSourceDescription(String description) {
-        this.dataSourceDescription = description;
-    }
     
     /**
      * {@inheritDoc}
      * Process the phenotype-ontology term annotations by reading in from a tab-delimited file.
      */
     @Override
-    public void process(Reader reader) throws Exception {
+    public void process(Reader reader) throws IOException {
         if (dataSource==null) {
-            // set defaults for LIS if not given
-            if (dataSourceName==null) {
-		dataSourceName = DatastoreUtils.DEFAULT_DATASOURCE_NAME;
-                dataSourceUrl = DatastoreUtils.DEFAULT_DATASOURCE_URL;
-                dataSourceDescription = DatastoreUtils.DEFAULT_DATASOURCE_DESCRIPTION;
-            }
-            // create the DataSource once
-            dataSource = createItem("DataSource");
-            dataSource.setAttribute("name", dataSourceName);
-            if (dataSourceUrl!=null) dataSource.setAttribute("url", dataSourceUrl);
-            if (dataSourceDescription!=null) dataSource.setAttribute("description", dataSourceDescription);
-            store(dataSource);
+	    dataSource = getDataSource();
         }
 
         // don't process README files
@@ -89,11 +69,9 @@ public class PhenotypeFileConverter extends BioFileConverter {
 
         LOG.info("Processing file "+getCurrentFile().getName()+"...");
 
-	Item dataSet = createItem("DataSet");
-	dataSet.setAttribute("name", getCurrentFile().getName());
-	dataSet.setReference("dataSource", dataSource);
-	store(dataSet);
-
+	Item dataSet = getDataSet();
+	dataSets.add(dataSet);
+	
         BufferedReader bufferedReader = new BufferedReader(reader);
 	String line;
         while ((line=bufferedReader.readLine())!=null) {
@@ -107,19 +85,30 @@ public class PhenotypeFileConverter extends BioFileConverter {
 	    phenotype.setAttribute("primaryIdentifier", phenotypeId);
 	    phenotype.setReference("dataSource", dataSource);
 	    phenotype.setReference("dataSet", dataSet);
-	    store(phenotype);
+	    phenotypes.add(phenotype);
 	    Item ontologyTerm = ontologyTermMap.get(ontologyTermId);
 	    if (ontologyTerm==null) {
 		ontologyTerm = createItem("OntologyTerm");
 		ontologyTerm.setAttribute("identifier", ontologyTermId);
-		store(ontologyTerm);
 		ontologyTermMap.put(ontologyTermId, ontologyTerm);
 	    }
 	    Item ontologyAnnotation = createItem("OntologyAnnotation");
 	    ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
 	    ontologyAnnotation.setReference("subject", phenotype);
-	    store(ontologyAnnotation);
+	    ontologyAnnotations.add(ontologyAnnotation);
         }
         bufferedReader.close();
+    }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public void close() throws ObjectStoreException {
+	store(dataSource);
+	store(dataSets);
+	store(phenotypes);
+	store(ontologyTermMap.values());
+	store(ontologyAnnotations);
     }
 }

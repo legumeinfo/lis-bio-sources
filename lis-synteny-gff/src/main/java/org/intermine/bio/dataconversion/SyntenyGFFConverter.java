@@ -11,6 +11,7 @@ package org.intermine.bio.dataconversion;
  */
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.Reader;
 
 import java.util.HashMap;
@@ -72,7 +73,7 @@ public class SyntenyGFFConverter extends BioFileConverter {
      * cicar.ICC4958.gnm2.ann1.x.lotja.MG20.gnm3.ann1.gff
      */
     @Override
-    public void process(Reader reader) throws Exception {
+    public void process(Reader reader) throws IOException {
         String[] fileNameParts = getCurrentFile().getName().split("\\.");
         if (fileNameParts.length!=10) return;
         LOG.info("Processing Synteny file "+getCurrentFile().getName()+"...");

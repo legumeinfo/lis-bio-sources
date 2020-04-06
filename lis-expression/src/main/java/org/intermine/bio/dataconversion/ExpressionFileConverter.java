@@ -1,15 +1,5 @@
 package org.intermine.bio.dataconversion;
 
-/*
- * Copyright (C) 2002-2016 FlyMine, Legume Federation
- *
- * This code may be freely distributed and modified under the
- * terms of the GNU Lesser General Public Licence.  This should
- * be distributed with the code.  See the LICENSE file for more
- * information or http://www.gnu.org/copyleft/lesser.html.
- *
- */
-
 import java.io.BufferedReader;
 import java.io.Reader;
 import java.io.IOException;
@@ -78,13 +68,9 @@ import org.intermine.xml.full.Item;
  *
  * @author Sam Hokin
  */
-public class ExpressionFileConverter extends BioFileConverter {
+public class ExpressionFileConverter extends DatastoreFileConverter {
     
     private static final Logger LOG = Logger.getLogger(ExpressionFileConverter.class);
-
-    // DataSource is set in project.xml; URL and description are optional since may already exist from other loads.
-    Item dataSource;
-    String dataSourceName, dataSourceUrl, dataSourceDescription;
 
     // this particular directory creates a DataSet and ExpressionSource and other stuff for a single experiment
     Item dataSet;
@@ -94,12 +80,11 @@ public class ExpressionFileConverter extends BioFileConverter {
     Item organism;
     Item strain;
 
-    // Item maps
+    // Item lists and maps
+    List<Item> publications = new ArrayList<>();
+    List<Item> expressionValues = new ArrayList<>();
     Map<String,Item> samples = new HashMap<>();
     Map<String,Item> genes = new HashMap<>();
-
-    // for non-static utility methods
-    DatastoreUtils dsu;
 
     /**
      * Constructor.
@@ -110,19 +95,6 @@ public class ExpressionFileConverter extends BioFileConverter {
      */
     public ExpressionFileConverter(ItemWriter writer, Model model) throws ObjectStoreException {
         super(writer, model);
-        // for non-static utility methods
-        dsu = new DatastoreUtils();
-    }
-
-    // Set DataSource fields in project.xml
-    public void setDataSourceName(String name) {
-        this.dataSourceName = name;
-    }
-    public void setDataSourceUrl(String url) {
-        this.dataSourceUrl = url;
-    }
-    public void setDataSourceDescription(String description) {
-        this.dataSourceDescription = description;
     }
 
     /**
@@ -130,54 +102,55 @@ public class ExpressionFileConverter extends BioFileConverter {
      *
      * {@inheritDoc}
      */
-    public void process(Reader reader) throws Exception {
+    public void process(Reader reader) throws IOException {
+        if (getCurrentFile().getName().contains("README")) return;
         if (dataSource==null) {
-            // set defaults for LIS if not given
-            if (dataSourceName==null) {
-		dataSourceName = DatastoreUtils.DEFAULT_DATASOURCE_NAME;
-                dataSourceUrl = DatastoreUtils.DEFAULT_DATASOURCE_URL;
-                dataSourceDescription = DatastoreUtils.DEFAULT_DATASOURCE_DESCRIPTION;
-            }
-            // create the DataSource once
-            dataSource = createItem("DataSource");
-            dataSource.setAttribute("name", dataSourceName);
-            if (dataSourceUrl!=null) dataSource.setAttribute("url", dataSourceUrl);
-            if (dataSourceDescription!=null) dataSource.setAttribute("description", dataSourceDescription);
+	    dataSource = getDataSource();
         }
-        if (getCurrentFile().getName().contains("README")) {
-            return;
-        } else if (getCurrentFile().getName().endsWith("exprSource.tsv")) {
+	if (dataSet==null) {
+	    dataSet = getDataSet();
+	}
+	if (getCurrentFile().getName().endsWith("exprSource.tsv")) {
             // cajca.ICPL87119.gnm1.ann1.KEY4.exprSource.tsv
-            if (organism==null) createOrganismAndStrain();
+	    organism = getOrganism();
+	    strain = getStrain(organism);
             processSource(reader);
         } else if (getCurrentFile().getName().endsWith("exprSamples.tsv")) {
             // cajca.ICPL87119.gnm1.ann1.KEY4.exprSamples.tsv
-            if (organism==null) createOrganismAndStrain(); 
-           processSamples(reader);
+	    organism = getOrganism();
+	    strain = getStrain(organism);
+	    processSamples(reader);
         } else if (getCurrentFile().getName().endsWith("genesSamplesTpm.tsv")) {
             // cajca.ICPL87119.gnm1.ann1.KEY4.genesSamplesTpm.tsv
-            if (organism==null) createOrganismAndStrain();
+	    organism = getOrganism();
+	    strain = getStrain(organism);
             processExpression(reader);
         }
     }
 
     /**
-     * Create the organism and strain Items from the current filename.
+     * {@inheritDoc}
      */
-    void createOrganismAndStrain() {
-        // get the organism and strain from this filename
-        String[] pieces = getCurrentFile().getName().split("\\.");
-        String gensp = pieces[0];
-        String strainId = pieces[1];
-        String genomeVersion = pieces[2];
-        String annotationVersion = pieces[3];
-        organism = createItem("Organism");
-        organism.setAttribute("taxonId", dsu.getTaxonId(gensp));
-        organism.setAttribute("genus", dsu.getGenus(gensp));
-        organism.setAttribute("species", dsu.getSpecies(gensp));
-        strain = createItem("Strain");
-        strain.setAttribute("identifier", strainId);
-        strain.setReference("organism", organism);
+    @Override
+    public void close() throws ObjectStoreException {
+        // associate the samples with the source and dataSet and organism and strain
+        for (Item sample : samples.values()) {
+            sample.setReference("source", expressionSource);
+            sample.setReference("dataSet", dataSet);
+            sample.setReference("organism", organism);
+            sample.setReference("strain", strain);
+        }
+        // store everything that is global
+        store(dataSource);
+        store(dataSet);
+        store(organism);
+        store(strain);
+        store(bioProject);
+        store(expressionSource);
+	store(genes.values());
+        store(samples.values());
+	store(publications);
+	store(expressionValues);
     }
 
     /**
@@ -199,9 +172,7 @@ public class ExpressionFileConverter extends BioFileConverter {
      * PUB_LINK	https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5429002/
      * PUB_FULLLINK	https://academic.oup.com/jxb/article/68/8/2037/3051749/Gene-expression-atlas-of-pigeonpea-and-its
      */
-    void processSource(Reader reader) throws IOException, ObjectStoreException {
-        dataSet = createItem("DataSet");
-        dataSet.setReference("dataSource", dataSource);
+    void processSource(Reader reader) throws IOException {
         expressionSource = createItem("ExpressionSource");
         expressionSource.setAttribute("unit", "TPM"); // NOTE: assume TPM
         expressionSource.setReference("dataSet", dataSet);
@@ -278,7 +249,7 @@ public class ExpressionFileConverter extends BioFileConverter {
                 pub.setAttribute("url", pubFullLink);
             }
             dataSet.setReference("publication", pub);
-            store(pub);
+	    publications.add(pub);
         }
         if (bioProject!=null) {
             dataSet.setReference("bioProject", bioProject);
@@ -378,7 +349,7 @@ public class ExpressionFileConverter extends BioFileConverter {
      * geneID	SRR5199304	SRR5199305	SRR5199306	SRR5199307	...
      * cajca.ICPL87119.gnm1.ann1.C.cajan_00002	0	0	0	0	...
      */
-    void processExpression(Reader reader) throws IOException, ObjectStoreException {
+    void processExpression(Reader reader) throws IOException {
         List<Item> sampleList = new ArrayList<>();
         BufferedReader br = new BufferedReader(reader);
         String line = null;
@@ -411,31 +382,9 @@ public class ExpressionFileConverter extends BioFileConverter {
                     expressionValue.setAttribute("value", String.valueOf(value));
                     expressionValue.setReference("gene", gene);
                     expressionValue.setReference("sample", sample);
-                    store(expressionValue); // this is a one-off so store right away
+		    expressionValues.add(expressionValue);
                 }
             }
         }
-    }
-
-    /**
-     * Store all Items.
-     */
-    public void close() throws ObjectStoreException {
-        // associate the samples with the source and dataSet and organism and strain
-        for (Item sample : samples.values()) {
-            sample.setReference("source", expressionSource);
-            sample.setReference("dataSet", dataSet);
-            sample.setReference("organism", organism);
-            sample.setReference("strain", strain);
-        }
-        // store everything that is global
-        store(organism);
-        store(strain);
-        store(dataSource);
-        store(dataSet);
-        store(bioProject);
-        store(expressionSource);
-	store(genes.values());
-        store(samples.values());
     }
 }
