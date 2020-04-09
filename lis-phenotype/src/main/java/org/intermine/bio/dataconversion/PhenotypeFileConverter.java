@@ -29,6 +29,8 @@ import org.intermine.xml.full.Item;
 /**
  * Store Phenotype/ontology term data from a tab-delimited file.
  *
+ * glyma.mixed.pheno1.0BYC.SOY.tsv
+ * -------------------------------
  * #phenotype	ontologyId
  * Seed protein	SOY:0001676
  * Seed oil	SOY:0001668

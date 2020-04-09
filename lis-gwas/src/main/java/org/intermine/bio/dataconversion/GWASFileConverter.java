@@ -1,15 +1,5 @@
 package org.intermine.bio.dataconversion;
 
-/*
- * Copyright (C) 2015-2016 NCGR
- *
- * This code may be freely distributed and modified under the
- * terms of the GNU Lesser General Public Licence.  This should
- * be distributed with the code.  See the LICENSE file for more
- * information or http://www.gnu.org/copyleft/lesser.html.
- *
- */
-
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.Reader;
@@ -29,8 +19,8 @@ import org.intermine.xml.full.Item;
 /**
  * Store GWAS/phenotype/marker data from a tab-delimited file.
  * 
- * glyma.mixed.gwas.1W14.KGK20170714-1.gwas.tsv
- * --------------------------------------------
+ * glyma.mixed.gwas1.1W14.KGK20170714-1.gwas.tsv
+ * ---------------------------------------------
  * TaxonID	3847
  * Name	KGK20170714.1
  * PlatformName	SoySNP50k
@@ -74,18 +64,8 @@ public class GWASFileConverter extends DatastoreFileConverter {
         // don't process README files
         if (getCurrentFile().getName().contains("README")) return;
         LOG.info("Processing file "+getCurrentFile().getName()+"...");
-
-        // create Organism only once, all files are under same organism
-	if (organism==null) {
-	    organism = getOrganism();
-	}
-
-	// create DataSource only once, all files belong to same DataSource
-	if (dataSource==null) {
-	    dataSource = getDataSource();
-	}
-
-	// create DataSet for this particular file
+	organism = getOrganism();
+	dataSource = getDataSource();
 	Item dataSet = getDataSet();
 	dataSets.add(dataSet);
 	
@@ -143,7 +123,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
                 Item marker = markerMap.get(rec.marker);
 		if (marker==null) {
                     marker = createItem("GeneticMarker");
-                    marker.setAttribute("primaryIdentifier", rec.marker);
+                    marker.setAttribute("secondaryIdentifier", rec.marker); // GWAS are genetic, so don't have full-yuck marker prefix
 		    marker.setReference("organism", organism);
                     markerMap.put(rec.marker, marker);
                 }
