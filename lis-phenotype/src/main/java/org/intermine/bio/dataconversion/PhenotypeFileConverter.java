@@ -41,8 +41,7 @@ public class PhenotypeFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(PhenotypeFileConverter.class);
 
-    // things to store
-    List<Item> dataSets = new ArrayList<>();
+    // local things to store
     List<Item> phenotypes = new ArrayList<>();
     List<Item> ontologyAnnotations = new ArrayList<>();
     Map<String,Item> ontologyTermMap = new HashMap<>();
@@ -54,26 +53,17 @@ public class PhenotypeFileConverter extends DatastoreFileConverter {
      */
     public PhenotypeFileConverter(ItemWriter writer, Model model) {
         super(writer, model);
+	dataSource = getDataSource();
     }
-    
+
     /**
      * {@inheritDoc}
      * Process the phenotype-ontology term annotations by reading in from a tab-delimited file.
      */
     @Override
     public void process(Reader reader) throws IOException {
-        if (dataSource==null) {
-	    dataSource = getDataSource();
-        }
-
-        // don't process README files
         if (getCurrentFile().getName().contains("README")) return;
-
-        LOG.info("Processing file "+getCurrentFile().getName()+"...");
-
 	Item dataSet = getDataSet();
-	dataSets.add(dataSet);
-	
         BufferedReader bufferedReader = new BufferedReader(reader);
 	String line;
         while ((line=bufferedReader.readLine())!=null) {
@@ -101,14 +91,14 @@ public class PhenotypeFileConverter extends DatastoreFileConverter {
         }
         bufferedReader.close();
     }
-
+    
     /**
      * {@inheritDoc}
      */
     @Override
     public void close() throws ObjectStoreException {
 	store(dataSource);
-	store(dataSets);
+	store(dataSets.values());
 	store(phenotypes);
 	store(ontologyTermMap.values());
 	store(ontologyAnnotations);

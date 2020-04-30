@@ -35,5 +35,9 @@
   <class name="ThreePrimeUTR" is-interface="true">
     <reference name="mRNA" referenced-type="MRNA" reverse-reference="threePrimeUTR"/>
   </class>
-  
+
+  <class name="RRNAPrimaryTranscript" extends="Transcript" is-interface="true" />
+
+  <class name="TRNAPrimaryTranscript" extends="Transcript" is-interface="true" />
+
 </classes>

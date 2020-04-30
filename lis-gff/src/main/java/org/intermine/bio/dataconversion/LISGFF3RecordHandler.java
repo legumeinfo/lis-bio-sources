@@ -31,6 +31,8 @@ import org.intermine.xml.full.ItemHelper;
  * CDS             ID=phavu.G19833.gnm1.ann1.Phvul.001G000100.1.v1.0.CDS.1;Parent=phavu.G19833.gnm1.ann1.Phvul.001G000100.1;
  * five_prime_UTR  ID=phavu.G19833.gnm1.ann1.Phvul.001G000100.1.v1.0.five_prime_UTR.1;Parent=phavu.G19833.gnm1.ann1.Phvul.001G000100.1;
  * three_prime_UTR ID=phavu.G19833.gnm1.ann1.Phvul.001G000100.1.v1.0.three_prime_UTR.1;Parent=phavu.G19833.gnm1.ann1.Phvul.001G000100.1;
+ * rRNA_primary_transcript ID=glyma.Zh13.gnm1.ann1.SoyZH13_CG009100.rRNA1;Name=SoyZH13_CG009100.rRNA1;Parent=glyma.Zh13.gnm1.ann1.SoyZH13_CG009100
+ * tRNA_primary_transcript ID=glyma.Zh13.gnm1.ann1.SoyZH13_CG003000.tRNA1;Name=SoyZH13_CG003000.tRNA1;Parent=glyma.Zh13.gnm1.ann1.SoyZH13_CG003000
  *
  * Parents:
  *
@@ -39,6 +41,8 @@ import org.intermine.xml.full.ItemHelper;
  * FivePrimeUTR.mRNA
  * ThreePrimeUTR.mRNA
  * CDS.mRNA
+ * RRNAPrimaryTranscript.gene
+ * TRNAPrimaryTranscript.gene
  *
  * @author Richard Smith
  * @author Sam Hokin
@@ -65,6 +69,8 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         // refsAndCollections controls references and collections that are set from the Parent= attributes in the GFF3 file.
         refsAndCollections.put("Exon", "gene");
         refsAndCollections.put("MRNA", "gene");
+	refsAndCollections.put("RRNAPrimaryTranscript", "gene");
+	refsAndCollections.put("TRNAPrimaryTranscript", "gene");
         refsAndCollections.put("FivePrimeUTR", "mRNA");
         refsAndCollections.put("ThreePrimeUTR", "mRNA");
         refsAndCollections.put("CDS", "mRNA");

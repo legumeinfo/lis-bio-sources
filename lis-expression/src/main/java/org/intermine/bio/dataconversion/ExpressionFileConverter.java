@@ -1,5 +1,7 @@
 package org.intermine.bio.dataconversion;
 
+import java.io.File;
+import java.io.FileReader;
 import java.io.BufferedReader;
 import java.io.Reader;
 import java.io.IOException;
@@ -72,19 +74,18 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     
     private static final Logger LOG = Logger.getLogger(ExpressionFileConverter.class);
 
-    // this particular directory creates a DataSet and ExpressionSource and other stuff for a single experiment
-    Item dataSet;
+    // local Items to store
     Item expressionSource;
     Item bioProject;
-    Item pub;
-    Item organism;
-    Item strain;
-
-    // Item lists and maps
     List<Item> publications = new ArrayList<>();
     List<Item> expressionValues = new ArrayList<>();
     Map<String,Item> samples = new HashMap<>();
     Map<String,Item> genes = new HashMap<>();
+
+    // we have to process three files in order, so get the Files from the Readers
+    File sourceFile;
+    File samplesFile;
+    File expressionFile;
 
     /**
      * Constructor.
@@ -95,6 +96,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      */
     public ExpressionFileConverter(ItemWriter writer, Model model) throws ObjectStoreException {
         super(writer, model);
+	dataSource = getDataSource();
     }
 
     /**
@@ -104,28 +106,22 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      */
     public void process(Reader reader) throws IOException {
         if (getCurrentFile().getName().contains("README")) return;
-        if (dataSource==null) {
-	    dataSource = getDataSource();
-        }
-	if (dataSet==null) {
-	    dataSet = getDataSet();
-	}
 	if (getCurrentFile().getName().endsWith("exprSource.tsv")) {
             // cajca.ICPL87119.gnm1.ann1.KEY4.exprSource.tsv
-	    organism = getOrganism();
-	    strain = getStrain(organism);
-            processSource(reader);
+	    sourceFile = getCurrentFile();
         } else if (getCurrentFile().getName().endsWith("exprSamples.tsv")) {
             // cajca.ICPL87119.gnm1.ann1.KEY4.exprSamples.tsv
-	    organism = getOrganism();
-	    strain = getStrain(organism);
-	    processSamples(reader);
+	    samplesFile = getCurrentFile();
         } else if (getCurrentFile().getName().endsWith("genesSamplesTpm.tsv")) {
             // cajca.ICPL87119.gnm1.ann1.KEY4.genesSamplesTpm.tsv
-	    organism = getOrganism();
-	    strain = getStrain(organism);
-            processExpression(reader);
+	    expressionFile = getCurrentFile();
         }
+	// process once we have all three Files instantiated
+	if (sourceFile!=null && samplesFile!=null && expressionFile!=null) {
+            processSource(sourceFile);
+	    processSamples(samplesFile);
+            processExpression(expressionFile);
+	}
     }
 
     /**
@@ -133,18 +129,11 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-        // associate the samples with the source and dataSet and organism and strain
-        for (Item sample : samples.values()) {
-            sample.setReference("source", expressionSource);
-            sample.setReference("dataSet", dataSet);
-            sample.setReference("organism", organism);
-            sample.setReference("strain", strain);
-        }
         // store everything that is global
         store(dataSource);
-        store(dataSet);
-        store(organism);
-        store(strain);
+        store(dataSets.values());
+        store(organisms.values());
+        store(strains.values());
         store(bioProject);
         store(expressionSource);
 	store(genes.values());
@@ -172,7 +161,11 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * PUB_LINK	https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5429002/
      * PUB_FULLLINK	https://academic.oup.com/jxb/article/68/8/2037/3051749/Gene-expression-atlas-of-pigeonpea-and-its
      */
-    void processSource(Reader reader) throws IOException {
+    void processSource(File file) throws IOException {
+	BufferedReader br = new BufferedReader(new FileReader(file));
+	Item dataSet = getDataSet(); // populates name (=filename), description and url (from project.xml)
+	Item organism = getOrganism();
+	Item strain = getStrain(organism);
         expressionSource = createItem("ExpressionSource");
         expressionSource.setAttribute("unit", "TPM"); // NOTE: assume TPM
         expressionSource.setReference("dataSet", dataSet);
@@ -183,7 +176,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
         // create BioProject only if BIOPROJ lines exist
         bioProject = null;
         // spin through the file
-        BufferedReader br = new BufferedReader(reader);
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
@@ -191,7 +183,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             if (parts.length==2) {
                 switch(parts[0]) {
                 case "NAME" :
-                    dataSet.setAttribute("name", parts[1]);
+                    // dataSet.setAttribute("name", parts[1]); // use the file name, not what's in the source file
                     expressionSource.setAttribute("primaryIdentifier", parts[1]);
                     break;
                 case "SHORTNAME" :
@@ -201,7 +193,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                     dataSet.setAttribute("origin", parts[1]);
                     break;
                 case "DESCRIPTION" :
-                    dataSet.setAttribute("description", parts[1]);
+                    // dataSet.setAttribute("description", parts[1]); // use what's in project.xml
                     break;
                 case "GEO_SERIES" :
                     dataSet.setAttribute("geoSeries", parts[1]);
@@ -254,6 +246,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
         if (bioProject!=null) {
             dataSet.setReference("bioProject", bioProject);
         }
+	br.close();
     }
 
     /**
@@ -267,10 +260,13 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * dev_stage          age      organism      infraspecies cultivar        other sra_run    biosample_accession sra_accession bioproject_accession sra_study
      * Reproductive stage          Cajanus cajan ICPL87119    Asha(ICPL87119)       SRR5199304 SAMN06264156        SRS1937936    PRJNA354681          SRP097728
      */
-    void processSamples(Reader reader) throws IOException {
+    void processSamples(File file) throws IOException {
+	BufferedReader br = new BufferedReader(new FileReader(file));
+	Item dataSet = getDataSet();
+	Item organism = getOrganism();
+	Item strain = getStrain(organism);
         String[] colnames = null;
         int num = 0;
-        BufferedReader br = new BufferedReader(reader);
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
@@ -285,6 +281,12 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                 }
                 String key = null;
                 Item sample = createItem("ExpressionSample");
+		// common references
+		sample.setReference("source", expressionSource);
+		sample.setReference("dataSet", dataSet);
+		sample.setReference("organism", organism);
+		sample.setReference("strain", strain);
+		// sample-specific attributes
                 num++;
                 sample.setAttribute("num", String.valueOf(num));
                 for (int i=0; i<colnames.length; i++) {
@@ -339,6 +341,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                 }
             }
         }
+	br.close();
     }
 
     /**
@@ -349,9 +352,12 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * geneID	SRR5199304	SRR5199305	SRR5199306	SRR5199307	...
      * cajca.ICPL87119.gnm1.ann1.C.cajan_00002	0	0	0	0	...
      */
-    void processExpression(Reader reader) throws IOException {
+    void processExpression(File file) throws IOException {
+	BufferedReader br = new BufferedReader(new FileReader(file));
+	Item dataSet = getDataSet();
+	Item organism = getOrganism();
+	Item strain = getStrain(organism);
         List<Item> sampleList = new ArrayList<>();
-        BufferedReader br = new BufferedReader(reader);
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
@@ -364,6 +370,11 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                         sampleList.add(samples.get(sampleId));
                     } else {
                         Item sample = createItem("ExpressionSample");
+			// common references
+			sample.setReference("source", expressionSource);
+			sample.setReference("dataSet", dataSet);
+			sample.setReference("organism", organism);
+			sample.setReference("strain", strain);
                         sample.setAttribute("primaryIdentifier", sampleId);
                         samples.put(sampleId, sample);
                         sampleList.add(sample);
@@ -374,6 +385,10 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                 String geneId = parts[0];
                 Item gene = createItem("Gene");
                 gene.setAttribute("primaryIdentifier", geneId);
+		// common references
+		gene.addToCollection("dataSets", dataSet);
+		gene.setReference("organism", organism);
+		gene.setReference("strain", strain);
                 genes.put(geneId, gene);
                 for (int i=1; i<parts.length; i++) {
                     double value = Double.parseDouble(parts[i]);
@@ -386,5 +401,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                 }
             }
         }
+	br.close();
     }
 }

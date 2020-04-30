@@ -46,6 +46,8 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
     // keep to only one source/target pair
     Map<String,String> syntenyBlockIds = new HashMap<>();
 
+    DatastoreUtils datastoreUtils; // for determining supercontigs
+
     /**
      * Create a new SyntenyFileConverter
      * @param writer the ItemWriter to write out new items
@@ -53,6 +55,29 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
      */
     public SyntenyFileConverter(ItemWriter writer, Model model) {
         super(writer, model);
+	dataSource = getDataSource();
+	datastoreUtils = new DatastoreUtils();
+    }
+
+    /**
+     * Create/get a chromosome, extracting the secondaryIdentifier from the primaryIdentifier.
+     */
+    Item getChromosome(String primaryIdentifier, Item organism, Item strain) {
+	if (chromosomeMap.containsKey(primaryIdentifier)) {
+	    return chromosomeMap.get(primaryIdentifier);
+	} else {
+	    String secondaryIdentifier = extractSecondaryIdentifier(primaryIdentifier, false);
+	    if (secondaryIdentifier==null) {
+		throw new RuntimeException("Error in chromosome primaryIdentifier:"+primaryIdentifier);
+	    }
+	    Item chromosome = createItem("Chromosome");
+	    chromosome.setAttribute("primaryIdentifier", primaryIdentifier);
+	    chromosome.setAttribute("secondaryIdentifier", secondaryIdentifier);
+	    chromosome.setReference("organism", organism);
+	    chromosome.setReference("strain", strain);
+	    chromosomeMap.put(primaryIdentifier, chromosome);
+	    return chromosome;
+	}
     }
 
     /**
@@ -65,12 +90,12 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
+	if (!getCurrentFile().getName().endsWith("gff") && !getCurrentFile().getName().endsWith("gff3")) return;
         String[] fileNameParts = getCurrentFile().getName().split("\\.");
         if (fileNameParts.length!=8 && fileNameParts.length!=10) {
 	    System.out.println(getCurrentFile().getName()+" does not have 8 or 10 dot-separated parts.");
 	    return;
 	}
-	dataSource = getDataSource();
 	Item dataSet = getDataSet();
 
         // get the identifiers from the file name
@@ -97,19 +122,21 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
         String sourceStrainId = fileNameParts[sourceStrainIndex];
 	String sourceAssy = fileNameParts[sourceAssyIndex];
 	String sourceAnnot = null; if (sourceAnnotIndex>0) sourceAnnot = fileNameParts[sourceAnnotIndex];
+	String sourceTaxonId = datastoreUtils.getTaxonId(sourceGensp);
         String targetGensp = fileNameParts[targetGenspIndex];
         String targetStrainId = fileNameParts[targetStrainIndex];
 	String targetAssy = fileNameParts[targetAssyIndex];
 	String targetAnnot = null; if (targetAnnotIndex>0) targetAnnot = fileNameParts[targetAnnotIndex];
+	String targetTaxonId = datastoreUtils.getTaxonId(targetGensp);
 	
         // get the organisms and strains
         Item sourceOrganism = getOrganism(sourceGensp);
         Item sourceStrain = getStrain(sourceStrainId, sourceOrganism);
         Item targetOrganism = getOrganism(targetGensp);
         Item targetStrain = getStrain(targetStrainId, targetOrganism);
-
+	
         // -------------------------------------------------------------------------------------------------------
-        // Load the GFF data into a map. Add new chromosomes to chromosome map, keyed by primaryIdentifier.
+        // Load the GFF data into a map. Adds new chromosomes to chromosomeMap, keyed by primaryIdentifier.
         // -------------------------------------------------------------------------------------------------------
 
         BufferedReader gffReader = new BufferedReader(reader);
@@ -125,33 +152,12 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
                 if (targetChrName==null) {
                     throw new RuntimeException("GFF syntenic_region record is missing target attribute:"+line);
                 }
-                // ignore this record if it's a scaffold
-                if (targetChrName.toLowerCase().contains("scaffold") || targetChrName.toLowerCase().contains("superscaf")) {
-                    continue;
-                }
-                Item sourceChromosome;
-                if (chromosomeMap.containsKey(sourceChrName)) {
-                    sourceChromosome = chromosomeMap.get(sourceChrName);
-                } else {
-                    // create and store the source chromosome and add to the chromosome map
-                    sourceChromosome = createItem("Chromosome");
-                    sourceChromosome.setAttribute("primaryIdentifier", sourceChrName);
-                    sourceChromosome.setReference("organism", sourceOrganism);
-                    sourceChromosome.setReference("strain", sourceStrain);
-                    chromosomeMap.put(sourceChrName, sourceChromosome);
-                }
-                Item targetChromosome;
-                if (chromosomeMap.containsKey(targetChrName)) {
-                    targetChromosome = chromosomeMap.get(targetChrName);
-                } else {
-                    // create and store the target chromosome and add to the chromosome map
-                    targetChromosome = createItem("Chromosome");
-                    targetChromosome.setAttribute("primaryIdentifier", targetChrName);
-                    targetChromosome.setReference("organism", targetOrganism);
-                    targetChromosome.setReference("strain", targetStrain);
-                    chromosomeMap.put(targetChrName, targetChromosome);
-                }
-                    
+                // ignore this record if source or target are on a supercontig/scaffold
+		if (datastoreUtils.isSupercontig(sourceTaxonId, sourceStrainId, sourceChrName)) continue;
+		if (datastoreUtils.isSupercontig(targetTaxonId, targetStrainId, targetChrName)) continue;
+		// get the source and target chromosomes
+                Item sourceChromosome = getChromosome(sourceChrName, sourceOrganism, sourceStrain);
+                Item targetChromosome = getChromosome(targetChrName, targetOrganism, targetStrain);
                 // populate the source region and its location
                 Item sourceRegion = createItem("SyntenicRegion");
 		sourceRegion.setAttribute("assemblyVersion", sourceAssy);
@@ -160,7 +166,6 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
                 Item sourceChromosomeLocation = createItem("Location");
                 populateSourceRegion(sourceRegion, gff, sourceOrganism, sourceStrain, sourceChromosome, sourceChromosomeLocation);
                 String sourceIdentifier = getSourceRegionName(gff);
-                    
                 // populate the target region and its location
                 Item targetRegion = createItem("SyntenicRegion");
 		targetRegion.setAttribute("assemblyVersion", targetAssy);
@@ -169,22 +174,16 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
                 Item targetChromosomeLocation = createItem("Location");
                 populateTargetRegion(targetRegion, gff, targetOrganism, targetStrain, targetChromosome, targetChromosomeLocation);
                 String targetIdentifier = getTargetRegionName(gff);
-                    
                 // only continue if we haven't stored a synteny block with these regions
                 if (syntenyBlockIds.containsKey(sourceIdentifier) && syntenyBlockIds.get(sourceIdentifier).equals(targetIdentifier) ||
                     syntenyBlockIds.containsKey(targetIdentifier) && syntenyBlockIds.get(targetIdentifier).equals(sourceIdentifier)) {
-                        
                     // do nothing
-                        
                 } else {
-                        
                     // store the regions in the map for future non-duplication
                     syntenyBlockIds.put(sourceIdentifier, targetIdentifier);
-                        
                     // get the medianKs value for this block
                     Map<String, List<String>> attributes = gff.getAttributes();
                     String medianKs = attributes.get("median_Ks").get(0);
-                        
                     // associate the two regions with this synteny block
                     Item syntenyBlock = createItem("SyntenyBlock");
 		    syntenyBlock.addToCollection("dataSets", dataSet);
@@ -233,6 +232,7 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
      */
     void populateSourceRegion(Item syntenicRegion, SyntenyGFF3Record gff, Item organism, Item strain, Item chromosome, Item chromosomeLocation) {
 	syntenicRegion.setAttribute("primaryIdentifier", getSourceRegionName(gff));
+	syntenicRegion.setAttribute("secondaryIdentifier", extractSecondaryIdentifier(getSourceRegionName(gff), false));
 	syntenicRegion.setAttribute("length", String.valueOf(getSourceEnd(gff)-getSourceStart(gff)+1));
 	syntenicRegion.setAttribute("score", String.valueOf(gff.getScore()));
 	syntenicRegion.setReference("organism", organism);
@@ -256,6 +256,7 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
      */
     void populateTargetRegion(Item syntenicRegion, SyntenyGFF3Record gff, Item organism, Item strain, Item chromosome, Item chromosomeLocation) {
 	syntenicRegion.setAttribute("primaryIdentifier", getTargetRegionName(gff));
+	syntenicRegion.setAttribute("secondaryIdentifier", extractSecondaryIdentifier(getTargetRegionName(gff), false));
 	syntenicRegion.setAttribute("length", String.valueOf(getTargetEnd(gff)-getTargetStart(gff)+1));
 	syntenicRegion.setAttribute("score", String.valueOf(gff.getScore()));
 	syntenicRegion.setReference("organism", organism);

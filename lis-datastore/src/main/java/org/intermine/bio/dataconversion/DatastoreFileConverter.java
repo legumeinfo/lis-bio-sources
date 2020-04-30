@@ -15,7 +15,13 @@ import org.intermine.xml.full.Item;
 /**
  * Class providing standard methods for Datastore file converters. Extend for your specific converter.
  *
- * NOTE: Items are NOT stored in these methods, just created.
+ * NOTE: Items are NOT stored in these methods, just created. Your extending class should include the
+ * following in the close() method:
+ *
+ * store(dataSource);
+ * store(dataSets.values());
+ * store(organisms.values());
+ * store(strains.values());
  *
  * @author Sam Hokin
  */
@@ -28,13 +34,13 @@ public class DatastoreFileConverter extends FileConverter {
         "A collaborative, community resource to facilitate crop improvement by integrating genetic, genomic, and trait data across legume species.";
     public static final String DEFAULT_DATASET_LICENCE = "ODC Public Domain Dedication and Licence (PDDL)";
 	
-    // store Items in maps if they may be read more than once
+    // Items to be stored by extending classes
+    Item dataSource;
     Map<String,Item> organisms = new HashMap<>();
     Map<String,Item> strains = new HashMap<>();
     Map<String,Item> dataSets = new HashMap<>();
 
     // there is only one dataSource, set in project.xml
-    Item dataSource;
     String dataSourceName;         // optional
     String dataSourceUrl;          // required if Name given
     String dataSourceDescription;  // required if Name given
@@ -66,9 +72,7 @@ public class DatastoreFileConverter extends FileConverter {
     }
 
     // Set DataSet fields in project.xml
-    public void setDataSetName(String name) {
-        this.dataSetName = name;
-    }
+    // NOTE: leave dataSetName to be set from file name, NOT project.xml!
     public void setDataSetUrl(String url) {
         this.dataSetUrl = url;
     }
@@ -127,30 +131,28 @@ public class DatastoreFileConverter extends FileConverter {
 	if (dataSetUrl==null || dataSetDescription==null) {
 	    throw new RuntimeException("You must set dataSetUrl and dataSetDescription in project.xml.");
 	}
-	// support optional data.set.name in project.xml
-	String assemblyVersion = null;
-	String annotationVersion = null;
-	String name = dataSetName;
-	if (name==null) {
-	    name = getCurrentFile().getName();
-	    assemblyVersion = extractAssemblyVersion(name);
-	    annotationVersion = extractAnnotationVersion(name);
+	// DataSet.name is ALWAYS file name
+	String name = getCurrentFile().getName();
+	// return already-created DataSet
+	if (dataSets.containsKey(name)) return dataSets.get(name);
+	// extract attributes
+	String assemblyVersion = extractAssemblyVersion(name);
+	String annotationVersion = extractAnnotationVersion(name);
+	String dataSetVersion = null;
+	if (assemblyVersion!=null && annotationVersion!=null) {
+	    dataSetVersion = assemblyVersion+"."+annotationVersion;
+	} else if (assemblyVersion!=null) {
+	    dataSetVersion = assemblyVersion;
 	}
 	if (dataSetLicence==null) dataSetLicence = DEFAULT_DATASET_LICENCE;
-	// return an existing DataSet
-        if (dataSets.containsKey(name)) return dataSets.get(name);
 	// create and return a new DataSet
 	Item dataSet = createItem("DataSet");
+	dataSet.setReference("dataSource", dataSource);
 	dataSet.setAttribute("name", name);
         dataSet.setAttribute("url", dataSetUrl);
 	dataSet.setAttribute("description", dataSetDescription);
 	dataSet.setAttribute("licence", dataSetLicence);
-	if (assemblyVersion!=null && annotationVersion!=null) {
-	    dataSet.setAttribute("version", assemblyVersion+"."+annotationVersion);
-	} else if (assemblyVersion!=null) {
-	    dataSet.setAttribute("version", assemblyVersion);
-	}
-	dataSet.setReference("dataSource", dataSource);
+	if (dataSetVersion!=null) dataSet.setAttribute("version", dataSetVersion);
 	dataSets.put(name, dataSet);
 	return dataSet;
     }
@@ -176,23 +178,24 @@ public class DatastoreFileConverter extends FileConverter {
             String taxonId = dsu.getTaxonId(gensp);
             String genus = dsu.getGenus(gensp);
             String species = dsu.getSpecies(gensp);
+	    String name = genus+" "+species;
+	    String shortName = genus.substring(0,1)+". "+species;
             organism = createItem("Organism");
             organism.setAttribute("abbreviation", gensp);
             organism.setAttribute("taxonId", taxonId);
             organism.setAttribute("genus", genus);
             organism.setAttribute("species", species);
-            organism.setAttribute("name", genus+" "+species);
+            organism.setAttribute("name", name);
+	    organism.setAttribute("shortName", shortName);
             organisms.put(gensp, organism);
         }
         return organism;
     }
 
     /**
-     * Get the organism Item for a string array like ["something","Genus","species"]
+     * Get the organism Item for a genus and species.
      */
-    Item getOrganism(String[] threeparts) {
-        String genus = threeparts[1];
-        String species = threeparts[2];
+    Item getOrganism(String genus, String species) {
         String gensp = genus.toLowerCase().substring(0,3) + species.toLowerCase().substring(0,2);
         return getOrganism(gensp);
     }
@@ -307,6 +310,21 @@ public class DatastoreFileConverter extends FileConverter {
 	} else {
 	    return null;
 	}
+    }
+
+    /**
+     * Extract the gene identifier from a protein identifier, which is assumed to be [geneIdentifier].n.
+     * 
+     * @param proteinIdentifier the protein LIS identifier
+     * @returns the corresponding gene LIS identifier
+     */
+    public static String extractGeneIdentifierFromProteinIdentifier(String proteinIdentifier) {
+	String[] fields = proteinIdentifier.split("\\.");
+	String geneIdentifier = fields[0];
+	for (int i=1; i<(fields.length-1); i++) {
+	    geneIdentifier += "."+fields[i];
+	}
+	return geneIdentifier;
     }
 
     /**

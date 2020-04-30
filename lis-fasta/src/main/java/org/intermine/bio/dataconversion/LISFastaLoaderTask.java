@@ -85,6 +85,8 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     Map<String,Protein> proteins = new HashMap<>();
     Map<String,MRNA> mRNAs = new HashMap<>();
 
+    DatastoreUtils datastoreUtils; // for determining supercontigs
+
     /**
      * Set the sequence type to be passed to the FASTA parser.  The default is "dna".
      * @param sequenceType the sequence type
@@ -221,6 +223,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     @Override
     public void process() {
         try {
+	    datastoreUtils = new DatastoreUtils();
             super.process();
             getIntegrationWriter().commitTransaction();
             getIntegrationWriter().beginTransaction();
@@ -500,7 +503,6 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 
         // HACK: set the className to "Chromosome" or "Supercontig" based on identifier and identifying supercontig matching strings.
         if (className.equals("org.intermine.model.bio.Chromosome") || className.equals("org.intermine.model.bio.Supercontig")) {
-	    DatastoreUtils datastoreUtils = new DatastoreUtils();
             if (datastoreUtils.isSupercontig(taxonId,strainIdentifier,identifier)) {
                 className = "org.intermine.model.bio.Supercontig";
             } else {

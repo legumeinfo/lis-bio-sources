@@ -37,9 +37,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(GWASFileConverter.class);
 
-    // things to store
-    Item organism;
-    List<Item> dataSets = new ArrayList<>();
+    // local things to store
     List<Item> publications = new ArrayList<>();
     List<Item> gwases = new ArrayList<>();
     List<Item> gwasResults = new ArrayList<>();
@@ -53,6 +51,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
      */
     public GWASFileConverter(ItemWriter writer, Model model) {
         super(writer, model);
+	dataSource = getDataSource();
     }
 
     /**
@@ -61,13 +60,10 @@ public class GWASFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
-        // don't process README files
         if (getCurrentFile().getName().contains("README")) return;
         LOG.info("Processing file "+getCurrentFile().getName()+"...");
-	organism = getOrganism();
-	dataSource = getDataSource();
 	Item dataSet = getDataSet();
-	dataSets.add(dataSet);
+	Item organism = getOrganism();
 	
 	// header items
         Item gwas = createItem("GWAS");
@@ -158,8 +154,8 @@ public class GWASFileConverter extends DatastoreFileConverter {
     @Override
     public void close() throws ObjectStoreException {
 	store(dataSource);
-	store(dataSets);
-	store(organism);
+	store(dataSets.values());
+	store(organisms.values());
 	store(publications);
 	store(gwases);
 	store(gwasResults);

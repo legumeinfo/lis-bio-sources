@@ -15,6 +15,8 @@ import java.io.File;
 import java.io.Reader;
 import java.io.IOException;
 
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -36,10 +38,6 @@ public class AboutFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(AboutFileConverter.class);
 
-    Item dataSet;
-    Item organism;
-    Map<String,Item> strainMap = new HashMap<>();
-
     /**
      * Create a new DatastoreFileConverter
      * @param writer the ItemWriter to write out new items
@@ -47,6 +45,7 @@ public class AboutFileConverter extends DatastoreFileConverter {
      */
     public AboutFileConverter(ItemWriter writer, Model model) throws ObjectStoreException {
         super(writer, model);
+	dataSource = getDataSource();
     }
 
     /**
@@ -54,10 +53,6 @@ public class AboutFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
-	// DataSet attributes are given entirely in project.xml.
-	dataSource = getDataSource();
-	dataSet = getDataSet();
-        // process the file
         if (getCurrentFile().getName().contains("description_")) {
             // description_Phaseolus_vulgaris.yml
             processDescriptionFile(reader);
@@ -73,14 +68,15 @@ public class AboutFileConverter extends DatastoreFileConverter {
     @Override
     public void close() throws ObjectStoreException {
 	store(dataSource);
-	store(dataSet);
-	store(organism);
-        store(strainMap.values());
+	store(dataSets.values());
+	store(organisms.values());
+        store(strains.values());
+	
     }
 
     /**
      * Process an organism description file, which is in YAML format:
-     *
+     * 0           1         2
      * description_Phaseolus_vulgaris.yml
      *
      * %YAML 1.2
@@ -93,13 +89,13 @@ public class AboutFileConverter extends DatastoreFileConverter {
      * organism.description:	Common bean was likely domesticated independently both in Central America and in the Andes....
      */
     void processDescriptionFile(Reader reader) throws IOException {
+	Item dataSet = getDataSet();
         // get the organism
         String[] dotparts = getCurrentFile().getName().split("\\.");
-        String[] dashparts = dotparts[0].split("_");
-        String genus = null;   // for forming Organism.name
-        String species = null; // for forming Organism.name
-	String taxonId = null;
-        Item organism = getOrganism(dashparts);
+        String[] threeparts = dotparts[0].split("_");
+        String genus = threeparts[1];
+        String species = threeparts[2];
+        Item organism = getOrganism(genus, species);
 	organism.addToCollection("dataSources", dataSource);
 	organism.addToCollection("dataSets", dataSet);
         // now load the attributes
@@ -112,14 +108,14 @@ public class AboutFileConverter extends DatastoreFileConverter {
             if (parts.length>1) {
                 String attributeName = parts[0].replace("organism.","").replace(":","");
                 String attributeValue = parts[1].trim();
-		// munge
-                if (attributeName.equals("taxid")) {
-		    attributeName = "taxonId";
-		    taxonId = attributeValue;
-		}
-                if (attributeName.equals("abbrev")) attributeName = "abbreviation";
-                if (attributeValue.length()>0) {
-                    organism.setAttribute(attributeName, attributeValue);
+		if (attributeValue.length()>0) {
+		    if (attributeName.equals("taxid")) {
+			// do nothing, we get taxonId in getOrganism()
+		    } else if (attributeName.equals("abbrev")) {
+			organism.setAttribute("abbreviation", attributeValue);
+		    } else {
+			organism.setAttribute(attributeName, attributeValue);
+		    }
                 }
             }
         }
@@ -128,7 +124,7 @@ public class AboutFileConverter extends DatastoreFileConverter {
 
     /**
      * Process a strains file, which is in YAML format:
-     *
+     * 0       1         2
      * strains_Phaseolus_vulgaris.yml
      *
      * %YAML 1.2
@@ -146,55 +142,38 @@ public class AboutFileConverter extends DatastoreFileConverter {
      * strain.description:	Accession BAT93 is a Mesomarican line that has been used in numerous breeding projects and trait-mapping studies.
      */
     void processStrainsFile(Reader reader) throws IOException {
+	Item dataSet = getDataSet();
         // get the organism
         String[] dotparts = getCurrentFile().getName().split("\\.");
-        String[] dashparts = dotparts[0].split("_");
-        organism = getOrganism(dashparts);
+        String[] threeparts = dotparts[0].split("_");
+	String genus = threeparts[1];
+	String species = threeparts[2];
+        Item organism = getOrganism(genus, species);
+	Item strain = null; // the current strain in the strains file
         // spin through the strain sections
         BufferedReader br = new BufferedReader(reader);
-        Map<String,String> attributes = new HashMap<>();
         String line = null;
         while ((line=br.readLine())!=null) {
-            if (line.startsWith("#####")) {
-                // new strain section, store previous strain
-                if (attributes.size()>0) {
-                    String strainId = attributes.get("identifier");
-                    Item strain = getStrain(strainId, organism);
-		    strain.addToCollection("dataSources", dataSource);
-		    strain.addToCollection("dataSets", dataSet);
-                    for (String name : attributes.keySet()) {
-                        String value = attributes.get(name);
-                        strain.setAttribute(name, value);
-                    }
-		    strainMap.put(strainId, strain);
-                }
-                // clear attributes map
-                attributes = new HashMap<>();
-            } else if (line.startsWith("#") || line.startsWith("%")) {
-                // comment
-                continue;
+            if (line.startsWith("%") || line.startsWith("#")) continue;
+	    if (line.startsWith("strain.identifier")) {
+		// top of new strain section
+		// strain.identifier:	W05
+                String[] parts = line.split("\t");
+		String strainId = parts[1].trim();
+		strain = getStrain(strainId, organism);
+		strain.addToCollection("dataSources", dataSource);
+		strain.addToCollection("dataSets", dataSet);
             } else {
-                // put strain attribute into map
+		// other strain attributes
+		// strain.origin:	Shanxi Sheng, China
                 String[] parts = line.split("\t");
                 if (parts.length>1) {
                     String attributeName = parts[0].replace("strain.","").replace(":","");
                     String attributeValue = parts[1].trim();
-                    attributes.put(attributeName, attributeValue);
+		    strain.setAttribute(attributeName, attributeValue);
                 }
             }
         }
         br.close();
-        // last one
-        if (attributes.size()>0) {
-            String strainId = attributes.get("identifier");
-            Item strain = getStrain(strainId, organism);
-	    strain.addToCollection("dataSources", dataSource);
-	    strain.addToCollection("dataSets", dataSet);
-            for (String name : attributes.keySet()) {
-                String value = attributes.get(name);
-                strain.setAttribute(name, value);
-            }
-	    strainMap.put(strainId, strain);
-        }
     }
 }

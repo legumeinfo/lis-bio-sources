@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<classes>
+
+  <!-- LIS has assembly and annotation versioning throughout -->
+  <class name="SequenceFeature" is-interface="true">
+    <attribute name="assemblyVersion" type="java.lang.String"/>
+    <attribute name="annotationVersion" type="java.lang.String"/>
+  </class>
+  
+  <!-- abbreviation=gensp -->
+  <class name="Organism" is-interface="true">
+    <attribute name="abbreviation" type="java.lang.String"/>
+  </class>
+
+  <!-- include version since it's in each gene family record, e.g. "lis_v1_0" -->
+  <class name="GeneFamily" is-interface="true">
+    <attribute name="identifier" type="java.lang.String"/>
+    <attribute name="description" type="java.lang.String"/>
+    <attribute name="version" type="java.lang.String"/>
+    <reference name="dataSet" referenced-type="DataSet"/>
+    <collection name="genes" referenced-type="Gene" reverse-reference="geneFamily"/>
+    <collection name="proteins" referenced-type="Protein" reverse-reference="geneFamily"/>
+    <collection name="proteinDomains" referenced-type="ProteinDomain" reverse-reference="geneFamilies"/>
+  </class>
+
+  <class name="Protein" is-interface="true">
+    <reference name="geneFamily" referenced-type="GeneFamily" reverse-reference="proteins"/>
+  </class>
+
+  <!-- slightly redundant but useful -->
+  <class name="Gene" is-interface="true">
+    <reference name="geneFamily" referenced-type="GeneFamily" reverse-reference="genes"/>
+  </class>
+
+  <!-- interpro loader has ProteinDomain extend BioEntity -->
+  <class name="ProteinDomain" extends="BioEntity" is-interface="true">
+    <collection name="geneFamilies" referenced-type="GeneFamily" reverse-reference="proteinDomains"/>
+  </class>
+
+</classes>

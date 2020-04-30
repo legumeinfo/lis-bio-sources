@@ -34,10 +34,7 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(InfoAnnotFileConverter.class);
 
-    // things to store
-    Item dataSet;
-    Item organism;
-    Item strain;
+    // local things to store
     Map<String,Item> genes = new HashMap<>();
     Map<String,Item> proteins = new HashMap<>();
     Map<String,Item> mRNAs = new HashMap<>();
@@ -59,6 +56,7 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
      */
     public InfoAnnotFileConverter(ItemWriter writer, Model model) throws ObjectStoreException {
         super(writer, model);
+	dataSource = getDataSource();
 	// GO
         geneOntology = createItem("Ontology");
         geneOntology.setAttribute("name", "GO");
@@ -91,8 +89,6 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
     @Override
     public void process(Reader reader) throws IOException {
         if (getCurrentFile().getName().endsWith(".info_annot.txt")) {
-	    dataSource = getDataSource();
-	    dataSet = getDataSet();
             processInfoAnnotFile(reader);
 	}
     }
@@ -102,16 +98,16 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
+	store(dataSource);
+	store(dataSets.values());
+	store(organisms.values());
+	store(strains.values());
         store(geneOntology);
         store(pfamOntology);
         store(pantherOntology);
         store(kogOntology);
         store(ecOntology);
         store(koOntology);
-	store(dataSource);
-	store(dataSet);
-	store(organism);
-	store(strain);
 	store(ontologyTerms.values());
         store(ontologyAnnotations.values());
         store(genes.values());
@@ -206,13 +202,14 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
      * 37170591 Phvul.001G000400 Phvul.001G000400.1 Phvul.001G000400.1.p PF00504 PTHR21649,PTHR21649:SF24 1.10.3.9 K14172 GO:0016020,GO:0009765 AT1G76570.1 Chlorophyll family protein
      */
     void processInfoAnnotFile(Reader reader) throws IOException {
+	Item dataSet = getDataSet();
         String assemblyVersion = extractAssemblyVersion(getCurrentFile().getName());
         String annotationVersion = extractAnnotationVersion(getCurrentFile().getName());
 	String gensp = extractGensp(getCurrentFile().getName());
 	String strainId = extractStrainIdentifier(getCurrentFile().getName());
 	// organism and strain
-        organism = getOrganism(gensp);
-        strain = getStrain(strainId, organism);
+        Item organism = getOrganism(gensp);
+        Item strain = getStrain(strainId, organism);
         // spin through the file
         BufferedReader br = new BufferedReader(reader);
         String line = null;

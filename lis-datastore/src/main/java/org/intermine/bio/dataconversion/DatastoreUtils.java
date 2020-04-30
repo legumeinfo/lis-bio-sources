@@ -88,7 +88,6 @@ public class DatastoreUtils {
         } catch (IOException e) {
             throw new RuntimeException("Problem loading properties from:"+DATASTORE_PROP_FILE, e);
         }
-
     }
 
     /**
@@ -133,9 +132,13 @@ public class DatastoreUtils {
      */
     public boolean isSupercontig(String taxonId, String strainIdentifier, String primaryIdentifier) {
         String key = taxonId+"."+strainIdentifier;
-        for (String matchString : supercontigStrings.get(key)) {
-            if (primaryIdentifier.contains(matchString)) return true;
-        }
-        return false;
+	List<String> matchStrings = supercontigStrings.get(key);
+	if (matchStrings==null) {
+	    throw new RuntimeException("You must add a supercontig matching entry for "+key+" in datastore_config.properties.");
+	}
+	for (String matchString : matchStrings) {
+	    if (primaryIdentifier.contains(matchString)) return true;
+	}
+	return false;
     }
 }
