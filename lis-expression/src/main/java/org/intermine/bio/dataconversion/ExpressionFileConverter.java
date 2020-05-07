@@ -41,12 +41,12 @@ import org.intermine.xml.full.Item;
  * BIOPROJ_TITLE	Gene expression atlas of pigeonpea
  * #NCBI BioProj description/ abstract(?)	
  * BIOPROJ_DESCRIPTION	Pigeonpea (Cajanus cajan) is an important grain legume of the semi-arid tropics, mainly used...
+ * #Associated publication at NCBI	
+ * BIOPROJ_PUBLICATION	Pazhamala, L. T., Purohit, S., Saxena, R. K., Garg, V., Krishnamurthy, L., Verdier, J., & Varshney, R. K. (2017). Gene expression...
  * #NCBI SRP number	
  * SRA_PROJ_ACC	SRP097728
  * # GEO series if exists	
  * GEO_SERIES	
- * #Associated publication at NCBI	
- * BIOPROJ_PUBLICATION	Pazhamala, L. T., Purohit, S., Saxena, R. K., Garg, V., Krishnamurthy, L., Verdier, J., & Varshney, R. K. (2017). Gene expression...
  * # PubMed ID
  * PUB_PMID     123456
  * #Link to Pub	
@@ -105,7 +105,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     public void process(Reader reader) throws IOException {
-        if (getCurrentFile().getName().contains("README")) return;
 	if (getCurrentFile().getName().endsWith("exprSource.tsv")) {
             // cajca.ICPL87119.gnm1.ann1.KEY4.exprSource.tsv
 	    sourceFile = getCurrentFile();
@@ -129,6 +128,13 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
+	if (sourceFile==null) {
+	    throw new RuntimeException("sourceFile is not set!");
+	} else if (samplesFile==null) {
+	    throw new RuntimeException("samplesFile is not set!");
+	} else if (expressionFile==null) {
+	    throw new RuntimeException("expressionFile is not set!");
+	}
         // store everything that is global
         store(dataSource);
         store(dataSets.values());
@@ -154,9 +160,9 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * BIOPROJ_ACC	PRJNA354681
      * BIOPROJ_TITLE	Gene expression atlas of pigeonpea
      * BIOPROJ_DESCRIPTION	Pigeonpea (Cajanus cajan) is an important grain legume of the semi-arid tropics, mainly used...
+     * BIOPROJ_PUBLICATION	Pazhamala, L. T., Purohit, S., Saxena, R. K., Garg, V., Krishnamurthy, L., Verdier, J., & Varshney, R. K. (2017). Gene expression...
      * SRA_PROJ_ACC	SRP097728
      * GEO_SERIES	
-     * BIOPROJ_PUBLICATION	Pazhamala, L. T., Purohit, S., Saxena, R. K., Garg, V., Krishnamurthy, L., Verdier, J., & Varshney, R. K. (2017). Gene expression...
      * PUB_PMID 123456
      * PUB_LINK	https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5429002/
      * PUB_FULLLINK	https://academic.oup.com/jxb/article/68/8/2037/3051749/Gene-expression-atlas-of-pigeonpea-and-its
@@ -362,7 +368,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
             String[] parts = line.split("\t");
-            if (parts[0].equals("geneID")) {
+            if (parts[0].toLowerCase().equals("geneid")) {
                 // header line gives samples in order so add to list
                 for (int i=1; i<parts.length; i++) {
                     String sampleId = parts[i];

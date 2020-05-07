@@ -272,9 +272,12 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
      */
     @Override
     public void processFile(File file) {
-        System.out.println("##################################################################################################################################################");
-        System.out.println("Reading "+sequenceType+" sequences from: "+file);
-        System.out.println("##################################################################################################################################################");
+	String blurb = "Reading "+sequenceType+" sequences from: "+file.getName();
+	String hashes = "";
+	for (int i=0; i<blurb.length(); i++) hashes += "#";
+        System.out.println(hashes);
+        System.out.println(blurb);
+        System.out.println(hashes);
         LOG.info("LISFastaLoaderTask loading file "+file.getName());
 	this.fastaFile = file;
 	assemblyVersion = DatastoreFileConverter.extractAssemblyVersion(file.getName());

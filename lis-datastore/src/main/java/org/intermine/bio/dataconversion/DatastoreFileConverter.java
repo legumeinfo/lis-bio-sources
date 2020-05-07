@@ -95,9 +95,12 @@ public class DatastoreFileConverter extends FileConverter {
      * Print out info about the current file or directory being processed.
      */
     static void printInfoBlurb(String blurb) {
-        System.out.println("####################################################################################################################");
-        System.out.println("Processing file/dir:"+blurb);
-        System.out.println("####################################################################################################################");
+	String outBlurb = "Processing "+blurb;
+	String hashes = "";
+	for (int i=0; i<outBlurb.length(); i++) hashes += "#";
+        System.out.println(hashes);
+        System.out.println(outBlurb);
+        System.out.println(hashes);
     }
 
     /**
