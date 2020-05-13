@@ -6,38 +6,35 @@
 <!-- ThreePrimeUTR.mRNA -->
 
 <classes>
-  
-  <class name="MRNA" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO_0000234">
-    <reference name="fivePrimeUTR" referenced-type="FivePrimeUTR" reverse-reference="mRNA"/>
-    <reference name="threePrimeUTR" referenced-type="ThreePrimeUTR" reverse-reference="mRNA"/>
-    <reference name="cds" referenced-type="CDS" reverse-reference="mRNA"/>
+
+  <!-- we'll get descriptions from GFF attribute, also exon parents are transcripts, not genes -->
+  <class name="Transcript" is-interface="true">
+    <attribute name="description" type="java.lang.String"/>
   </class>
+
+  <!-- MRNA isn't in core model -->
+  <class name="MRNA" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO_0000234">
+    <reference name="fivePrimeUTR" referenced-type="FivePrimeUTR"/>
+    <reference name="threePrimeUTR" referenced-type="ThreePrimeUTR"/>
+  </class>
+  <class name="FivePrimeUTR" extends="UTR" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000204" />
+  <class name="ThreePrimeUTR" extends="UTR" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000205" />
 
   <class name="GeneticMarker" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO_0001645">
     <attribute name="type" type="java.lang.String"/>
   </class>
+
+  <!-- InterPro terms -->
+  <class name="ProteinDomain" extends="BioEntity" is-interface="true"/>
 
   <!-- associate InterPro terms with genes -->
   <class name="Gene" is-interface="true">
     <collection name="proteinDomains" referenced-type="ProteinDomain"/>
   </class>
 
-  <class name="ProteinDomain" extends="BioEntity" is-interface="true"/>
-
-  <class name="CDS" is-interface="true">
-    <reference name="mRNA" referenced-type="MRNA" reverse-reference="cds"/>
-  </class>		 
-
-  <class name="FivePrimeUTR" is-interface="true">
-    <reference name="mRNA" referenced-type="MRNA" reverse-reference="fivePrimeUTR"/>
-  </class>
-
-  <class name="ThreePrimeUTR" is-interface="true">
-    <reference name="mRNA" referenced-type="MRNA" reverse-reference="threePrimeUTR"/>
-  </class>
-
-  <class name="RRNAPrimaryTranscript" extends="Transcript" is-interface="true" />
-
-  <class name="TRNAPrimaryTranscript" extends="Transcript" is-interface="true" />
-
+  <!-- extra terms in some GFFs -->
+  <class name="RRNAPrimaryTranscript" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000252" />
+  <class name="TRNAPrimaryTranscript" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000253" />
+  <class name="TransposableElementGene" extends="Gene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000111" />
+  
 </classes>

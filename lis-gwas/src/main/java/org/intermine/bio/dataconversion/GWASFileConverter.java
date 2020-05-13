@@ -22,7 +22,8 @@ import org.intermine.xml.full.Item;
  * glyma.mixed.gwas1.1W14.KGK20170714-1.gwas.tsv
  * ---------------------------------------------
  * TaxonID	3847
- * Name	KGK20170714.1
+ * Identifier	KGK20170714.1
+ * Name	Bandillo, Jarquin et al. 2015
  * PlatformName	SoySNP50k
  * PlatformDetails	Illumina Infinium Bead Chip
  * DOI	10.3835/plantgenome2015.04.0024
@@ -83,17 +84,24 @@ public class GWASFileConverter extends DatastoreFileConverter {
             String value = parts[1];
 	    if (value.length()==0) continue; // entry without value
 
-	    // TaxonID      3847                                                                                                                                                                                                                         // Name KGK20170714.1                                                                                                                                                                                                                        // PlatformName SoySNP50k                                                                                                                                                                                                                    // PlatformDetails      Illumina Infinium Bead Chip                                                                                                                                                                                          // DOI  10.3835/plantgenome2015.04.0024
-	    
+	    // TaxonID      3847
+	    // Identifier KGK20170714.1
+	    // Name	Bandillo, Jarquin et al. 2015
+	    // PlatformName SoySNP50k
+	    // PlatformDetails      Illumina Infinium Bead Chip
+	    // DOI  10.3835/plantgenome2015.04.0024
             if (key.toLowerCase().equals("taxonid")) {
 		// skip, we get organism from gensp in filename
 
-            } else if (key.toLowerCase().equals("name")) {
+            } else if (key.toLowerCase().equals("identifier")) {
                 gwas.setAttribute("primaryIdentifier", value);
 
+	    } else if (key.toLowerCase().equals("name")) {
+		gwas.setAttribute("name", value);
+		
             } else if (key.toLowerCase().equals("platformname")) {
                 gwas.setAttribute("platformName", value);
-
+		
             } else if (key.toLowerCase().equals("platformdetails")) {
                 gwas.setAttribute("platformDetails", value);
 

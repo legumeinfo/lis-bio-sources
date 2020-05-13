@@ -19,11 +19,11 @@ import org.intermine.xml.full.Item;
 /**
  * DataConverter to create ExpressionSource, ExpressionSample and ExpressionValue items from a single set of datastore expression files.
  * ICPL87119.gnm1.ann1.expr.KEY4
- * ├── cajca.ICPL87119.gnm1.ann1.KEY4.exprSamples.tsv
- * ├── cajca.ICPL87119.gnm1.ann1.KEY4.exprSource.tsv
- * └── cajca.ICPL87119.gnm1.ann1.KEY4.genesSamplesTpm.tsv
+ * ├── cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv
+ * ├── cajca.ICPL87119.gnm1.ann1.expr.KEY4.source.tsv
+ * └── cajca.ICPL87119.gnm1.ann1.expr.KEY4.values.tsv
  *
- * cajca.ICPL87119.gnm1.ann1.KEY4.exprSource.tsv
+ * cajca.ICPL87119.gnm1.ann1.expr.KEY4.source.tsv
  * ---------------------------------------------
  * #DATASOURCE	
  * ##	
@@ -54,7 +54,7 @@ import org.intermine.xml.full.Item;
  * #Link to full publication	
  * PUB_FULLLINK	https://academic.oup.com/jxb/article/68/8/2037/3051749/Gene-expression-atlas-of-pigeonpea-and-its
  
- * cajca.ICPL87119.gnm1.ann1.KEY4.exprSamples.tsv
+ * cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv
  * ----------------------------------------------
  * #SAMPLE																
  * #																
@@ -63,7 +63,7 @@ import org.intermine.xml.full.Item;
  * sample_name	key	sample_uniquename	description	treatment	tissue	dev_stage	age	organism	infraspecies	cultivar	other	sra_run	biosample_accession	sra_accession	bioproject_accession	sra_study
  * Mature seed at reprod (SRR5199304)	SRR5199304	Mature seed at reprod (SRR5199304)	Mature seed at Reproductive stage (SRR5199304)	Mature seed at reprod	Mature seed	Reproductive stage	Cajanus cajan	ICPL87119	Asha(ICPL87119)		SRR5199304	SAMN06264156	SRS1937936	PRJNA354681	SRP097728
  *
- * cajca.ICPL87119.gnm1.ann1.KEY4.genesSamplesTpm.tsv
+ * cajca.ICPL87119.gnm1.ann1.expr.KEY4.values.tsv
  * --------------------------------------------------
  * geneID	SRR5199304	SRR5199305	SRR5199306	SRR5199307	...
  * cajca.ICPL87119.gnm1.ann1.C.cajan_00002	0	0	0	0	...
@@ -105,14 +105,14 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     public void process(Reader reader) throws IOException {
-	if (getCurrentFile().getName().endsWith("exprSource.tsv")) {
-            // cajca.ICPL87119.gnm1.ann1.KEY4.exprSource.tsv
+	if (getCurrentFile().getName().endsWith("source.tsv")) {
+            // cajca.ICPL87119.gnm1.ann1.expr.KEY4.source.tsv
 	    sourceFile = getCurrentFile();
-        } else if (getCurrentFile().getName().endsWith("exprSamples.tsv")) {
-            // cajca.ICPL87119.gnm1.ann1.KEY4.exprSamples.tsv
+        } else if (getCurrentFile().getName().endsWith("samples.tsv")) {
+            // cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv
 	    samplesFile = getCurrentFile();
-        } else if (getCurrentFile().getName().endsWith("genesSamplesTpm.tsv")) {
-            // cajca.ICPL87119.gnm1.ann1.KEY4.genesSamplesTpm.tsv
+        } else if (getCurrentFile().getName().endsWith("values.tsv")) {
+            // cajca.ICPL87119.gnm1.ann1.expr.KEY4.values.tsv
 	    expressionFile = getCurrentFile();
         }
 	// process once we have all three Files instantiated
@@ -151,7 +151,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     /**
      * Process the datasource meta data file and put the info into a DataSet.
      *
-     * cajca.ICPL87119.gnm1.ann1.KEY4.exprSource.tsv
+     * cajca.ICPL87119.gnm1.ann1.expr.KEY4.source.tsv
      *
      * NAME	Gene expression atlas of pigeonpea Asha(ICPL87119)
      * SHORTNAME	Pigeonpea gene expression atlas
@@ -258,7 +258,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     /**
      * Process the file which describes the samples.
      *
-     * cajca.ICPL87119.gnm1.ann1.KEY4.exprSamples.tsv
+     * cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv
      * 
      * sample_name                        key        sample_uniquename                  description                                    treatment             tissue
      * Mature seed at reprod (SRR5199304) SRR5199304 Mature seed at reprod (SRR5199304) Mature seed at Reproductive stage (SRR5199304) Mature seed at reprod Mature seed 
@@ -353,7 +353,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     /**
      * Process a gene expression file. Each gene-sample entry creates an ExpressionValue.
      *
-     * cajca.ICPL87119.gnm1.ann1.KEY4.genesSamplesTpm.tsv
+     * cajca.ICPL87119.gnm1.ann1.expr.KEY4.values.tsv
      * --------------------------------------------------
      * geneID	SRR5199304	SRR5199305	SRR5199306	SRR5199307	...
      * cajca.ICPL87119.gnm1.ann1.C.cajan_00002	0	0	0	0	...

@@ -36,11 +36,11 @@ import org.intermine.xml.full.ItemHelper;
  *
  * Parents:
  *
- * Exon.gene
+ * Exon.transcripts
+ * CDS.transcript
+ * FivePrimeUTR.transcripts
+ * ThreePrimeUTR.transcripts
  * MRNA.gene
- * FivePrimeUTR.mRNA
- * ThreePrimeUTR.mRNA
- * CDS.mRNA
  * RRNAPrimaryTranscript.gene
  * TRNAPrimaryTranscript.gene
  *
@@ -67,13 +67,14 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
     public LISGFF3RecordHandler(Model tgtModel) {
         super(tgtModel);
         // refsAndCollections controls references and collections that are set from the Parent= attributes in the GFF3 file.
-        refsAndCollections.put("Exon", "gene");
-        refsAndCollections.put("MRNA", "gene");
-	refsAndCollections.put("RRNAPrimaryTranscript", "gene");
-	refsAndCollections.put("TRNAPrimaryTranscript", "gene");
-        refsAndCollections.put("FivePrimeUTR", "mRNA");
-        refsAndCollections.put("ThreePrimeUTR", "mRNA");
-        refsAndCollections.put("CDS", "mRNA");
+	// these should be consistent with sequence ontology!
+        refsAndCollections.put("Exon", "transcripts");            // SO: exon->transcript_region->transcript
+        refsAndCollections.put("CDS", "transcript");              // SO: CDS->mRNA_region->transcript
+        refsAndCollections.put("FivePrimeUTR", "transcripts");    // SO: five_prime_UTR->UTR->mRNA_region
+        refsAndCollections.put("ThreePrimeUTR", "transcripts");   // SO: three_prime_UTR->UTR->mRNA_region
+        refsAndCollections.put("MRNA", "gene");                   // SO: mRNA->mature_transcript->transcript->gene_member_region
+	refsAndCollections.put("RRNAPrimaryTranscript", "gene");  // SO: rRNA->ncRNA->mature_transcript->transcript->gene_member_region
+	refsAndCollections.put("TRNAPrimaryTranscript", "gene");  // SO: tRNA->ncRNA->mature_transcript->transcript->gene_member_region
     }
 
     /**

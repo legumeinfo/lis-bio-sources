@@ -11,7 +11,8 @@
   <!-- GWAS extends Annotatable for the standard Publication support (and there's probably an ontology with GWAS in it) -->  
   <!-- TaxonID	3847 -->
   <!-- Strain	Williams82 -->
-  <!-- Name	KGK20170707.1 -->
+  <!-- Identifier	KGK20170707.1 -->
+  <!-- Name	Zhang, Hao et al. 2015 -->
   <!-- PlatformName	IlluminaGoldenGate -->
   <!-- PlatformDetails	 -->
   <!-- DOI	10.1111/pbr.12305 -->
@@ -19,6 +20,7 @@
     <reference name="organism" referenced-type="Organism"/>
     <reference name="dataSource" referenced-type="DataSource"/>
     <reference name="dataSet" referenced-type="DataSet"/>
+    <attribute name="name" type="java.lang.String"/>
     <attribute name="platformName" type="java.lang.String"/>
     <attribute name="platformDetails" type="java.lang.String"/>
     <collection name="results" referenced-type="GWASResult" reverse-reference="gwas"/>
