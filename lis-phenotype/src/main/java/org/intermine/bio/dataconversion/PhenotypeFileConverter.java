@@ -41,10 +41,10 @@ public class PhenotypeFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(PhenotypeFileConverter.class);
 
-    // local things to store
-    List<Item> phenotypes = new ArrayList<>();
-    List<Item> ontologyAnnotations = new ArrayList<>();
+    // things to store
+    Map<String,Item> phenotypeMap = new HashMap<>();
     Map<String,Item> ontologyTermMap = new HashMap<>();
+    List<Item> ontologyAnnotations = new ArrayList<>();
 
     /**
      * Create a new PhenotypeFileConverter
@@ -73,11 +73,14 @@ public class PhenotypeFileConverter extends DatastoreFileConverter {
             }
             String phenotypeId = parts[0];
             String ontologyTermId = parts[1];
-	    Item phenotype = createItem("Phenotype");
-	    phenotype.setAttribute("primaryIdentifier", phenotypeId);
-	    phenotype.setReference("dataSource", dataSource);
-	    phenotype.setReference("dataSet", dataSet);
-	    phenotypes.add(phenotype);
+	    Item phenotype = phenotypeMap.get(phenotypeId);
+	    if (phenotype==null) {
+		phenotype = createItem("Phenotype");
+		phenotype.setAttribute("primaryIdentifier", phenotypeId);
+		phenotype.setReference("dataSource", dataSource);
+		phenotypeMap.put(phenotypeId, phenotype);
+	    }
+	    phenotype.addToCollection("dataSets", dataSet);
 	    Item ontologyTerm = ontologyTermMap.get(ontologyTermId);
 	    if (ontologyTerm==null) {
 		ontologyTerm = createItem("OntologyTerm");
@@ -99,7 +102,7 @@ public class PhenotypeFileConverter extends DatastoreFileConverter {
     public void close() throws ObjectStoreException {
 	store(dataSource);
 	store(dataSets.values());
-	store(phenotypes);
+	store(phenotypeMap.values());
 	store(ontologyTermMap.values());
 	store(ontologyAnnotations);
     }
