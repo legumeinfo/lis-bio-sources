@@ -33,6 +33,7 @@ import org.intermine.xml.full.ItemHelper;
  * three_prime_UTR ID=phavu.G19833.gnm1.ann1.Phvul.001G000100.1.v1.0.three_prime_UTR.1;Parent=phavu.G19833.gnm1.ann1.Phvul.001G000100.1;
  * rRNA_primary_transcript ID=glyma.Zh13.gnm1.ann1.SoyZH13_CG009100.rRNA1;Name=SoyZH13_CG009100.rRNA1;Parent=glyma.Zh13.gnm1.ann1.SoyZH13_CG009100
  * tRNA_primary_transcript ID=glyma.Zh13.gnm1.ann1.SoyZH13_CG003000.tRNA1;Name=SoyZH13_CG003000.tRNA1;Parent=glyma.Zh13.gnm1.ann1.SoyZH13_CG003000
+ * genetic_marker  ID=phavu.G19833.gnm1.mrk.3_12345;Name=3_12345;Alleles=A/T
  *
  * Parents:
  *
@@ -87,14 +88,13 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
      * five_prime_UTR   phavu.G19833.gnm2.ann1.Phvul.003G111100.1.five_prime_UTR.3 
      * three_prime_UTR  phavu.G19833.gnm2.ann1.Phvul.003G111100.1.three_prime_UTR.1
      */
+    @Override
     public void process(GFF3Record record) {
         String id = record.getId();
         String type = record.getType();
-
         Item feature = getFeature();
         String className = feature.getClassName();
         Map<String,List<String>> attributesMap = record.getAttributes();
-
         // only update feature if ID is present
         if (id!=null) {
             // 0     1      2    3    4     5          6 7   8
@@ -103,19 +103,21 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
             // medtr.jemalong_A17.gnm5.ann1_6.exon:MtrunA17Chr1g0187771.1
             // 0     1            2    3      4
             // medtr.jemalong_A17.gnm5.ann1_6.gene:MtrunA17CPg0492171
+	    // 0     1            2    3
+	    // vigun.IT97K-499-35.gnm1.1_0052;
             String[] parts = id.split("\\.");
-            if (parts.length<5) {
+            if (parts.length<4) {
                 throw new RuntimeException("ID has too few dot-separated parts:"+id);
             }
             String gensp = parts[0];
             String strainId = parts[1];
             String assemblyVersion = parts[2];
-            String annotationVersion = parts[3];
+	    String annotationVersion = null;
+	    if (parts.length>3) annotationVersion = parts[3];
 
             // set other standard attributes
             feature.setAttribute("assemblyVersion", assemblyVersion);
-            feature.setAttribute("annotationVersion", annotationVersion);
-	    feature.setAttribute("secondaryIdentifier", DatastoreFileConverter.extractSecondaryIdentifier(id, true));
+            if (annotationVersion!=null) feature.setAttribute("annotationVersion", annotationVersion);
 
             // add marker type = SNP if it is a marker with length 1
             if (type.equals("genetic_marker") && (record.getStart()-record.getEnd())==0) {
@@ -125,7 +127,9 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
             // more specific attributes
             for (String key : attributesMap.keySet()) {
                 List<String> attributes = attributesMap.get(key);
-                if (key.equals("Note")) {
+		if (key.equals("Name")) {
+		    feature.setAttribute("secondaryIdentifier", attributes.get(0));
+		} else if (key.equals("Note")) {
                     // Note=ATP binding protein... IPR002624 (...)%2C IPR027417 (...)%3B GO:0005524 (...)%2C GO:0006139 (...);
                     feature.setAttribute("description", attributes.get(0));
                 } else if (type.equals("gene") && key.equals("Dbxref")) {
@@ -172,6 +176,8 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
 			    addItem(goAnnotation);
                         }
                     }
+		} else if (type.equals("genetic_marker") && key.equals("Alleles")) {
+		    feature.setAttribute("alleles", attributes.get(0));
                 } else if (key.equals("evid_id")) {
                     // [GAR_10012494]
                     // do nothing

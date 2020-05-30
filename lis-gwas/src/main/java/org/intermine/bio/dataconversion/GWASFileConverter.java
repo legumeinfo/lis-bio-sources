@@ -61,7 +61,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
-        if (getCurrentFile().getName().contains("README")) return;
+        if (!getCurrentFile().getName().endsWith(".tsv")) return;
         LOG.info("Processing file "+getCurrentFile().getName()+"...");
 	Item dataSet = getDataSet();
 	Item organism = getOrganism();
@@ -69,7 +69,6 @@ public class GWASFileConverter extends DatastoreFileConverter {
 	// header items
         Item gwas = createItem("GWAS");
 	gwas.setReference("organism", organism);
-	gwas.setReference("dataSource", dataSource);
 	gwas.setReference("dataSet", dataSet);
 	
         Item publication = createItem("Publication");

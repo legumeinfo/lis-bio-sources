@@ -1,15 +1,8 @@
 <?xml version="1.0"?>
 <classes>
 
-  <!-- <class name="Annotatable" is-interface="true"> -->
-  <!--   <attribute name="primaryIdentifier" type="java.lang.String" term="http://semanticscience.org/resource/SIO_000675"/> -->
-  <!--   <collection name="ontologyAnnotations" referenced-type="OntologyAnnotation" reverse-reference="subject"/> -->
-  <!--   <collection name="publications" referenced-type="Publication" reverse-reference="entities"/> -->
-  <!-- </class> -->
-
   <!-- associate a phenotype with its ontology annotation and datasets-->
   <class name="Phenotype" extends="Annotatable" is-interface="true" term="http://semanticscience.org/resource/SIO_010056">
-    <reference name="dataSource" referenced-type="DataSource"/>
     <collection name="dataSets" referenced-type="DataSet"/>
   </class>
 

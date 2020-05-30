@@ -1,4 +1,4 @@
-rootProject.name = 'bio-sources-lis'
+rootProject.name = 'bio-source-lis'
 
 include ':bio-source-lis-datastore',
 	':bio-source-lis-about',
@@ -9,7 +9,8 @@ include ':bio-source-lis-datastore',
 	':bio-source-lis-expression',
 	':bio-source-lis-fasta',
 	':bio-source-lis-synteny',
-	':bio-source-lis-genefamily'
+	':bio-source-lis-genefamily',
+	':bio-source-lis-qtl'
 
 project(':bio-source-lis-datastore').projectDir = new File(settingsDir, 'lis-datastore')
 project(':bio-source-lis-about').projectDir = new File(settingsDir, 'lis-about')
@@ -21,3 +22,4 @@ project(':bio-source-lis-expression').projectDir = new File(settingsDir, 'lis-ex
 project(':bio-source-lis-fasta').projectDir = new File(settingsDir, 'lis-fasta')
 project(':bio-source-lis-synteny').projectDir = new File(settingsDir, 'lis-synteny')
 project(':bio-source-lis-genefamily').projectDir = new File(settingsDir, 'lis-genefamily')
+project(':bio-source-lis-qtl').projectDir = new File(settingsDir, 'lis-qtl')

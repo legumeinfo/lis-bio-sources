@@ -77,7 +77,6 @@ public class PhenotypeFileConverter extends DatastoreFileConverter {
 	    if (phenotype==null) {
 		phenotype = createItem("Phenotype");
 		phenotype.setAttribute("primaryIdentifier", phenotypeId);
-		phenotype.setReference("dataSource", dataSource);
 		phenotypeMap.put(phenotypeId, phenotype);
 	    }
 	    phenotype.addToCollection("dataSets", dataSet);

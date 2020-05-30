@@ -7,6 +7,12 @@
 
 <classes>
 
+  <!-- LIS has assembly and annotation versioning throughout -->
+  <class name="SequenceFeature" is-interface="true">
+    <attribute name="assemblyVersion" type="java.lang.String"/>
+    <attribute name="annotationVersion" type="java.lang.String"/>
+  </class>
+
   <!-- we'll get descriptions from GFF attribute, also exon parents are transcripts, not genes -->
   <class name="Transcript" is-interface="true">
     <attribute name="description" type="java.lang.String"/>
@@ -20,10 +26,6 @@
   <class name="FivePrimeUTR" extends="UTR" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000204" />
   <class name="ThreePrimeUTR" extends="UTR" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000205" />
 
-  <class name="GeneticMarker" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO_0001645">
-    <attribute name="type" type="java.lang.String"/>
-  </class>
-
   <!-- InterPro terms -->
   <class name="ProteinDomain" extends="BioEntity" is-interface="true"/>
 
@@ -36,5 +38,11 @@
   <class name="RRNAPrimaryTranscript" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000252" />
   <class name="TRNAPrimaryTranscript" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000253" />
   <class name="TransposableElementGene" extends="Gene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000111" />
+
+  <!-- Alleles=A/T in attributes. type=SNP if length=1 -->
+  <class name="GeneticMarker" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645">
+    <attribute name="type" type="java.lang.String"/>
+    <attribute name="alleles" type="java.lang.String"/>
+  </class>
   
 </classes>
