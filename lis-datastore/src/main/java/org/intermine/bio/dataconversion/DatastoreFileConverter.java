@@ -36,9 +36,9 @@ public class DatastoreFileConverter extends FileConverter {
 	
     // Items to be stored by extending classes
     Item dataSource;
-    Map<String,Item> organisms = new HashMap<>();
-    Map<String,Item> strains = new HashMap<>();
-    Map<String,Item> dataSets = new HashMap<>();
+    Map<String,Item> organisms = new HashMap<>();  // keyed by TaxonID
+    Map<String,Item> strains = new HashMap<>();    // keyed by identifier
+    Map<String,Item> dataSets = new HashMap<>();   // keyed by name = filename
 
     // there is only one dataSource, set in project.xml
     String dataSourceName;         // optional
@@ -167,32 +167,43 @@ public class DatastoreFileConverter extends FileConverter {
 	String gensp = extractGensp(getCurrentFile().getName());
 	return getOrganism(gensp);
     }
+
+    /**
+     * Get/add the organism Item by referencing its taxonId value, as an integer to 
+     * distinguish this method from the gensp method. (TaxonIDs are always integers.)
+     */
+    Item getOrganism(int intTaxonId) {
+	String taxonId = String.valueOf(intTaxonId);
+	if (organisms.containsKey(taxonId)) {
+	    return organisms.get(taxonId);
+	} else {
+	    Item organism = createItem("Organism");
+	    organism.setAttribute("taxonId", taxonId);
+	    organisms.put(taxonId, organism);
+	    return organism;
+	}
+    }
     
     /**
      * Get/add the organism Item associated with the given gensp value (e.g. "phavu").
-     * Returns null if the gensp isn't resolvable.
+     * Returns null if the gensp isn't resolvable to a taxonId.
      */
     Item getOrganism(String gensp) {
-        Item organism = null;
-        if (organisms.containsKey(gensp)) {
-            organism = organisms.get(gensp);
-        } else {
-	    DatastoreUtils dsu = new DatastoreUtils();
-            String taxonId = dsu.getTaxonId(gensp);
-            String genus = dsu.getGenus(gensp);
-            String species = dsu.getSpecies(gensp);
-	    String name = genus+" "+species;
-	    String shortName = genus.substring(0,1)+". "+species;
-            organism = createItem("Organism");
+	DatastoreUtils dsu = new DatastoreUtils();
+	String taxonId = dsu.getTaxonId(gensp);
+	if (taxonId==null) {
+	    return null;
+	} else {
+	    Item organism = getOrganism(Integer.parseInt(taxonId));
+	    String genus = dsu.getGenus(gensp);
+	    String species = dsu.getSpecies(gensp);
             organism.setAttribute("abbreviation", gensp);
-            organism.setAttribute("taxonId", taxonId);
             organism.setAttribute("genus", genus);
             organism.setAttribute("species", species);
-            organism.setAttribute("name", name);
-	    organism.setAttribute("shortName", shortName);
-            organisms.put(gensp, organism);
+            organism.setAttribute("name", genus+" "+species);
+	    organism.setAttribute("shortName", genus.substring(0,1)+". "+species);
+	    return organism;
         }
-        return organism;
     }
 
     /**
@@ -207,25 +218,24 @@ public class DatastoreFileConverter extends FileConverter {
      * Get/add the strainItem associated with the current filename and organism.
      */
     Item getStrain(Item organism) {
-	String strainId = extractStrainIdentifier(getCurrentFile().getName());
-	return getStrain(strainId, organism);
+	String identifier = extractStrainIdentifier(getCurrentFile().getName());
+	return getStrain(identifier, organism);
     }
     
     /**
      * Get/add the strain Item associated with the given strain name.
      * Sets the organism reference if created.
      */
-    Item getStrain(String strainId, Item organism) {
-        Item strain;
-        if (strains.containsKey(strainId)) {
-            strain = strains.get(strainId);
+    Item getStrain(String identifier, Item organism) {
+        if (strains.containsKey(identifier)) {
+            return strains.get(identifier);
         } else {
-            strain = createItem("Strain");
-            strain.setAttribute("identifier", strainId);
+            Item strain = createItem("Strain");
+            strain.setAttribute("identifier", identifier);
             strain.setReference("organism", organism);
-            strains.put(strainId, strain);
+            strains.put(identifier, strain);
+	    return strain;
         }
-        return strain;
     }
 
     /**

@@ -97,12 +97,11 @@ public class QTLFileConverter extends DatastoreFileConverter {
      * Process a QTL experiment file. Data lines are all tab-separated pairs.
      */
     void processExperiment(Reader reader) throws IOException {
-	Item dataSet = getDataSet();
-	Item organism = getOrganism();
 	Item experiment = createItem("QTLExperiment");
-	Item publication = null;
+	Item dataSet = getDataSet(); // filename
 	experiment.addToCollection("dataSets", dataSet);
-	experiment.setReference("organism", organism);
+	Item organism = null;        // in metadata
+	Item publication = null;     // in metadata
 	boolean experimentHasIdentifier = false;
 	boolean experimentHasQTLs = false;
         BufferedReader bufferedReader = new BufferedReader(reader);
@@ -117,12 +116,17 @@ public class QTLFileConverter extends DatastoreFileConverter {
 		experiment.setAttribute("primaryIdentifier", parts[1]);
 		experimentMap.put(parts[1], experiment);
 	    } else if (parts[0].equals("TaxonID")) {
-		// do nothing, get organism from gensp in filename
+		int taxonId = Integer.parseInt(parts[1]);
+		organism = getOrganism(taxonId);
+		experiment.setReference("organism", organism);
 	    } else if (parts[0].equals("Name")) {
 		experiment.setAttribute("name", parts[1]);
 	    } else if (parts[0].equals("Description")) {
 		experiment.setAttribute("description", parts[1]);
 	    } else if (parts[0].equals("MappingParent")) {
+		if (organism==null) {
+		    throw new RuntimeException("organism=null when creating mapping parent; be sure to put TaxonID near the top of the QTL experiment file:"+getCurrentFile().getName());
+		}
 		Item strain = getStrain(parts[1], organism);
 		experiment.addToCollection("mappingParents", strain);
 	    } else if (parts[0].equals("MappingDescription")) {
