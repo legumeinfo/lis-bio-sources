@@ -58,6 +58,7 @@ public class DatastoreFileConverter extends FileConverter {
      */
     public DatastoreFileConverter(ItemWriter writer, Model model) {
 	super(writer, model);
+	dataSource = getDataSource();
     }
 
     // Set DataSource fields in project.xml
@@ -124,20 +125,23 @@ public class DatastoreFileConverter extends FileConverter {
     }
 
     /**
-     * Get/add the DataSet Item.
-     * dataSetUrl and dataSetDescription MUST be set in project.xml.
+     * Get/add a DataSet Item from the current filename.
      */
     public Item getDataSet() {
-	if (dataSource==null) {
+        return getDataSet(getCurrentFile().getName());
+    }
+
+    /**
+     * Get/add a DataSet Item from the given filename.
+     */
+    public Item getDataSet(String name) {
+	if (dataSets.containsKey(name)) return dataSets.get(name);
+        if (dataSource==null) {
 	    throw new RuntimeException("DataSource is not initialized.");
 	}
 	if (dataSetUrl==null || dataSetDescription==null) {
 	    throw new RuntimeException("You must set dataSetUrl and dataSetDescription in project.xml.");
 	}
-	// DataSet.name is ALWAYS file name
-	String name = getCurrentFile().getName();
-	// return already-created DataSet
-	if (dataSets.containsKey(name)) return dataSets.get(name);
 	// extract attributes
 	String assemblyVersion = extractAssemblyVersion(name);
 	String annotationVersion = extractAnnotationVersion(name);
@@ -164,8 +168,14 @@ public class DatastoreFileConverter extends FileConverter {
      * Get/add the organism Item by extracting gensp value from the current filename.
      */
     Item getOrganism() {
-	String gensp = extractGensp(getCurrentFile().getName());
-	return getOrganism(gensp);
+        return getOrganism(getGensp());
+    }
+
+    /**
+     * Get the gensp string for the current filename.
+     */
+    String getGensp() {
+        return extractGensp(getCurrentFile().getName());
     }
 
     /**

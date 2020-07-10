@@ -5,14 +5,7 @@
     <attribute name="url" type="java.lang.String"/>
   </class>
 
-  <class name="DataSet" is-interface="true" term="http://semanticscience.org/resource/SIO_000089">
-    <attribute name="shortName" type="java.lang.String"/>
-    <attribute name="origin" type="java.lang.String"/>
-    <attribute name="geoSeries" type="java.lang.String"/>
-    <attribute name="sra" type="java.lang.String"/>
-    <reference name="bioProject" referenced-type="BioProject"/>
-  </class>
-
+  <!-- NCBI BioProject -->
   <class name="BioProject" is-interface="true">
     <attribute name="accession" type="java.lang.String"/>
     <attribute name="title" type="java.lang.String"/>
@@ -20,29 +13,32 @@
   </class>
 
   <class name="ExpressionSource" is-interface="true">
-    <attribute name="primaryIdentifier" type="java.lang.String"/>
-    <attribute name="unit" type="java.lang.String"/>
+    <attribute name="identifier" type="java.lang.String"/>
     <reference name="dataSet" referenced-type="DataSet"/>
+    <attribute name="shortName" type="java.lang.String"/>
+    <attribute name="origin" type="java.lang.String"/>
+    <attribute name="geoSeries" type="java.lang.String"/>
+    <attribute name="sra" type="java.lang.String"/>
+    <reference name="bioProject" referenced-type="BioProject"/>
+    <reference name="publication" referenced-type="Publication"/>
     <collection name="samples" referenced-type="ExpressionSample" reverse-reference="source"/>
   </class>
 
-  <class name="ExpressionSample" is-interface="true">
-    <attribute name="primaryIdentifier" type="java.lang.String"/>
+  <!-- extend BioEntity to associate with publication reverse ref -->
+  <class name="ExpressionSample" extends="BioEntity" is-interface="true">
     <attribute name="num" type="java.lang.Integer"/>
     <attribute name="name" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
     <attribute name="bioSample" type="java.lang.String"/>
-    <reference name="organism" referenced-type="Organism"/>
-    <reference name="strain" referenced-type="Strain"/>
-    <reference name="dataSet" referenced-type="DataSet"/>
     <reference name="source" referenced-type="ExpressionSource" reverse-reference="samples"/>
   </class>
 
-  <!-- simple object since id not needed -->
+  <!-- simple object since id not needed, better loading performance -->
   <class name="ExpressionValue" is-interface="false" extends="java.lang.Object">
     <attribute name="value" type="java.lang.Double"/>
+    <attribute name="unit" type="java.lang.String"/>
     <reference name="sample" referenced-type="ExpressionSample"/>
-    <reference name="gene" referenced-type="Gene"/>
+    <reference name="feature" referenced-type="SequenceFeature"/>
   </class>
 
 </classes>

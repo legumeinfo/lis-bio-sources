@@ -18,55 +18,11 @@ import org.intermine.xml.full.Item;
 
 /**
  * DataConverter to create ExpressionSource, ExpressionSample and ExpressionValue items from a single set of datastore expression files.
- * ICPL87119.gnm1.ann1.expr.KEY4
- * ├── cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv
- * ├── cajca.ICPL87119.gnm1.ann1.expr.KEY4.source.tsv
- * └── cajca.ICPL87119.gnm1.ann1.expr.KEY4.values.tsv
  *
- * cajca.ICPL87119.gnm1.ann1.expr.KEY4.source.tsv
- * ---------------------------------------------
- * #DATASOURCE	
- * ##	
- * ##Name, descriptive (max 250 char)	
- * NAME	Gene expression atlas of pigeonpea Asha(ICPL87119)
- * #Shortname: max 64 char	
- * SHORTNAME	Pigeonpea gene expression atlas
- * #Origin: ex. SRA, GEO, A labname, etc.	
- * ORIGIN	SRA
- * #Description: our description if needed	
- * DESCRIPTION	To be able to link the genome sequence information to the phenotype, especially...
- * #NCBI BioProj acc, PRJNA num	
- * BIOPROJ_ACC	PRJNA354681
- * #NCBI BioProj Title	
- * BIOPROJ_TITLE	Gene expression atlas of pigeonpea
- * #NCBI BioProj description/ abstract(?)	
- * BIOPROJ_DESCRIPTION	Pigeonpea (Cajanus cajan) is an important grain legume of the semi-arid tropics, mainly used...
- * #Associated publication at NCBI	
- * BIOPROJ_PUBLICATION	Pazhamala, L. T., Purohit, S., Saxena, R. K., Garg, V., Krishnamurthy, L., Verdier, J., & Varshney, R. K. (2017). Gene expression...
- * #NCBI SRP number	
- * SRA_PROJ_ACC	SRP097728
- * # GEO series if exists	
- * GEO_SERIES	
- * # PubMed ID
- * PUB_PMID     123456
- * #Link to Pub	
- * PUB_LINK	https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5429002/
- * #Link to full publication	
- * PUB_FULLLINK	https://academic.oup.com/jxb/article/68/8/2037/3051749/Gene-expression-atlas-of-pigeonpea-and-its
- 
- * cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv
- * ----------------------------------------------
- * #SAMPLE																
- * #																
- * #Hints:																
- * #sample display name	Lookup key for data column (=SRR no)	unique name for LIS Chado	Descriptive	Exp design: factors-rep combinations	tissue/organ/plant part			Chado spelling	sub-spp, cv-type	strain, line, cultivar, genotype	Other_attributes, place-holder, add extra columns	SRR(not in recc)	SAMN number	SRS number	PRJN number	SRP number
- * sample_name	key	sample_uniquename	description	treatment	tissue	dev_stage	age	organism	infraspecies	cultivar	other	sra_run	biosample_accession	sra_accession	bioproject_accession	sra_study
- * Mature seed at reprod (SRR5199304)	SRR5199304	Mature seed at reprod (SRR5199304)	Mature seed at Reproductive stage (SRR5199304)	Mature seed at reprod	Mature seed	Reproductive stage	Cajanus cajan	ICPL87119	Asha(ICPL87119)		SRR5199304	SAMN06264156	SRS1937936	PRJNA354681	SRP097728
- *
- * cajca.ICPL87119.gnm1.ann1.expr.KEY4.values.tsv
- * --------------------------------------------------
- * geneID	SRR5199304	SRR5199305	SRR5199306	SRR5199307	...
- * cajca.ICPL87119.gnm1.ann1.C.cajan_00002	0	0	0	0	...
+ * strain.gnmN.annN.expr.KEY4
+ * ├── gensp.strain.gnmN.annN.expr.KEY4.samples.tsv
+ * ├── gensp.strain.gnmN.annN.expr.KEY4.source.tsv
+ * └── gensp.strain.gnmN.annN.expr.KEY4.values.tsv
  *
  * @author Sam Hokin
  */
@@ -74,18 +30,14 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     
     private static final Logger LOG = Logger.getLogger(ExpressionFileConverter.class);
 
-    // local Items to store
+    Item organism;
+    Item strain;
     Item expressionSource;
     Item bioProject;
-    List<Item> publications = new ArrayList<>();
+    Item publication;
     List<Item> expressionValues = new ArrayList<>();
     Map<String,Item> samples = new HashMap<>();
     Map<String,Item> genes = new HashMap<>();
-
-    // we have to process three files in order, so get the Files from the Readers
-    File sourceFile;
-    File samplesFile;
-    File expressionFile;
 
     /**
      * Constructor.
@@ -96,7 +48,11 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      */
     public ExpressionFileConverter(ItemWriter writer, Model model) throws ObjectStoreException {
         super(writer, model);
-	dataSource = getDataSource();
+        expressionSource = createItem("ExpressionSource");
+        bioProject = createItem("BioProject");
+        publication = createItem("Publication");
+        expressionSource.setReference("publication", publication);
+        expressionSource.setReference("bioProject", bioProject);
     }
 
     /**
@@ -105,22 +61,15 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     public void process(Reader reader) throws IOException {
+	organism = getOrganism();
+	strain = getStrain(organism);
 	if (getCurrentFile().getName().endsWith("source.tsv")) {
-            // cajca.ICPL87119.gnm1.ann1.expr.KEY4.source.tsv
-	    sourceFile = getCurrentFile();
+            processSource(reader);
         } else if (getCurrentFile().getName().endsWith("samples.tsv")) {
-            // cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv
-	    samplesFile = getCurrentFile();
+	    processSamples(reader);
         } else if (getCurrentFile().getName().endsWith("values.tsv")) {
-            // cajca.ICPL87119.gnm1.ann1.expr.KEY4.values.tsv
-	    expressionFile = getCurrentFile();
+            processExpression(reader);
         }
-	// process once we have all three Files instantiated
-	if (sourceFile!=null && samplesFile!=null && expressionFile!=null) {
-            processSource(sourceFile);
-	    processSamples(samplesFile);
-            processExpression(expressionFile);
-	}
     }
 
     /**
@@ -128,23 +77,17 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-	if (sourceFile==null) {
-	    throw new RuntimeException("sourceFile is not set!");
-	} else if (samplesFile==null) {
-	    throw new RuntimeException("samplesFile is not set!");
-	} else if (expressionFile==null) {
-	    throw new RuntimeException("expressionFile is not set!");
-	}
-        // store everything that is global
+        // DatastoreFileConverter items
         store(dataSource);
         store(dataSets.values());
         store(organisms.values());
         store(strains.values());
-        store(bioProject);
+        // local items
         store(expressionSource);
+	store(publication);
+        store(bioProject);
 	store(genes.values());
         store(samples.values());
-	store(publications);
 	store(expressionValues);
     }
 
@@ -167,21 +110,10 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * PUB_LINK	https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5429002/
      * PUB_FULLLINK	https://academic.oup.com/jxb/article/68/8/2037/3051749/Gene-expression-atlas-of-pigeonpea-and-its
      */
-    void processSource(File file) throws IOException {
-	BufferedReader br = new BufferedReader(new FileReader(file));
-	Item dataSet = getDataSet(); // populates name (=filename), description and url (from project.xml)
-	Item organism = getOrganism();
-	Item strain = getStrain(organism);
-        expressionSource = createItem("ExpressionSource");
-        expressionSource.setAttribute("unit", "TPM"); // NOTE: assume TPM
+    void processSource(Reader reader) throws IOException {
+        Item dataSet = getDataSet();
         expressionSource.setReference("dataSet", dataSet);
-        // we'll favor pubMedId
-	String pubMedId = null;
-        String pubLink = null;
-        String pubFullLink = null;
-        // create BioProject only if BIOPROJ lines exist
-        bioProject = null;
-        // spin through the file
+	BufferedReader br = new BufferedReader(reader);
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
@@ -189,43 +121,39 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             if (parts.length==2) {
                 switch(parts[0]) {
                 case "NAME" :
-                    // dataSet.setAttribute("name", parts[1]); // use the file name, not what's in the source file
-                    expressionSource.setAttribute("primaryIdentifier", parts[1]);
+                    expressionSource.setAttribute("identifier", parts[1]);
                     break;
                 case "SHORTNAME" :
-                    dataSet.setAttribute("shortName", parts[1]);
+                    expressionSource.setAttribute("shortName", parts[1]);
                     break;
                 case "ORIGIN" :
-                    dataSet.setAttribute("origin", parts[1]);
+                    expressionSource.setAttribute("origin", parts[1]);
                     break;
                 case "DESCRIPTION" :
-                    // dataSet.setAttribute("description", parts[1]); // use what's in project.xml
+                    expressionSource.setAttribute("description", parts[1]);
                     break;
                 case "GEO_SERIES" :
-                    dataSet.setAttribute("geoSeries", parts[1]);
+                    expressionSource.setAttribute("geoSeries", parts[1]);
                     break;
                 case "SRA_PROJ_ACC" :
-                    dataSet.setAttribute("sra", parts[1]);
+                    expressionSource.setAttribute("sra", parts[1]);
                     break;
 		case "PUB_PMID" :
-		    pubMedId = parts[1];
+                    publication.setAttribute("pubMedId", parts[1]);
 		    break;
                 case "PUB_LINK" :
-                    pubLink = parts[1];
+                    publication.setAttribute("url", parts[1]);
                     break;
                 case "PUB_FULLLINK" :
-                    pubFullLink = parts[1];
+                    publication.setAttribute("url", parts[1]);
                     break;
                 case "BIOPROJ_ACC" :
-                    if (bioProject==null) bioProject = createItem("BioProject");
                     bioProject.setAttribute("accession", parts[1]);
                     break;
                 case "BIOPROJ_TITLE" :
-                    if (bioProject==null) bioProject = createItem("BioProject");
                     bioProject.setAttribute("title", parts[1]);
                     break;
                 case "BIOPROJ_DESCRIPTION" :
-                    if (bioProject==null) bioProject = createItem("BioProject");
                     bioProject.setAttribute("description", parts[1]);
                     break;
                 case "BIOPROJ_PUBLICATION" :
@@ -236,21 +164,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                     LOG.info(getCurrentFile().getName()+" contains unknown field:"+line);
                 }
             }
-        }
-        if (pubMedId!=null || pubLink!=null || pubFullLink!=null) {
-            Item pub = createItem("Publication");
-	    if (pubMedId!=null) {
-		pub.setAttribute("pubMedId", pubMedId);
-	    } else if (pubLink!=null) {
-                pub.setAttribute("url", pubLink);
-            } else if (pubFullLink!=null) {
-                pub.setAttribute("url", pubFullLink);
-            }
-            dataSet.setReference("publication", pub);
-	    publications.add(pub);
-        }
-        if (bioProject!=null) {
-            dataSet.setReference("bioProject", bioProject);
         }
 	br.close();
     }
@@ -266,13 +179,11 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * dev_stage          age      organism      infraspecies cultivar        other sra_run    biosample_accession sra_accession bioproject_accession sra_study
      * Reproductive stage          Cajanus cajan ICPL87119    Asha(ICPL87119)       SRR5199304 SAMN06264156        SRS1937936    PRJNA354681          SRP097728
      */
-    void processSamples(File file) throws IOException {
-	BufferedReader br = new BufferedReader(new FileReader(file));
-	Item dataSet = getDataSet();
-	Item organism = getOrganism();
-	Item strain = getStrain(organism);
+    void processSamples(Reader reader) throws IOException {
+        Item dataSet = getDataSet();
         String[] colnames = null;
         int num = 0;
+	BufferedReader br = new BufferedReader(reader);
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
@@ -288,10 +199,11 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                 String key = null;
                 Item sample = createItem("ExpressionSample");
 		// common references
-		sample.setReference("source", expressionSource);
-		sample.setReference("dataSet", dataSet);
 		sample.setReference("organism", organism);
 		sample.setReference("strain", strain);
+		sample.setReference("source", expressionSource);
+		sample.addToCollection("dataSets", dataSet);
+                sample.addToCollection("publications", publication);
 		// sample-specific attributes
                 num++;
                 sample.setAttribute("num", String.valueOf(num));
@@ -358,12 +270,10 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * geneID	SRR5199304	SRR5199305	SRR5199306	SRR5199307	...
      * cajca.ICPL87119.gnm1.ann1.C.cajan_00002	0	0	0	0	...
      */
-    void processExpression(File file) throws IOException {
-	BufferedReader br = new BufferedReader(new FileReader(file));
-	Item dataSet = getDataSet();
-	Item organism = getOrganism();
-	Item strain = getStrain(organism);
+    void processExpression(Reader reader) throws IOException {
+        Item dataSet = getDataSet();
         List<Item> sampleList = new ArrayList<>();
+	BufferedReader br = new BufferedReader(reader);
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
@@ -381,7 +291,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
 			sample.setReference("dataSet", dataSet);
 			sample.setReference("organism", organism);
 			sample.setReference("strain", strain);
-                        sample.setAttribute("primaryIdentifier", sampleId);
+                        sample.setAttribute("identifier", sampleId);
                         samples.put(sampleId, sample);
                         sampleList.add(sample);
                     }
@@ -401,7 +311,8 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                     Item sample = sampleList.get(i-1);
                     Item expressionValue = createItem("ExpressionValue");
                     expressionValue.setAttribute("value", String.valueOf(value));
-                    expressionValue.setReference("gene", gene);
+                    expressionValue.setAttribute("unit", "TPM"); // NOTE: assume TPM
+                    expressionValue.setReference("feature", gene);
                     expressionValue.setReference("sample", sample);
 		    expressionValues.add(expressionValue);
                 }

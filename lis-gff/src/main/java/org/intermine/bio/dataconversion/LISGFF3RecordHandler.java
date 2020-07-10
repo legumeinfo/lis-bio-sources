@@ -105,6 +105,8 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
             // medtr.jemalong_A17.gnm5.ann1_6.gene:MtrunA17CPg0492171
 	    // 0     1            2    3
 	    // vigun.IT97K-499-35.gnm1.1_0052;
+            // 0     1    2    3
+            // glyma.Wm82.gnm2.ss107913399
             String[] parts = id.split("\\.");
             if (parts.length<4) {
                 throw new RuntimeException("ID has too few dot-separated parts:"+id);
@@ -113,9 +115,14 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
             String strainId = parts[1];
             String assemblyVersion = parts[2];
 	    String annotationVersion = null;
-	    if (parts.length>3) annotationVersion = parts[3];
+            boolean hasAnnotation = false;
+	    if (parts.length>4) {
+                hasAnnotation = true;
+                annotationVersion = parts[3];
+            }
 
             // set other standard attributes
+            feature.setAttribute("secondaryIdentifier", DatastoreFileConverter.extractSecondaryIdentifier(id, hasAnnotation));
             feature.setAttribute("assemblyVersion", assemblyVersion);
             if (annotationVersion!=null) feature.setAttribute("annotationVersion", annotationVersion);
 
@@ -128,7 +135,7 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
             for (String key : attributesMap.keySet()) {
                 List<String> attributes = attributesMap.get(key);
 		if (key.equals("Name")) {
-		    feature.setAttribute("secondaryIdentifier", attributes.get(0));
+		    feature.setAttribute("name", attributes.get(0));
 		} else if (key.equals("Note")) {
                     // Note=ATP binding protein... IPR002624 (...)%2C IPR027417 (...)%3B GO:0005524 (...)%2C GO:0006139 (...);
                     feature.setAttribute("description", attributes.get(0));

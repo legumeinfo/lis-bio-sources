@@ -15,11 +15,9 @@ import java.io.IOException;
 import java.io.Reader;
 
 import java.util.List;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
-import java.util.Set;
-import java.util.HashSet;
 
 import org.apache.log4j.Logger;
 
@@ -43,8 +41,8 @@ import org.intermine.xml.full.Item;
  * GenotypingPlatform	Illumina GoldenGate Array
  * GenotypingMethod	The Sanzi x Vita 7 population was genotyped at the F8 generation using bi-allelic SNP markers from the 1536-marker Illumina GoldenGate Assay.
  * PMID	22691139
- * #Phenotype	Identifier
- * Hastate leaf shape	Hls
+ * #Identifier  Trait
+ * Hls          Hastate leaf shape	
  *
  * gensp.mixed.qtl.KEY4.identifier.markers.tsv
  * -------------------------------------------
@@ -61,14 +59,16 @@ import org.intermine.xml.full.Item;
 public class QTLFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(QTLFileConverter.class);
-
-    // things to store
+    
+    // local things to store
+    List<Item> qtlMarkers = new LinkedList<>();
+    List<Item> publications = new LinkedList<>();
     Map<String,Item> qtlMap = new HashMap<>();
     Map<String,Item> experimentMap = new HashMap<>();
     Map<String,Item> phenotypeMap = new HashMap<>();
     Map<String,Item> markerMap = new HashMap<>();
-    Map<String,Item> publicationMap = new HashMap<>();
-    Set<Item> qtlMarkers = new HashSet<>();
+    Map<String,Item> ontologyAnnotationMap = new HashMap<>();
+    Map<String,Item> ontologyTermMap = new HashMap<>();
     
     /**
      * Create a new QTLFileConverter
@@ -82,12 +82,13 @@ public class QTLFileConverter extends DatastoreFileConverter {
 
     /**
      * {@inheritDoc}
-     * Process files in a QTL directory
      */
     @Override
     public void process(Reader reader) throws IOException {
         if (getCurrentFile().getName().endsWith("expt.tsv")) {
 	    processExperiment(reader);
+        } else if (getCurrentFile().getName().endsWith(".phen.tsv")) {
+            processPhenFile(reader);
 	} else if (getCurrentFile().getName().endsWith("markers.tsv")) {
 	    processMarkers(reader);
 	}
@@ -97,96 +98,124 @@ public class QTLFileConverter extends DatastoreFileConverter {
      * Process a QTL experiment file. Data lines are all tab-separated pairs.
      */
     void processExperiment(Reader reader) throws IOException {
+	Item dataSet = getDataSet();
+	Item organism = getOrganism();
 	Item experiment = createItem("QTLExperiment");
-	Item dataSet = getDataSet(); // filename
-	experiment.addToCollection("dataSets", dataSet);
-	Item organism = null;        // in metadata
-	Item publication = null;     // in metadata
-	boolean experimentHasIdentifier = false;
-	boolean experimentHasQTLs = false;
+        experiment.setReference("organism", organism);
+        experiment.addToCollection("dataSets", dataSet);
+	Item publication = null; // based on PMID or DOI or both
         BufferedReader bufferedReader = new BufferedReader(reader);
 	String line;
         while ((line=bufferedReader.readLine())!=null) {
-            if (line.startsWith("#") || line.trim().length()==0) {
-                continue;
-            }
-            String[] parts = line.split("\t");
-	    if (parts[0].equals("Identifier")) {
-		experimentHasIdentifier = true;
-		experiment.setAttribute("primaryIdentifier", parts[1]);
-		experimentMap.put(parts[1], experiment);
-	    } else if (parts[0].equals("TaxonID")) {
-		int taxonId = Integer.parseInt(parts[1]);
-		organism = getOrganism(taxonId);
-		experiment.setReference("organism", organism);
-	    } else if (parts[0].equals("Name")) {
-		experiment.setAttribute("name", parts[1]);
-	    } else if (parts[0].equals("Description")) {
-		experiment.setAttribute("description", parts[1]);
-	    } else if (parts[0].equals("MappingParent")) {
-		if (organism==null) {
-		    throw new RuntimeException("organism=null when creating mapping parent; be sure to put TaxonID near the top of the QTL experiment file:"+getCurrentFile().getName());
-		}
-		Item strain = getStrain(parts[1], organism);
-		experiment.addToCollection("mappingParents", strain);
-	    } else if (parts[0].equals("MappingDescription")) {
-		experiment.setAttribute("mappingDescription", parts[1]);
-	    } else if (parts[0].equals("GenotypingPlatform")) {
-		experiment.setAttribute("genotypingPlatform", parts[1]);
-	    } else if (parts[0].equals("GenotypingMethod")) {
-		experiment.setAttribute("genotypingMethod", parts[1]);
-	    } else if (parts[0].equals("PMID")) {
+            if (line.startsWith("#") || line.trim().length()==0) continue;
+            String[] fields = line.split("\t");
+	    if (fields[0].equals("Identifier")) {
+                experiment.setAttribute("primaryIdentifier", fields[1]);
+                experimentMap.put(fields[1], experiment);
+	    } else if (fields[0].equals("TaxonID")) {
+                // ignore, we get organism from filename
+	    } else if (fields[0].equals("Name")) {
+		experiment.setAttribute("name", fields[1]);
+	    } else if (fields[0].equals("Description")) {
+		experiment.setAttribute("description", fields[1]);
+	    } else if (fields[0].equals("MappingParent")) {
+                String[] parts = fields[1].split("\\.");
+                if (parts.length!=2) {
+                    throw new RuntimeException("MappingParent must have form gensp.StrainName. Aborting.");
+                }
+                String gensp = parts[0].trim();
+                String strainName = parts[1].trim();
+                experiment.addToCollection("mappingParents", getStrain(strainName, getOrganism(gensp)));
+	    } else if (fields[0].equals("MappingDescription")) {
+		experiment.setAttribute("mappingDescription", fields[1]);
+	    } else if (fields[0].equals("GenotypingPlatform")) {
+		experiment.setAttribute("genotypingPlatform", fields[1]);
+	    } else if (fields[0].equals("GenotypingMethod")) {
+		experiment.setAttribute("genotypingMethod", fields[1]);
+	    } else if (fields[0].equals("PMID")) {
+                if (publication==null) {
+                    publication = createItem("Publication");
+                    publications.add(publication);
+                }
+                publication.setAttribute("pubMedId", fields[1]);
+	    } else if (fields[0].equals("DOI")) {
 		if (publication==null) {
-		    publication = publicationMap.get(parts[1]);
-		    if (publication==null) {
-			publication = createItem("Publication");
-			publication.setAttribute("pubMedId", parts[1]);
-			publicationMap.put(parts[1], publication);
-		    }
-		} else {
-		    publication.setAttribute("pubMedId", parts[1]);
-		}
-	    } else if (parts[0].equals("DOI")) {
-		if (publication==null) {
-		    publication = publicationMap.get(parts[1]);
-		    if (publication==null) {
-			publication = createItem("Publication");
-			publication.setAttribute("doi", parts[1]);
-			publicationMap.put(parts[1], publication);
-		    }
-		} else {
-		    publication.setAttribute("doi", parts[1]);
-		}
+                    publication = createItem("Publication");
+                    publications.add(publication);
+                }
+                publication.setAttribute("doi", fields[1]);
 	    } else {
-		// validation
-		if (!experimentHasIdentifier) throw new RuntimeException("Experiment file "+getCurrentFile().getName()+" lacks the required Identifier record.");
-		if (publication==null) throw new RuntimeException("Experiment file "+getCurrentFile().getName()+" lacks a publication PMID or DOI record.");
+		// data line
+		if (publication==null) {
+                    throw new RuntimeException("Experiment file "+getCurrentFile().getName()+" lacks a publication PMID or DOI record.");
+                }
 		// phenotype-QTL record
-		String phenotypeId = parts[0];
-		String qtlId = parts[1];
-		Item phenotype = phenotypeMap.get(phenotypeId);
-		if (phenotype==null) {
-		    phenotype = createItem("Phenotype");
-		    phenotype.setAttribute("primaryIdentifier", phenotypeId);
-		    phenotypeMap.put(phenotypeId, phenotype);
-		}
-		phenotype.addToCollection("dataSets", dataSet);
+		String qtlId = fields[0];
+		String trait = fields[1];
 		Item qtl = qtlMap.get(qtlId);
 		if (qtl==null) {
-		    experimentHasQTLs = true;
 		    qtl = createItem("QTL");
-		    qtl.setReference("organism", organism);
-		    qtl.setAttribute("primaryIdentifier", qtlId);
-		    qtl.setReference("experiment", experiment);
-		    if (publication!=null) qtl.addToCollection("publications", publication);
+                    qtl.setAttribute("identifier", qtlId);
 		    qtlMap.put(qtlId, qtl);
-		}
+                }
+                qtl.setReference("organism", organism);
+                qtl.setReference("experiment", experiment);
 		qtl.addToCollection("dataSets", dataSet);
-		qtl.addToCollection("phenotypes", phenotype);
+		Item phenotype = phenotypeMap.get(trait);
+		if (phenotype==null) {
+		    phenotype = createItem("Phenotype");
+                    phenotype.setAttribute("primaryIdentifier", trait);
+		    phenotypeMap.put(trait, phenotype);
+		}
+		phenotype.addToCollection("dataSets", dataSet);
+		qtl.setReference("phenotype", phenotype);
 	    }
         }
-	// validation
-	if (!experimentHasQTLs) throw new RuntimeException("Experiment file "+getCurrentFile().getName()+" lacks QTL records.");
+        bufferedReader.close();
+    }
+
+    /**
+     * Process a Phenotype file
+     */
+    void processPhenFile(Reader reader) throws IOException {
+        Item dataSet = getDataSet();
+        Item organism = getOrganism();
+        BufferedReader bufferedReader = new BufferedReader(reader);
+	String line;
+        while ((line=bufferedReader.readLine())!=null) {
+            if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
+            String[] parts = line.split("\t");
+	    if (parts.length<2) continue; // entry without value
+            String trait = parts[0];
+            String ontologyId = parts[1];
+            if (ontologyId==null || ontologyId.trim().length()==0) continue; // placeholder
+            // Phenotype
+            Item phenotype = phenotypeMap.get(trait);
+            if (phenotype==null) {
+                phenotype = createItem("Phenotype");
+                phenotype.setAttribute("primaryIdentifier", trait);
+                phenotypeMap.put(trait, phenotype);
+            }
+            phenotype.setAttribute("secondaryIdentifier", trait);
+            phenotype.setReference("organism", organism);
+            phenotype.addToCollection("dataSets", dataSet);
+            // OntologyTerm
+            Item ontologyTerm = ontologyTermMap.get(ontologyId);
+            if (ontologyTerm==null) {
+                ontologyTerm = createItem("OntologyTerm");
+                ontologyTerm.setAttribute("identifier", ontologyId);
+                ontologyTermMap.put(ontologyId, ontologyTerm);
+            }
+            // OntologyAnnotation
+            String ontologyAnnotationKey = trait+"|"+ontologyId;
+            if (!ontologyAnnotationMap.containsKey(ontologyAnnotationKey)) {
+                Item ontologyAnnotation = createItem("OntologyAnnotation");
+                ontologyAnnotation.setReference("subject", phenotype);
+                ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
+                ontologyAnnotation.addToCollection("dataSets", dataSet);
+                ontologyAnnotationMap.put(ontologyAnnotationKey,ontologyAnnotation);
+            }
+        }
         bufferedReader.close();
     }
 
@@ -199,16 +228,18 @@ public class QTLFileConverter extends DatastoreFileConverter {
         BufferedReader bufferedReader = new BufferedReader(reader);
 	String line;
         while ((line=bufferedReader.readLine())!=null) {
-            if (line.startsWith("#") || line.trim().length()==0) {
-                continue;
-            }
-            String[] parts = line.split("\t");
-	    String qtlId = parts[0];
-	    String markerId = parts[1];
+            if (line.startsWith("#") || line.trim().length()==0) continue;
+            String[] fields = line.split("\t");
+	    String qtlId = fields[0];
+	    String markerId = fields[1];
 	    String distinction = null;
-	    if (parts.length>2) distinction = parts[2];
+	    if (fields.length>2) distinction = fields[2];
 	    Item qtl = qtlMap.get(qtlId);
-	    if (qtl==null) throw new RuntimeException("QTL "+qtlId+" is present in "+getCurrentFile().getName()+" but is missing from corresponding expt file.");
+	    if (qtl==null) {
+                qtl = createItem("QTL");
+                qtl.setAttribute("identifier", qtlId);
+                qtlMap.put(qtlId, qtl);
+            }
 	    qtl.addToCollection("dataSets", dataSet);
 	    Item marker = markerMap.get(markerId);
 	    if (marker==null) {
@@ -221,6 +252,7 @@ public class QTLFileConverter extends DatastoreFileConverter {
 	    Item qtlMarker = createItem("QTLMarker");
 	    qtlMarker.setReference("QTL", qtl);
 	    qtlMarker.setReference("marker", marker);
+            qtlMarker.setReference("dataSet", dataSet);
 	    if (distinction!=null) qtlMarker.setAttribute("distinction", distinction);
 	    qtlMarkers.add(qtlMarker);
 	}
@@ -237,11 +269,13 @@ public class QTLFileConverter extends DatastoreFileConverter {
 	store(organisms.values());
 	store(strains.values());
 	// local
+	store(publications);
+	store(qtlMarkers);
 	store(experimentMap.values());
 	store(qtlMap.values());
 	store(phenotypeMap.values());
 	store(markerMap.values());
-	store(publicationMap.values());
-	store(qtlMarkers);
+        store(ontologyAnnotationMap.values());
+        store(ontologyTermMap.values());
     }
 }

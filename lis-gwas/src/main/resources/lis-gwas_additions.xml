@@ -11,8 +11,9 @@
   <!-- DOI	10.1111/pbr.12305 -->
   <class name="GWAS" extends="Annotatable" is-interface="true">
     <reference name="organism" referenced-type="Organism"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
+    <reference name="dataSet" referenced-type="DataSet"/>
     <attribute name="name" type="java.lang.String"/>
+    <attribute name="description" type="java.lang.String"/>
     <attribute name="platformName" type="java.lang.String"/>
     <attribute name="platformDetails" type="java.lang.String"/>
     <collection name="results" referenced-type="GWASResult" reverse-reference="gwas"/>
@@ -22,16 +23,14 @@
   <class name="GWASResult" is-interface="true">
     <attribute name="identifier" type="java.lang.String"/>
     <attribute name="pValue" type="java.lang.Double"/>
-    <reference name="phenotype" referenced-type="Phenotype"/>
+    <reference name="phenotype" referenced-type="Phenotype" reverse-reference="gwasResults"/>
     <reference name="gwas" referenced-type="GWAS" reverse-reference="results"/>
     <reference name="marker" referenced-type="GeneticMarker" reverse-reference="gwasResults"/>
     <!-- <collection name="associatedGenes" referenced-type="Gene"/> -->
   </class>
 
   <!-- associate a phenotype with its measured values and ontology annotation -->
-  <class name="Phenotype" extends="Annotatable" is-interface="true" term="http://semanticscience.org/resource/SIO_010056">
-    <attribute name="name" type="java.lang.String" term="http://edamontology.org/data_3275"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
+  <class name="Phenotype" extends="BioEntity" is-interface="true" term="http://semanticscience.org/resource/SIO_010056">
     <collection name="gwasResults" referenced-type="GWASResult" reverse-reference="phenotype"/>
     <!-- <collection name="phenotypeValues" referenced-type="PhenotypeValue" reverse-reference="phenotype"/> -->
   </class>

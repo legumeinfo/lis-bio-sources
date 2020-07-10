@@ -7,30 +7,30 @@
     <attribute name="abbreviation" type="java.lang.String"/>
   </class>
 
-  <class name="QTL" extends="Annotatable" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645">
-    <reference name="organism" referenced-type="Organism"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
-    <reference name="experiment" referenced-type="QTLExperiment" reverse-reference="QTLs"/>
-    <collection name="phenotypes" referenced-type="Phenotype" reverse-reference="QTLs"/>
-    <collection name="markers" referenced-type="QTLMarker" reverse-reference="QTL"/>
-    <collection name="spannedGenes" referenced-type="Gene"/>
-  </class>
-
   <class name="QTLExperiment" extends="Annotatable" is-interface="true">
-    <reference name="organism" referenced-type="Organism"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
     <attribute name="name" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
     <attribute name="mappingDescription" type="java.lang.String"/>
     <attribute name="genotypingPlatform" type="java.lang.String"/>
     <attribute name="genotypingMethod" type="java.lang.String"/>
+    <reference name="organism" referenced-type="Organism"/>
+    <collection name="dataSets" referenced-type="DataSet"/>
     <collection name="mappingParents" referenced-type="Strain"/>
     <collection name="QTLs" referenced-type="QTL" reverse-reference="experiment"/>
   </class>
-  
-  <class name="Phenotype" extends="Annotatable" is-interface="true" term="http://semanticscience.org/resource/SIO_010056">
+
+  <class name="QTL" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645">
+    <attribute name="identifier" type="java.lang.String"/>
+    <reference name="organism" referenced-type="Organism"/>
+    <reference name="experiment" referenced-type="QTLExperiment" reverse-reference="QTLs"/>
+    <reference name="phenotype" referenced-type="Phenotype" reverse-reference="QTLs"/>
     <collection name="dataSets" referenced-type="DataSet"/>
-    <collection name="QTLs" referenced-type="QTL" reverse-reference="phenotypes"/>
+    <collection name="markers" referenced-type="QTLMarker" reverse-reference="QTL"/>
+    <collection name="spannedGenes" referenced-type="Gene"/>
+  </class>
+  
+  <class name="Phenotype" extends="BioEntity" is-interface="true" term="http://semanticscience.org/resource/SIO_010056">
+    <collection name="QTLs" referenced-type="QTL" reverse-reference="phenotype"/>
   </class>
 
   <class name="GeneticMarker" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645">
@@ -40,6 +40,7 @@
   <class name="QTLMarker" is-interface="true">
     <reference name="QTL" referenced-type="QTL" reverse-reference="markers"/>
     <reference name="marker" referenced-type="GeneticMarker" reverse-reference="QTLs" />
+    <reference name="dataSet" referenced-type="DataSet"/>
     <attribute name="distinction" type="java.lang.String"/>
   </class>
 

@@ -5,21 +5,21 @@ include ':bio-source-lis-datastore',
 	':bio-source-lis-info-annot',
 	':bio-source-lis-gff',
 	':bio-source-lis-gwas',
-	':bio-source-lis-phenotype',
 	':bio-source-lis-expression',
 	':bio-source-lis-fasta',
 	':bio-source-lis-synteny',
 	':bio-source-lis-genefamily',
-	':bio-source-lis-qtl'
+	':bio-source-lis-qtl',
+	':bio-source-lis-geneticmap'
 
 project(':bio-source-lis-datastore').projectDir = new File(settingsDir, 'lis-datastore')
 project(':bio-source-lis-about').projectDir = new File(settingsDir, 'lis-about')
 project(':bio-source-lis-info-annot').projectDir = new File(settingsDir, 'lis-info-annot')
 project(':bio-source-lis-gff').projectDir = new File(settingsDir, 'lis-gff')
 project(':bio-source-lis-gwas').projectDir = new File(settingsDir, 'lis-gwas')
-project(':bio-source-lis-phenotype').projectDir = new File(settingsDir, 'lis-phenotype')
 project(':bio-source-lis-expression').projectDir = new File(settingsDir, 'lis-expression')
 project(':bio-source-lis-fasta').projectDir = new File(settingsDir, 'lis-fasta')
 project(':bio-source-lis-synteny').projectDir = new File(settingsDir, 'lis-synteny')
 project(':bio-source-lis-genefamily').projectDir = new File(settingsDir, 'lis-genefamily')
 project(':bio-source-lis-qtl').projectDir = new File(settingsDir, 'lis-qtl')
+project(':bio-source-lis-geneticmap').projectDir = new File(settingsDir, 'lis-geneticmap')
