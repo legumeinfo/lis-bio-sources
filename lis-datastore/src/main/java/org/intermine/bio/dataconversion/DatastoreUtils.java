@@ -34,7 +34,27 @@ public class DatastoreUtils {
         // taxon.3702.uniprot=ARATH
         Properties orgProps = new Properties();
         try {
-            InputStream orgPropsResource = DatastoreUtils.class.getClassLoader().getResourceAsStream(ORGANISM_PROP_FILE);
+            // DEBUG
+            // class_keys.properties
+            // datastore_config.properties
+            // genomic_keyDefs.properties
+            // genomic_precompute.properties
+            // genomic_priorities.properties
+            // keyword_search.properties
+            // objectstoresummary.config.properties
+            // organism_config.properties
+            // so_terms
+            if (getClass().getClassLoader().getResourceAsStream("so_terms")==null) {
+                System.err.println("Did not find so_terms");
+            }
+            if (getClass().getClassLoader().getResourceAsStream("class_keys.properties")==null) {
+                System.err.println("Did not find class_keys.properties");
+            }
+            if (getClass().getClassLoader().getResourceAsStream("datastore_config.properties")==null) {
+                System.err.println("Did not find datastore_config.properties");
+            }
+            //
+            InputStream orgPropsResource = getClass().getClassLoader().getResourceAsStream(ORGANISM_PROP_FILE);
             if (orgPropsResource == null) {
                 System.err.println("Did not find organism properties file:"+ORGANISM_PROP_FILE);
                 System.exit(1);
@@ -69,7 +89,7 @@ public class DatastoreUtils {
         // get datastore properties, like supercontig-matching strings
         Properties datastoreProps = new Properties();
         try {
-            InputStream datastorePropsResource = DatastoreUtils.class.getClassLoader().getResourceAsStream(DATASTORE_PROP_FILE);
+            InputStream datastorePropsResource = getClass().getClassLoader().getResourceAsStream(DATASTORE_PROP_FILE);
             if (datastorePropsResource == null) {
                 System.err.println("Did not find datastore properties file:"+DATASTORE_PROP_FILE);
                 System.exit(1);

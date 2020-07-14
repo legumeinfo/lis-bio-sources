@@ -51,6 +51,8 @@ public class DatastoreFileConverter extends FileConverter {
     String dataSetUrl;             // required
     String dataSetDescription;     // required
 
+    DatastoreUtils dsu;
+
     /**
      * Create a new DatastoreFileConverter
      * @param writer the ItemWriter to write out new items
@@ -58,6 +60,7 @@ public class DatastoreFileConverter extends FileConverter {
      */
     public DatastoreFileConverter(ItemWriter writer, Model model) {
 	super(writer, model);
+        dsu = new DatastoreUtils();
 	dataSource = getDataSource();
     }
 
@@ -199,7 +202,6 @@ public class DatastoreFileConverter extends FileConverter {
      * Returns null if the gensp isn't resolvable to a taxonId.
      */
     Item getOrganism(String gensp) {
-	DatastoreUtils dsu = new DatastoreUtils();
 	String taxonId = dsu.getTaxonId(gensp);
 	if (taxonId==null) {
 	    return null;
