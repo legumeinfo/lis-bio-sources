@@ -21,7 +21,6 @@ import org.intermine.xml.full.Item;
  * 
  * glyma.mixed.gwas1.1W14.KGK20170714-1.gwas.tsv
  * ---------------------------------------------
- * TaxonID	3847
  * Identifier	KGK20170714.1
  * Name	Bandillo, Jarquin et al. 2015
  * Description  We did a GWAS on 38 accessions of soybean and here are the results.
@@ -47,7 +46,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
     List<Item> gwasResults = new LinkedList<>();
     Map<String,Item> ontologyAnnotationMap = new HashMap<>();
     Map<String,Item> phenotypeMap = new HashMap<>();
-    Map<String,Item> markerMap = new HashMap<>();
+    Map<String,Item> markerMap = new HashMap<>(); // keyed by secondaryIdentifier
     Map<String,Item> ontologyTermMap = new HashMap<>();
 
     /**
@@ -78,11 +77,12 @@ public class GWASFileConverter extends DatastoreFileConverter {
      */
     void processGWASFile(Reader reader) throws IOException {
         Item dataSet = getDataSet();
-        Item organism = null;
-        Item publication = null;
+        Item organism = getOrganism();
         Item gwas = createItem("GWAS");
 	gwas.setReference("dataSet", dataSet);
+        gwas.setReference("organism", organism);
         gwases.add(gwas);
+        Item publication = null;
         BufferedReader bufferedReader = new BufferedReader(reader);
 	String line;
         while ((line=bufferedReader.readLine())!=null) {
@@ -92,10 +92,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
             String key = parts[0];
             String value = parts[1];
 	    if (value.length()==0) continue; // entry without value
-            if (key.toLowerCase().equals("taxonid")) {
-                organism = getOrganism(Integer.parseInt(value));
-                gwas.setReference("organism", organism);
-            } else if (key.toLowerCase().equals("identifier")) {
+            if (key.toLowerCase().equals("identifier")) {
                 gwas.setAttribute("primaryIdentifier", value);
 	    } else if (key.toLowerCase().equals("name")) {
 		gwas.setAttribute("name", value);
@@ -121,14 +118,13 @@ public class GWASFileConverter extends DatastoreFileConverter {
                 // data record
                 GWASFileRecord rec = new GWASFileRecord(line);
                 // GeneticMarker
-                String primaryIdentifier = getGensp()+"."+rec.marker;
-                Item marker = markerMap.get(primaryIdentifier);
+                String secondaryIdentifier = rec.marker;
+                Item marker = markerMap.get(secondaryIdentifier);
 		if (marker==null) {
                     marker = createItem("GeneticMarker");
-                    marker.setAttribute("primaryIdentifier", primaryIdentifier);
-                    markerMap.put(primaryIdentifier, marker);
+                    marker.setAttribute("secondaryIdentifier", secondaryIdentifier);
+                    markerMap.put(secondaryIdentifier, marker);
                 }
-                marker.setAttribute("secondaryIdentifier", rec.marker);
                 marker.setReference("organism", organism);
                 marker.addToCollection("dataSets", dataSet);
 		marker.addToCollection("publications", publication);

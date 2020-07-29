@@ -33,6 +33,8 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
     Map<String,Item> markerMap = new HashMap<>();
     Map<String,Item> phenotypeMap = new HashMap<>();
     Map<String,Item> qtlMap = new HashMap<>();
+    Map<String,Item> ontologyTermMap = new HashMap<>();
+    Map<String,Item> ontologyAnnotationMap = new HashMap<>();
 
     /**
      * Create a new GeneticMapFileConverter
@@ -52,6 +54,7 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
         // vigun.mixed.map.SM2W.MAGIC-2017.expt.tsv
         // vigun.mixed.map.SM2W.MAGIC-2017.mrk.tsv
         // vigun.mixed.map.SM2W.MAGIC-2017.qtl.tsv
+        // vigun.mixed.map.SM2W.MAGIC-2017.phen.tsv
         if (!getCurrentFile().getName().endsWith(".tsv")) return;
         String filetype = getFileType(getCurrentFile().getName());
         if (filetype==null) return;
@@ -61,6 +64,8 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
             processMrkFile(reader);
         } else if (filetype.equals("qtl")) {
             processQtlFile(reader);
+        } else if (filetype.equals("phen")) {
+            processPhenFile(reader);
         }
     }
 
@@ -70,25 +75,24 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
     void processExptFile(Reader reader) throws IOException {
         Item dataSet = getDataSet();
         Item organism = getOrganism();
-        Item geneticMap = null;
         Item publication = null;
+        String mapName = null;
+        Item geneticMap = null;
         BufferedReader br = new BufferedReader(reader);
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue;
             String[] fields = line.split("\t");
             if (fields[0].equals("MapName")) {
-                String mapname = fields[1].trim();
-                geneticMap = geneticMapMap.get(mapname);
+                mapName = fields[1].trim();
+                geneticMap = geneticMapMap.get(mapName);
                 if (geneticMap==null) {
                     geneticMap = createItem("GeneticMap");
-                    geneticMap.setAttribute("primaryIdentifier", mapname);
+                    geneticMap.setAttribute("primaryIdentifier", mapName);
                     geneticMap.setReference("organism", organism);
-                    geneticMapMap.put(mapname, geneticMap);
+                    geneticMapMap.put(mapName, geneticMap);
                 }
                 geneticMap.addToCollection("dataSets", dataSet);
-                publication = createItem("Publication");
-                publicationMap.put(mapname, publication);
             } else if (fields[0].equals("Description")) {
                 geneticMap.setAttribute("description", fields[1]);
             } else if (fields[0].equals("MappingParent")) {
@@ -100,9 +104,23 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
                 String strainName = parts[1].trim();
                 geneticMap.addToCollection("mappingParents", getStrain(strainName, getOrganism(gensp)));
             } else if (fields[0].equals("PMID")) {
-                publication.setAttribute("pubMedId", fields[1]);
+                if (publicationMap.containsKey(fields[1])) {
+                    publication = publicationMap.get(fields[1]);
+                } else {
+                    publication = createItem("Publication");
+                    publication.setAttribute("pubMedId", fields[1]);
+                    publicationMap.put(fields[1], publication);
+                }
+                geneticMap.addToCollection("publications", publication);
             } else if (fields[0].equals("DOI")) {
-                publication.setAttribute("doi", fields[1]);
+                if (publicationMap.containsKey(fields[1])) {
+                    publication = publicationMap.get(fields[1]);
+                } else {
+                    publication = createItem("Publication");
+                    publication.setAttribute("doi", fields[1]);
+                    publicationMap.put(fields[1], publication);
+                }
+                geneticMap.addToCollection("publications", publication);
             } else {
                 // data line
                 // 0                      1      2
@@ -139,13 +157,13 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
             if (line.startsWith("#") || line.trim().length()==0) continue;
             String[] fields = line.split("\t");
             if (fields[0].equals("MapName")) {
-                String mapname = fields[1].trim();
-                geneticMap = geneticMapMap.get(mapname);
+                String mapName = fields[1].trim();
+                geneticMap = geneticMapMap.get(mapName);
                 if (geneticMap==null) {
                     geneticMap = createItem("GeneticMap");
-                    geneticMap.setAttribute("primaryIdentifier", mapname);
+                    geneticMap.setAttribute("primaryIdentifier", mapName);
                     geneticMap.setReference("organism", organism);
-                    geneticMapMap.put(mapname, geneticMap);
+                    geneticMapMap.put(mapName, geneticMap);
                 }
             } else {
                 // data line
@@ -198,13 +216,13 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
             if (line.startsWith("#") || line.trim().length()==0) continue;
             String[] fields = line.split("\t");
             if (fields[0].equals("MapName")) {
-                String mapname = fields[1].trim();
-                geneticMap = geneticMapMap.get(mapname);
+                String mapName = fields[1].trim();
+                geneticMap = geneticMapMap.get(mapName);
                 if (geneticMap==null) {
                     geneticMap = createItem("GeneticMap");
-                    geneticMap.setAttribute("primaryIdentifier", mapname);
+                    geneticMap.setAttribute("primaryIdentifier", mapName);
                     geneticMap.setReference("organism", organism);
-                    geneticMapMap.put(mapname, geneticMap);
+                    geneticMapMap.put(mapName, geneticMap);
                 }
             } else if (fields[0].equals("IntervalDescription")) {
                 intervalDescription = fields[1].trim();
@@ -259,6 +277,50 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
     }
 
     /**
+     * Process a Phenotype file
+     */
+    void processPhenFile(Reader reader) throws IOException {
+        Item dataSet = getDataSet();
+        Item organism = getOrganism();
+        BufferedReader bufferedReader = new BufferedReader(reader);
+	String line;
+        while ((line=bufferedReader.readLine())!=null) {
+            if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
+            String[] parts = line.split("\t");
+	    if (parts.length<2) continue; // entry without value
+            String trait = parts[0];
+            String ontologyId = parts[1];
+            // Phenotype
+            Item phenotype = phenotypeMap.get(trait);
+            if (phenotype==null) {
+                phenotype = createItem("Phenotype");
+                phenotype.setAttribute("primaryIdentifier", trait);
+                phenotypeMap.put(trait, phenotype);
+            }
+            phenotype.setAttribute("secondaryIdentifier", trait);
+            phenotype.setReference("organism", organism);
+            phenotype.addToCollection("dataSets", dataSet);
+            // OntologyTerm
+            Item ontologyTerm = ontologyTermMap.get(ontologyId);
+            if (ontologyTerm==null) {
+                ontologyTerm = createItem("OntologyTerm");
+                ontologyTerm.setAttribute("identifier", ontologyId);
+                ontologyTermMap.put(ontologyId, ontologyTerm);
+            }
+            // OntologyAnnotation
+            String ontologyAnnotationKey = trait+"|"+ontologyId;
+            if (!ontologyAnnotationMap.containsKey(ontologyAnnotationKey)) {
+                Item ontologyAnnotation = createItem("OntologyAnnotation");
+                ontologyAnnotation.setReference("subject", phenotype);
+                ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
+                ontologyAnnotation.addToCollection("dataSets", dataSet);
+                ontologyAnnotationMap.put(ontologyAnnotationKey,ontologyAnnotation);
+            }
+        }
+        bufferedReader.close();
+    }
+
+    /**
      * {@inheritDoc}
      */
     @Override
@@ -276,6 +338,8 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
         store(linkageGroupMap.values());
         store(markerMap.values());
         store(phenotypeMap.values());
+        store(ontologyTermMap.values());
+        store(ontologyAnnotationMap.values());
     }
 
     /**
@@ -283,14 +347,6 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
      */
     String getFileType(String filename) {
         String[] fields = filename.split("\\.");
-        if (fields[5].equals("expt")) {
-            return "expt";
-        } else if (fields[5].equals("mrk")) {
-            return "mrk";
-        } else if (fields[5].equals("qtl")) {
-            return "qtl";
-        } else {
-            return null;
-        }
+        return fields[5];
     }
 }

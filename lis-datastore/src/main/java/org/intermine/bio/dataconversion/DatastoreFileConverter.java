@@ -92,7 +92,7 @@ public class DatastoreFileConverter extends FileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
-	// do nothing here
+        // do nothing here
     }
 
     /**

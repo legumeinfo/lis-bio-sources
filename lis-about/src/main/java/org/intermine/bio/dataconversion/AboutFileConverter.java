@@ -29,8 +29,7 @@ import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
 /**
- * Loads data from LIS datastore files, using the file names to detect what sort of files they are, and,
- * sometimes, what the organism is.
+ * Loads data from LIS datastore files about organisms and strains.
  *
  * @author Sam Hokin
  */
