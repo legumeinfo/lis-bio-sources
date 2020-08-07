@@ -61,8 +61,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     public void process(Reader reader) throws IOException {
-	organism = getOrganism();
-	strain = getStrain(organism);
 	if (getCurrentFile().getName().endsWith("source.tsv")) {
             processSource(reader);
         } else if (getCurrentFile().getName().endsWith("samples.tsv")) {
@@ -111,6 +109,8 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * PUB_FULLLINK	https://academic.oup.com/jxb/article/68/8/2037/3051749/Gene-expression-atlas-of-pigeonpea-and-its
      */
     void processSource(Reader reader) throws IOException {
+        organism = getOrganism();
+        strain = getStrain(organism);
         Item dataSet = getDataSet();
         expressionSource.setReference("dataSet", dataSet);
 	BufferedReader br = new BufferedReader(reader);
@@ -180,6 +180,8 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * Reproductive stage          Cajanus cajan ICPL87119    Asha(ICPL87119)       SRR5199304 SAMN06264156        SRS1937936    PRJNA354681          SRP097728
      */
     void processSamples(Reader reader) throws IOException {
+        organism = getOrganism();
+        strain = getStrain(organism);
         Item dataSet = getDataSet();
         String[] colnames = null;
         int num = 0;
@@ -271,6 +273,8 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * cajca.ICPL87119.gnm1.ann1.C.cajan_00002	0	0	0	0	...
      */
     void processExpression(Reader reader) throws IOException {
+        organism = getOrganism();
+        strain = getStrain(organism);
         Item dataSet = getDataSet();
         List<Item> sampleList = new ArrayList<>();
 	BufferedReader br = new BufferedReader(reader);

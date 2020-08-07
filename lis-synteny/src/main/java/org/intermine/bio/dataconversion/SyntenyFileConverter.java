@@ -46,8 +46,6 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
     // keep to only one source/target pair
     Map<String,String> syntenyBlockIds = new HashMap<>();
 
-    DatastoreUtils datastoreUtils; // for determining supercontigs
-
     /**
      * Create a new SyntenyFileConverter
      * @param writer the ItemWriter to write out new items
@@ -55,8 +53,6 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
      */
     public SyntenyFileConverter(ItemWriter writer, Model model) {
         super(writer, model);
-	dataSource = getDataSource();
-	datastoreUtils = new DatastoreUtils();
     }
 
     /**
@@ -122,12 +118,12 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
         String sourceStrainId = fileNameParts[sourceStrainIndex];
 	String sourceAssy = fileNameParts[sourceAssyIndex];
 	String sourceAnnot = null; if (sourceAnnotIndex>0) sourceAnnot = fileNameParts[sourceAnnotIndex];
-	String sourceTaxonId = datastoreUtils.getTaxonId(sourceGensp);
+	String sourceTaxonId = dsu.getTaxonId(sourceGensp);
         String targetGensp = fileNameParts[targetGenspIndex];
         String targetStrainId = fileNameParts[targetStrainIndex];
 	String targetAssy = fileNameParts[targetAssyIndex];
 	String targetAnnot = null; if (targetAnnotIndex>0) targetAnnot = fileNameParts[targetAnnotIndex];
-	String targetTaxonId = datastoreUtils.getTaxonId(targetGensp);
+	String targetTaxonId = dsu.getTaxonId(targetGensp);
 	
         // get the organisms and strains
         Item sourceOrganism = getOrganism(sourceGensp);
@@ -153,8 +149,8 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
                     throw new RuntimeException("GFF syntenic_region record is missing target attribute:"+line);
                 }
                 // ignore this record if source or target are on a supercontig/scaffold
-		if (datastoreUtils.isSupercontig(sourceTaxonId, sourceStrainId, sourceChrName)) continue;
-		if (datastoreUtils.isSupercontig(targetTaxonId, targetStrainId, targetChrName)) continue;
+		if (dsu.isSupercontig(sourceTaxonId, sourceStrainId, sourceChrName)) continue;
+		if (dsu.isSupercontig(targetTaxonId, targetStrainId, targetChrName)) continue;
 		// get the source and target chromosomes
                 Item sourceChromosome = getChromosome(sourceChrName, sourceOrganism, sourceStrain);
                 Item targetChromosome = getChromosome(targetChrName, targetOrganism, targetStrain);

@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<classes>
+
+  <class name="GeneFamily" is-interface="true">
+    <attribute name="identifier" type="java.lang.String"/>
+    <attribute name="version" type="java.lang.String"/>
+    <collection name="genes" referenced-type="Gene" reverse-reference="geneFamily"/>
+    <collection name="proteins" referenced-type="Protein" reverse-reference="geneFamily"/>
+  </class>
+
+  <class name="Protein" is-interface="true">
+    <reference name="geneFamily" referenced-type="GeneFamily" reverse-reference="proteins"/>
+    <attribute name="geneFamilyScore" type="java.lang.Double"/>
+    <attribute name="geneFamilyScoreMeaning" type="java.lang.String"/>
+  </class>
+
+  <class name="Gene" is-interface="true">
+    <reference name="geneFamily" referenced-type="GeneFamily" reverse-reference="genes"/>
+    <attribute name="geneFamilyScore" type="java.lang.Double"/>
+    <attribute name="geneFamilyScoreMeaning" type="java.lang.String"/>
+  </class>
+
+</classes>

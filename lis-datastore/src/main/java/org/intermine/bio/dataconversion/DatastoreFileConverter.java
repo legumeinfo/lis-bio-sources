@@ -61,7 +61,7 @@ public class DatastoreFileConverter extends FileConverter {
     public DatastoreFileConverter(ItemWriter writer, Model model) {
 	super(writer, model);
         dsu = new DatastoreUtils();
-	dataSource = getDataSource();
+        dataSource = getDataSource();
     }
 
     // Set DataSource fields in project.xml

@@ -10,7 +10,8 @@ include ':bio-source-lis-datastore',
 	':bio-source-lis-synteny',
 	':bio-source-lis-genefamily',
 	':bio-source-lis-qtl',
-	':bio-source-lis-geneticmap'
+	':bio-source-lis-geneticmap',
+	':bio-source-lis-gfa'
 
 project(':bio-source-lis-datastore').projectDir = new File(settingsDir, 'lis-datastore')
 project(':bio-source-lis-about').projectDir = new File(settingsDir, 'lis-about')
@@ -23,3 +24,4 @@ project(':bio-source-lis-synteny').projectDir = new File(settingsDir, 'lis-synte
 project(':bio-source-lis-genefamily').projectDir = new File(settingsDir, 'lis-genefamily')
 project(':bio-source-lis-qtl').projectDir = new File(settingsDir, 'lis-qtl')
 project(':bio-source-lis-geneticmap').projectDir = new File(settingsDir, 'lis-geneticmap')
+project(':bio-source-lis-gfa').projectDir = new File(settingsDir, 'lis-gfa')

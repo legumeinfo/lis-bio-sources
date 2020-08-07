@@ -42,7 +42,6 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
      */
     public GeneFamilyFileConverter(ItemWriter writer, Model model) throws ObjectStoreException {
         super(writer, model);
-	dataSource = getDataSource();
     }
 
     /**

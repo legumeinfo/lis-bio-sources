@@ -44,7 +44,6 @@ public class AboutFileConverter extends DatastoreFileConverter {
      */
     public AboutFileConverter(ItemWriter writer, Model model) throws ObjectStoreException {
         super(writer, model);
-	dataSource = getDataSource();
     }
 
     /**
@@ -53,10 +52,8 @@ public class AboutFileConverter extends DatastoreFileConverter {
     @Override
     public void process(Reader reader) throws IOException {
         if (getCurrentFile().getName().contains("description_")) {
-            // description_Phaseolus_vulgaris.yml
             processDescriptionFile(reader);
         } else if (getCurrentFile().getName().contains("strains_")) {
-            // strains_Phaseolus_vulgaris.yml
             processStrainsFile(reader);
         }
     }

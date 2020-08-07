@@ -56,7 +56,6 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
      */
     public InfoAnnotFileConverter(ItemWriter writer, Model model) throws ObjectStoreException {
         super(writer, model);
-	dataSource = getDataSource();
 	// GO
         geneOntology = createItem("Ontology");
         geneOntology.setAttribute("name", "GO");

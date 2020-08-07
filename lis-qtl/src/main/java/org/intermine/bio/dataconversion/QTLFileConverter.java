@@ -77,7 +77,6 @@ public class QTLFileConverter extends DatastoreFileConverter {
      */
     public QTLFileConverter(ItemWriter writer, Model model) {
         super(writer, model);
-	dataSource = getDataSource();
     }
 
     /**

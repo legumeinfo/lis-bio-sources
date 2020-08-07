@@ -57,7 +57,6 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
         // vigun.mixed.map.SM2W.MAGIC-2017.phen.tsv
         if (!getCurrentFile().getName().endsWith(".tsv")) return;
         String filetype = getFileType(getCurrentFile().getName());
-        if (filetype==null) return;
         if (filetype.equals("expt")) {
             processExptFile(reader);
         } else if (filetype.equals("mrk")) {
