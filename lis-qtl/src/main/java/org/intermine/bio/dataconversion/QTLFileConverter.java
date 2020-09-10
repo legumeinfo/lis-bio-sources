@@ -34,7 +34,6 @@ import org.intermine.xml.full.Item;
  * Identifier	22691139
  * Name	Pottorff et al. 2012
  * Description	In this study, we analyzed the genetics of leaf morphology in a segregating cowpea RIL population....
- * TaxonID	3920
  * MappingParent	Sanzi
  * MappingParent	Vita7
  * MappingDescription	The mapping population consisted of 122 RILs which were advanced from the Sanzi x Vita7 cross.
@@ -86,9 +85,9 @@ public class QTLFileConverter extends DatastoreFileConverter {
     public void process(Reader reader) throws IOException {
         if (getCurrentFile().getName().endsWith("expt.tsv")) {
 	    processExperiment(reader);
-        } else if (getCurrentFile().getName().endsWith(".phen.tsv")) {
+        } else if (getCurrentFile().getName().endsWith("phen.tsv")) {
             processPhenFile(reader);
-	} else if (getCurrentFile().getName().endsWith("markers.tsv")) {
+	} else if (getCurrentFile().getName().endsWith("marker.tsv")) {
 	    processMarkers(reader);
 	}
     }
@@ -111,8 +110,6 @@ public class QTLFileConverter extends DatastoreFileConverter {
 	    if (fields[0].equals("Identifier")) {
                 experiment.setAttribute("primaryIdentifier", fields[1]);
                 experimentMap.put(fields[1], experiment);
-	    } else if (fields[0].equals("TaxonID")) {
-                // ignore, we get organism from filename
 	    } else if (fields[0].equals("Name")) {
 		experiment.setAttribute("name", fields[1]);
 	    } else if (fields[0].equals("Description")) {

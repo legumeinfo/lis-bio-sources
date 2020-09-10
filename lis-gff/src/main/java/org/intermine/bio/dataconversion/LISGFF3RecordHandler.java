@@ -131,6 +131,11 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
                 feature.setAttribute("type", "SNP");
             }
 
+            // set source if it is a marker; could be an array name, which is useful
+            if (type.equals("genetic_marker")) {
+                feature.setAttribute("source", record.getSource());
+            }
+
             // more specific attributes
             for (String key : attributesMap.keySet()) {
                 List<String> attributes = attributesMap.get(key);

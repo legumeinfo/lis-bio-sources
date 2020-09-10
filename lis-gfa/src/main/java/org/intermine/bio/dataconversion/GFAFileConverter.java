@@ -108,14 +108,14 @@ public class GFAFileConverter extends DatastoreFileConverter {
                     gene.setAttribute("geneFamilyScore", String.valueOf(score));
                 }
                 // Protein
-                Item protein = getProtein(geneIdentifier);
+                Item protein = getProtein(proteinIdentifier);
                 protein.setReference("geneFamily", geneFamily);
                 protein.addToCollection("dataSets", dataSet);
                 if (hasScore) {
                     if (scoreMeaning!=null) protein.setAttribute("geneFamilyScoreMeaning", scoreMeaning);
                     protein.setAttribute("geneFamilyScore", String.valueOf(score));
                 }
-                // Gene.proteins
+                // Gene.proteins collection
                 gene.addToCollection("proteins", protein);
             }
         }

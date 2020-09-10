@@ -2,7 +2,6 @@
 <classes>
 
   <!-- GWAS extends Annotatable for the standard Publication support (and there's probably an ontology with GWAS in it) -->  
-  <!-- TaxonID	3847 -->
   <!-- Strain	Williams82 -->
   <!-- Identifier	KGK20170707.1 -->
   <!-- Name	Zhang, Hao et al. 2015 -->

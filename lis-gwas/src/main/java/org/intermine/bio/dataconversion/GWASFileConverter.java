@@ -28,6 +28,7 @@ import org.intermine.xml.full.Item;
  * PlatformDetails   Illumina Infinium Bead Chip
  * GenotypeDataset   LIS DS folder containing a VCF or HMP file underlying analysis
  * PhenotypeDataset  LIS DS folder containing a trait measurement file underlying analysis
+ * PMID 123456
  * DOI	10.3835/plantgenome2015.04.0024
  * #identifier	   phenotype  marker	      pvalue
  * Seed oil 4-g14  Seed oil   ss715591641   3.16E-09
@@ -104,16 +105,24 @@ public class GWASFileConverter extends DatastoreFileConverter {
                 gwas.setAttribute("platformDetails", value);
             } else if (key.toLowerCase().equals("pmid")) {
                 int pmid = Integer.parseInt(value); // make sure it's a number
-                publication = createItem("Publication");
-                publication.setAttribute("pubMedId", String.valueOf(pmid));
-		publications.add(publication);
-                gwas.addToCollection("publications", publication);
+                if (publication==null) {
+                    publication = createItem("Publication");
+                    publication.setAttribute("pubMedId", String.valueOf(pmid));
+                    publications.add(publication);
+                    gwas.addToCollection("publications", publication);
+                } else {
+                    publication.setAttribute("pubMedId", String.valueOf(pmid));
+                }
             } else if (key.toLowerCase().equals("doi")) {
                 String doi = value;
-                publication = createItem("Publication");
-                publication.setAttribute("doi", doi);
-		publications.add(publication);
-                gwas.addToCollection("publications", publication);
+                if (publication==null) {
+                    publication = createItem("Publication");
+                    publication.setAttribute("doi", doi);
+                    publications.add(publication);
+                    gwas.addToCollection("publications", publication);
+                } else {
+                    publication.setAttribute("doi", doi);
+                }
             } else {
                 // data record
                 GWASFileRecord rec = new GWASFileRecord(line);
