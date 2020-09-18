@@ -16,9 +16,9 @@ import java.util.HashMap;
 /**
  * Encapsulates a single tab-delimited LIS data store annot_info_ahrd file record.
  *
- * lis_v1_0.L_QQS5LC-consensus  glucan endo-1,3-beta-glucosidase 14-like [Glycine max];
- *             ^^^^^^^^            IPR000490 (Glycoside hydrolase, family 17), IPR017853 (Glycoside hydrolase, superfamily);
- *                                 GO:0005975 (carbohydrate metabolic process)
+ * lis_v1_0.L_QQS5LC  glucan endo-1,3-beta-glucosidase 14-like [Glycine max];
+ *          ^^^^^^^^  IPR000490 (Glycoside hydrolase, family 17), IPR017853 (Glycoside hydrolase, superfamily);
+ *                    GO:0005975 (carbohydrate metabolic process)
  *
  * lis_v1_0 = GeneFamily.version
  * L_QQS5LC = GeneFamily.identifier, OntologyAnnotation.subject

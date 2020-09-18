@@ -25,7 +25,7 @@ import org.intermine.xml.full.ItemHelper;
 /**
  * Handle special cases when converting LIS data store GFF3 files.
  *
- * gene            ID=phavu.G19833.gnm1.ann1.Phvul.001G000100;
+ * gene            ID=phavu.G19833.gnm1.ann1.Phvul.001G000100;Name=PHAVU_001G000100g;
  * exon
  * mRNA            ID=phavu.G19833.gnm1.ann1.Phvul.001G000100.1;Parent=phavu.G19833.gnm1.ann1.Phvul.001G000100;
  * CDS             ID=phavu.G19833.gnm1.ann1.Phvul.001G000100.1.v1.0.CDS.1;Parent=phavu.G19833.gnm1.ann1.Phvul.001G000100.1;

@@ -6,8 +6,9 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.Reader;
 
+import java.util.Arrays;
 import java.util.List;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -28,12 +29,15 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
     private static final Logger LOG = Logger.getLogger(GeneFamilyFileConverter.class);
 
     // Items to store
-    List<Item> ontologyAnnotations = new ArrayList<>();
+    List<Item> ontologyAnnotations = new LinkedList<>();
     Map<String,Item> ontologyTerms = new HashMap<>();
     Map<String,Item> proteins = new HashMap<>();
     Map<String,Item> genes = new HashMap<>();
     Map<String,Item> proteinDomains = new HashMap<>();
     Map<String,Item> geneFamilies = new HashMap<>();
+
+    // organisms we wish to store membership
+    List<String> desiredOrganisms = new LinkedList<>();
 
     /**
      * Create a new GeneFamilyFileConverter
@@ -42,6 +46,14 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
      */
     public GeneFamilyFileConverter(ItemWriter writer, Model model) throws ObjectStoreException {
         super(writer, model);
+    }
+
+    /**
+     * Create the list of desired organisms, listed by space-delimited gensp.
+     */
+    public void setDesiredOrganisms(String genspString) {
+        String[] gensps = genspString.split(" ");
+        desiredOrganisms = Arrays.asList(gensps);
     }
 
     /**
@@ -156,9 +168,9 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
      * Process an info_annot_ahrd.tsv file which contains gene families and semi-colon separated groups of ontology terms.
      * 0      1       2    3    4               5
      * lis.genefam.fam1.M65K.info_annot_ahrd.tsv
-     * legfed_v1_0.L_LFXSXJ-consensus  splicing factor 3B subunit 3-like isoform X2 [Glycine max]; 
-     *                                 IPR004871 (Cleavage/polyadenylation specificity factor, A subunit, C-terminal); 
-     *                                 GO:0003676 (nucleic acid binding), GO:0005634 (nucleus)
+     * legfed_v1_0.L_LFXSXJ splicing factor 3B subunit 3-like isoform X2 [Glycine max];
+     *                      IPR004871 (Cleavage/polyadenylation specificity factor, A subunit, C-terminal); 
+     *                      GO:0003676 (nucleic acid binding), GO:0005634 (nucleus)
      *
      * legume.genefam.fam1.M65K.family_fasta/legfed_v1_0.L_LFXSXJ
      *                                    ^^^^^^^^
@@ -215,16 +227,18 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
                         String name = fline.substring(1);
                         String[] parts = name.split("\\.");
                         String gensp = parts[0];
-                        Item organism = getOrganism(gensp);
-                        Item protein = getProtein(name);
-			String geneIdentifier = extractGeneIdentifierFromProteinIdentifier(name);
-			Item gene = getGene(geneIdentifier);
-                        protein.setReference("geneFamily", geneFamily);
-			protein.addToCollection("genes", gene);
-                        protein.addToCollection("dataSets", dataSet);
-			gene.setReference("geneFamily", geneFamily);
-			gene.addToCollection("proteins", protein);
-                        gene.addToCollection("dataSets", dataSet);
+                        if (desiredOrganisms.contains(gensp)) {
+                            Item organism = getOrganism(gensp);
+                            Item protein = getProtein(name);
+                            String geneIdentifier = extractGeneIdentifierFromProteinIdentifier(name);
+                            Item gene = getGene(geneIdentifier);
+                            protein.setReference("geneFamily", geneFamily);
+                            protein.addToCollection("genes", gene);
+                            protein.addToCollection("dataSets", dataSet);
+                            gene.setReference("geneFamily", geneFamily);
+                            gene.addToCollection("proteins", protein);
+                            gene.addToCollection("dataSets", dataSet);
+                        }
                     }
                 }
                 fbr.close();
