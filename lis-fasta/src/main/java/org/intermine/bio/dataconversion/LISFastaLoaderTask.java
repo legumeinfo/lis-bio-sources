@@ -63,6 +63,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     String sequenceType = "dna"; // default, or "protein"
 
     String taxonId;
+    String gensp;
     String strainIdentifier;
     String assemblyVersion;   // extracted from filename
     String annotationVersion; // extracted from filename
@@ -100,7 +101,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     }
 
     /**
-     * Set the organism taxon ID.
+     * Set the organism taxon ID and gensp.
      */
     public void setTaxonId(String taxonId) {
         this.taxonId = taxonId;
@@ -224,6 +225,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     public void process() {
         try {
 	    datastoreUtils = new DatastoreUtils();
+            gensp = datastoreUtils.getGensp(taxonId);
             super.process();
             getIntegrationWriter().commitTransaction();
             getIntegrationWriter().beginTransaction();
@@ -320,6 +322,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         if (organism==null) {
             organism = getDirectDataLoader().createObject(Organism.class);
             organism.setTaxonId(taxonId);
+            organism.setAbbreviation(gensp);
             getDirectDataLoader().store(organism);
         }
         return organism;
@@ -506,7 +509,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 
         // HACK: set the className to "Chromosome" or "Supercontig" based on identifier and identifying supercontig matching strings.
         if (className.equals("org.intermine.model.bio.Chromosome") || className.equals("org.intermine.model.bio.Supercontig")) {
-            if (datastoreUtils.isSupercontig(taxonId,strainIdentifier,identifier)) {
+            if (datastoreUtils.isSupercontig(gensp,strainIdentifier,identifier)) {
                 className = "org.intermine.model.bio.Supercontig";
             } else {
                 className = "org.intermine.model.bio.Chromosome";

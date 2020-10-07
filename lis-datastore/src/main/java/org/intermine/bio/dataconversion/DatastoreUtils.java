@@ -21,6 +21,7 @@ public class DatastoreUtils {
 
     Map<String,String> taxonIdGenus = new HashMap<>();
     Map<String,String> taxonIdSpecies = new HashMap<>();
+    Map<String,String> taxonIdGensp = new HashMap<>();
     Map<String,String> genspTaxonId = new HashMap<>();
     Map<String,String> genusSpeciesTaxonId = new HashMap<>();
 
@@ -83,6 +84,7 @@ public class DatastoreUtils {
             String gensp = genus.substring(0,3).toLowerCase()+species.substring(0,2).toLowerCase();
             String genusSpecies = genus+"_"+species;
             genspTaxonId.put(gensp, taxonId);
+            taxonIdGensp.put(taxonId, gensp);
             genusSpeciesTaxonId.put(genusSpecies, taxonId);
         }
         
@@ -122,6 +124,17 @@ public class DatastoreUtils {
     }
 
     /**
+     * Get the gensp (like "phavu") for a taxon ID.
+     */
+    public String getGensp(String taxonId) {
+        String gensp = taxonIdGensp.get(taxonId);
+        if (gensp==null) {
+            throw new RuntimeException("gensp value not available for Taxon ID "+gensp);
+        }
+        return gensp;
+    }
+
+    /**
      * Get the Genus for a gensp string like "phavu".
      */
     public String getGenus(String gensp) {
@@ -150,8 +163,8 @@ public class DatastoreUtils {
      * TODO: THIS IS HORRIBLY SIMPLIFIED, BUT A NEW STARTING POINT.
      * NOTE: non-static since we need supercontigStrings!
      */
-    public boolean isSupercontig(String taxonId, String strainIdentifier, String primaryIdentifier) {
-        String key = taxonId+"."+strainIdentifier;
+    public boolean isSupercontig(String gensp, String strainIdentifier, String primaryIdentifier) {
+        String key = gensp+"."+strainIdentifier;
 	List<String> matchStrings = supercontigStrings.get(key);
 	if (matchStrings==null) {
 	    throw new RuntimeException("You must add a supercontig matching entry for "+key+" in datastore_config.properties.");

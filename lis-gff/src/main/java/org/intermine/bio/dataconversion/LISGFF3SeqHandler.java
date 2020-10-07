@@ -29,7 +29,10 @@ public class LISGFF3SeqHandler extends GFF3SeqHandler {
      */
     public Item makeSequenceItem(GFF3Converter converter, String identifier) {
         DatastoreUtils dsu = new DatastoreUtils();
-        if (dsu.isSupercontig(converter.getTaxonId(), converter.getStrainIdentifier(), identifier)) {
+        String taxonId = converter.getTaxonId();
+        String strainIdentifier = converter.getStrainIdentifier();
+        String gensp = dsu.getGensp(taxonId);
+        if (dsu.isSupercontig(gensp, strainIdentifier, identifier)) {
             Item seq = converter.createItem("Supercontig");
             seq.setAttribute("primaryIdentifier", identifier);
             return seq;
@@ -51,7 +54,10 @@ public class LISGFF3SeqHandler extends GFF3SeqHandler {
      */
     public Item makeSequenceItem(GFF3Converter converter, String identifier, GFF3Record record) {
         DatastoreUtils dsu = new DatastoreUtils();
-        if (dsu.isSupercontig(converter.getTaxonId(), converter.getStrainIdentifier(), identifier)) {
+        String taxonId = converter.getTaxonId();
+        String strainIdentifier = converter.getStrainIdentifier();
+        String gensp = dsu.getGensp(taxonId);
+        if (dsu.isSupercontig(gensp, strainIdentifier, identifier)) {
             Item seq = converter.createItem("Supercontig");
             seq.setAttribute("primaryIdentifier", identifier);
             return seq;

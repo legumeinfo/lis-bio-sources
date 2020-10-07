@@ -35,9 +35,33 @@
   </class>
 
   <!-- extra terms in some GFFs -->
+  <class name="TransposableElementGene" extends="Gene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000111" />
+
   <class name="RRNAPrimaryTranscript" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000252" />
   <class name="TRNAPrimaryTranscript" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000253" />
-  <class name="TransposableElementGene" extends="Gene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000111" />
+  <class name="PreMiRNA" extends="Transcript" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001244" />
+
+  <class name="RepeatRegion" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000657" />
+  <class name="InvertedRepeat" extends="RepeatRegion" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000294" />
+
+  <class name="MobileGeneticElement" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001037" />
+  <class name="TransposableElement" extends="MobileGeneticElement" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000101" />
+
+  <class name="Helitron" extends="TransposableElement" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000544" />
+  <class name="TargetSiteDuplication" extends="TransposableElement" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000434" />
+
+  <class name="TerminalInvertedRepeatElement" extends="TransposableElement" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000208" />
+  <class name="TerminalInvertedRepeat" extends="TerminalInvertedRepeatElement" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000481" />
+
+  <class name="Retrotransposon" extends="TransposableElement" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000180" />
+  <class name="TRIMRetrotransposon" extends="Retrotransposon" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0002261" />
+  <class name="NonLTRRetrotransposon" extends="Retrotransposon" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000189" />
+  <class name="LTRRetrotransposon" extends="Retrotransposon" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000186" />
+  <class name="RRTract" extends="LTRRetrotransposon" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000435" />
+  <class name="LongTerminalRepeat" extends="LTRRetrotransposon" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000286" />
+  <class name="PrimerBindingSite" extends="LTRRetrotransposon" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0005850" />
+
+  <class name="ProteinMatch" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000349" />
 
   <!-- Alleles=A/T in attributes. type=SNP if length=1 -->
   <class name="GeneticMarker" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645">

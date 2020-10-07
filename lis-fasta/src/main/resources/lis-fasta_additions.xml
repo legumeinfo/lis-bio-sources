@@ -1,6 +1,11 @@
 <?xml version="1.0"?>
 <classes>
 
+  <!-- abbreviation = gensp -->
+  <class name="Organism" is-interface="true">
+    <attribute name="abbreviation" type="java.lang.String"/>
+  </class>
+
   <!-- may pull description from FASTA, usually from GFF -->
   <class name="Transcript" is-interface="true">
     <attribute name="description" type="java.lang.String"/>

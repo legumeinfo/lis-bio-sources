@@ -91,13 +91,15 @@ public class PathwayFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     public void close() throws ObjectStoreException {
-        // DatastoreFileConverter
-	store(dataSource);
-	store(dataSets.values());
-        store(organisms.values());
-        store(strains.values());
-        // local
-        store(genes.values());
-        store(pathways.values());
+        if (pathways.size()>0) {
+            // DatastoreFileConverter
+            store(dataSource);
+            store(dataSets.values());
+            store(organisms.values());
+            store(strains.values());
+            // local
+            store(genes.values());
+            store(pathways.values());
+        }
     }
 }

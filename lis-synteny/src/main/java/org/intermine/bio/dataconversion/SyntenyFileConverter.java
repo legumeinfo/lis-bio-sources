@@ -149,8 +149,8 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
                     throw new RuntimeException("GFF syntenic_region record is missing target attribute:"+line);
                 }
                 // ignore this record if source or target are on a supercontig/scaffold
-		if (dsu.isSupercontig(sourceTaxonId, sourceStrainId, sourceChrName)) continue;
-		if (dsu.isSupercontig(targetTaxonId, targetStrainId, targetChrName)) continue;
+		if (dsu.isSupercontig(sourceGensp, sourceStrainId, sourceChrName)) continue;
+		if (dsu.isSupercontig(targetGensp, targetStrainId, targetChrName)) continue;
 		// get the source and target chromosomes
                 Item sourceChromosome = getChromosome(sourceChrName, sourceOrganism, sourceStrain);
                 Item targetChromosome = getChromosome(targetChrName, targetOrganism, targetStrain);

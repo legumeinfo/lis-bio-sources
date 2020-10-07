@@ -96,107 +96,107 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         String className = feature.getClassName();
         Map<String,List<String>> attributesMap = record.getAttributes();
         // only update feature if ID is present
-        if (id!=null) {
-            // 0     1      2    3    4     5          6 7   8
-            // phavu.G19833.gnm2.ann1.Phvul.003G111100.1.CDS.1
-            // 0     1            2    3      4                         5
-            // medtr.jemalong_A17.gnm5.ann1_6.exon:MtrunA17Chr1g0187771.1
-            // 0     1            2    3      4
-            // medtr.jemalong_A17.gnm5.ann1_6.gene:MtrunA17CPg0492171
-	    // 0     1            2    3
-	    // vigun.IT97K-499-35.gnm1.1_0052;
-            // 0     1    2    3
-            // glyma.Wm82.gnm2.ss107913399
-            String[] parts = id.split("\\.");
-            if (parts.length<4) {
-                throw new RuntimeException("ID has too few dot-separated parts:"+id);
-            }
-            String gensp = parts[0];
-            String strainId = parts[1];
-            String assemblyVersion = parts[2];
-	    String annotationVersion = null;
-            boolean hasAnnotation = false;
-	    if (parts.length>4) {
-                hasAnnotation = true;
-                annotationVersion = parts[3];
-            }
+        if (id==null) return;
+        // parse primaryIdentifier
+        // 0     1      2    3    4     5          6 7   8
+        // phavu.G19833.gnm2.ann1.Phvul.003G111100.1.CDS.1
+        // 0     1            2    3      4                         5
+        // medtr.jemalong_A17.gnm5.ann1_6.exon:MtrunA17Chr1g0187771.1
+        // 0     1            2    3      4
+        // medtr.jemalong_A17.gnm5.ann1_6.gene:MtrunA17CPg0492171
+        // 0     1            2    3
+        // vigun.IT97K-499-35.gnm1.1_0052;
+        // 0     1    2    3
+        // glyma.Wm82.gnm2.ss107913399
+        String[] parts = id.split("\\.");
+        if (parts.length<4) {
+            throw new RuntimeException("ID has too few dot-separated parts:"+id);
+        }
+        String gensp = parts[0];
+        String strainId = parts[1];
+        String assemblyVersion = parts[2];
+        String annotationVersion = null;
+        boolean hasAnnotation = false;
+        if (parts.length>4) {
+            hasAnnotation = true;
+            annotationVersion = parts[3];
+        }
+        
+        // set other standard attributes
+        feature.setAttribute("secondaryIdentifier", DatastoreFileConverter.extractSecondaryIdentifier(id, hasAnnotation));
+        feature.setAttribute("assemblyVersion", assemblyVersion);
+        if (annotationVersion!=null) feature.setAttribute("annotationVersion", annotationVersion);
+        
+        // add marker type = SNP if it is a marker with length 1
+        if (type.equals("genetic_marker") && (record.getStart()-record.getEnd())==0) {
+            feature.setAttribute("type", "SNP");
+        }
 
-            // set other standard attributes
-            feature.setAttribute("secondaryIdentifier", DatastoreFileConverter.extractSecondaryIdentifier(id, hasAnnotation));
-            feature.setAttribute("assemblyVersion", assemblyVersion);
-            if (annotationVersion!=null) feature.setAttribute("annotationVersion", annotationVersion);
+        // set source if it is a marker; could be an array name, which is useful
+        if (type.equals("genetic_marker")) {
+            feature.setAttribute("source", record.getSource());
+        }
 
-            // add marker type = SNP if it is a marker with length 1
-            if (type.equals("genetic_marker") && (record.getStart()-record.getEnd())==0) {
-                feature.setAttribute("type", "SNP");
-            }
-
-            // set source if it is a marker; could be an array name, which is useful
-            if (type.equals("genetic_marker")) {
-                feature.setAttribute("source", record.getSource());
-            }
-
-            // more specific attributes
-            for (String key : attributesMap.keySet()) {
-                List<String> attributes = attributesMap.get(key);
-		if (key.equals("Name")) {
-		    feature.setAttribute("name", attributes.get(0));
-		} else if (key.equals("Note")) {
-                    // Note=ATP binding protein... IPR002624 (...)%2C IPR027417 (...)%3B GO:0005524 (...)%2C GO:0006139 (...);
-                    feature.setAttribute("description", attributes.get(0));
-                } else if (type.equals("gene") && key.equals("Dbxref")) {
-                    // Dbxref=Gene3D:G3DSA:3.40.50.300,InterPro:IPR002624,InterPro:IPR027417,PANTHER:PTHR10513,PANTHER:PTHR10513:SF6,Pfam:PF01712,Superfamily:SSF52540;
-                    for (String term : attributes) {
-                        String[] pieces = term.split(":");
-                        if (pieces[0].equals("Gene3D")) {
-                            // need Gene3D ProteinDomain Item
-                        } else if (pieces[0].equals("InterPro")) {
-                            String identifier = pieces[1];
-			    Item proteinDomain = proteinDomainMap.get(identifier);
-			    if (proteinDomain==null) {
-				proteinDomain = converter.createItem("ProteinDomain");
-				proteinDomain.setAttribute("primaryIdentifier", identifier);
-				addItem(proteinDomain);
-				proteinDomainMap.put(identifier, proteinDomain);
-			    }
-			    feature.addToCollection("proteinDomains", proteinDomain);
-                        } else if (pieces[0].equals("PANTHER")) {
-                            String identifier = pieces[1];
-                            // need PANTHER ProteinDomain Item
-                        } else if (pieces[0].equals("Pfam")) {
-                            String identifier = pieces[1];
-                            // need Pfam ProteinDomain Item
-                        } else if (pieces[0].equals("Superfamily")) {
-                            // need Superfamily ProteinDomain Item
+        // more specific attributes
+        for (String key : attributesMap.keySet()) {
+            List<String> attributes = attributesMap.get(key);
+            if (key.equals("Name")) {
+                feature.setAttribute("name", attributes.get(0));
+            } else if (key.equals("Note")) {
+                // Note=ATP binding protein... IPR002624 (...)%2C IPR027417 (...)%3B GO:0005524 (...)%2C GO:0006139 (...);
+                feature.setAttribute("description", attributes.get(0));
+            } else if (type.equals("gene") && key.equals("Dbxref")) {
+                // Dbxref=Gene3D:G3DSA:3.40.50.300,InterPro:IPR002624,InterPro:IPR027417,PANTHER:PTHR10513,PANTHER:PTHR10513:SF6,Pfam:PF01712,Superfamily:SSF52540;
+                for (String term : attributes) {
+                    String[] pieces = term.split(":");
+                    if (pieces[0].equals("Gene3D")) {
+                        // need Gene3D ProteinDomain Item
+                    } else if (pieces[0].equals("InterPro")) {
+                        String identifier = pieces[1];
+                        Item proteinDomain = proteinDomainMap.get(identifier);
+                        if (proteinDomain==null) {
+                            proteinDomain = converter.createItem("ProteinDomain");
+                            proteinDomain.setAttribute("primaryIdentifier", identifier);
+                            addItem(proteinDomain);
+                            proteinDomainMap.put(identifier, proteinDomain);
                         }
+                        feature.addToCollection("proteinDomains", proteinDomain);
+                    } else if (pieces[0].equals("PANTHER")) {
+                        String identifier = pieces[1];
+                        // need PANTHER ProteinDomain Item
+                    } else if (pieces[0].equals("Pfam")) {
+                        String identifier = pieces[1];
+                        // need Pfam ProteinDomain Item
+                    } else if (pieces[0].equals("Superfamily")) {
+                        // need Superfamily ProteinDomain Item
                     }
-                } else if (type.equals("gene") && key.equals("Ontology_term")) {
-                    // Ontology_term=GO:0005524,GO:0006139,GO:0016773;
-                    for (String term : attributes) {
-                        if (term.startsWith("GO:")) {
-			    String identifier = term;
-			    Item goTerm = ontologyTermMap.get(identifier);
-			    if (goTerm==null) {
-				goTerm = converter.createItem("OntologyTerm");
-				goTerm.setAttribute("identifier", identifier);
-				addItem(goTerm);
-				ontologyTermMap.put(identifier, goTerm);
-			    }
-			    Item goAnnotation = converter.createItem("OntologyAnnotation");
-			    goAnnotation.setReference("subject", feature);
-			    goAnnotation.setReference("ontologyTerm", goTerm);
-			    addItem(goAnnotation);
-                        }
-                    }
-		} else if (type.equals("genetic_marker") && key.equals("Alleles")) {
-		    feature.setAttribute("alleles", attributes.get(0));
-                } else if (key.equals("evid_id")) {
-                    // [GAR_10012494]
-                    // do nothing
-                } else if (key.equals("geneFamily")) {
-                    // geneFamily=phytozome_10_2.59141255
-                    // gene family association
                 }
+            } else if (type.equals("gene") && key.equals("Ontology_term")) {
+                // Ontology_term=GO:0005524,GO:0006139,GO:0016773;
+                for (String term : attributes) {
+                    if (term.startsWith("GO:")) {
+                        String identifier = term;
+                        Item goTerm = ontologyTermMap.get(identifier);
+                        if (goTerm==null) {
+                            goTerm = converter.createItem("OntologyTerm");
+                            goTerm.setAttribute("identifier", identifier);
+                            addItem(goTerm);
+                            ontologyTermMap.put(identifier, goTerm);
+                        }
+                        Item goAnnotation = converter.createItem("OntologyAnnotation");
+                        goAnnotation.setReference("subject", feature);
+                        goAnnotation.setReference("ontologyTerm", goTerm);
+                        addItem(goAnnotation);
+                    }
+                }
+            } else if (type.equals("genetic_marker") && key.equals("Alleles")) {
+                feature.setAttribute("alleles", attributes.get(0));
+            } else if (key.equals("evid_id")) {
+                // [GAR_10012494]
+                // do nothing
+            } else if (key.equals("geneFamily")) {
+                // geneFamily=phytozome_10_2.59141255
+                // gene family association
             }
         }
     }
