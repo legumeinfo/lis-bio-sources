@@ -66,9 +66,14 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
 	    if (secondaryIdentifier==null) {
 		throw new RuntimeException("Error in chromosome primaryIdentifier:"+primaryIdentifier);
 	    }
+            String assemblyVersion = extractAssemblyVersion(primaryIdentifier);
+            if (assemblyVersion==null) {
+                throw new RuntimeException("Error in chromosome assemblyVersion:"+primaryIdentifier);
+            }
 	    Item chromosome = createItem("Chromosome");
 	    chromosome.setAttribute("primaryIdentifier", primaryIdentifier);
 	    chromosome.setAttribute("secondaryIdentifier", secondaryIdentifier);
+            chromosome.setAttribute("assemblyVersion", assemblyVersion);
 	    chromosome.setReference("organism", organism);
 	    chromosome.setReference("strain", strain);
 	    chromosomeMap.put(primaryIdentifier, chromosome);

@@ -1,6 +1,12 @@
 <?xml version="1.0"?>
 <classes>
 
+  <!-- SequenceFeatures should have an assemblyVersion and, optionally, an annotationVersion -->
+  <class name="SequenceFeature" is-interface="true">
+    <attribute name="assemblyVersion" type="java.lang.String"/>
+    <attribute name="annotationVersion" type="java.lang.String"/>
+  </class>
+
   <class name="SyntenyBlock" is-interface="true">
     <attribute name="medianKs" type="java.lang.Double"/>
   </class>
