@@ -212,11 +212,11 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     }
 
     /**
-     * Return the full-yuck prefix from the dataSetName, like vigun.IT97K-499-35.gnm1.ann1.zb5D.
+     * Return the full-yuck prefix from the dataSetName, like vigun.IT97K-499-35.gnm1.ann1.zb5D or phalu.G27455.gnm1.7NXX.genome_main
      */
     public String getYuckyPrefix() {
         return dataSetName.substring(0, dataSetName.length()-5);
-    }        
+    }
 
     /**
      * Process and load all of the fasta files.
@@ -547,6 +547,8 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
                 String name = getAttribute(bioJavaSequence, idAttribute);
                 if (name!=null) feature.setName(name);
             }
+            // assemblyVersion
+            if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
             store(feature, bioSequence);
 
         } else if (className.equals("org.intermine.model.bio.Supercontig")) {
@@ -563,6 +565,8 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
                 String name = getAttribute(bioJavaSequence, idAttribute);
                 if (name!=null) feature.setName(name);
             }
+            // assemblyVersion
+            if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
             store(feature, bioSequence);
 
         } else if (className.equals("org.intermine.model.bio.MRNA")) {
@@ -578,6 +582,10 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
                 String name = getAttribute(bioJavaSequence, idAttribute);
                 if (name!=null) feature.setName(name);
             }
+            // assemblyVersion
+            if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
+            // annotationVersion
+            if (annotationVersion!=null) feature.setAnnotationVersion(annotationVersion);
             store(feature, bioSequence);
 
         } else if (className.equals("org.intermine.model.bio.CDS")) {
@@ -593,6 +601,10 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
                 String name = getAttribute(bioJavaSequence, idAttribute);
                 if (name!=null) feature.setName(name);
             }
+            // assemblyVersion
+            if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
+            // annotationVersion
+            if (annotationVersion!=null) feature.setAnnotationVersion(annotationVersion);
             store(feature, bioSequence);
 
         } else if (className.equals("org.intermine.model.bio.Protein")) {
@@ -600,8 +612,6 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             // def=Putative RNA-directed DNA polymerase
             Protein feature = (Protein) getDirectDataLoader().createObject(imClass);
             setCommonAttributes(feature);
-	    if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
-	    if (annotationVersion!=null) feature.setAnnotationVersion(annotationVersion);
 	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
             // secondaryIdentifier
@@ -617,6 +627,10 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
                 String description = getAttribute(bioJavaSequence, descriptionAttribute);
                 if (description!=null) feature.setDescription(description);
             }
+            // assemblyVersion
+            if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
+            // annotationVersion
+            if (annotationVersion!=null) feature.setAnnotationVersion(annotationVersion);
             store(feature, bioSequence);
         } else {
             throw new RuntimeException("Loading of "+className+" from FASTA isn't currently supported.");
