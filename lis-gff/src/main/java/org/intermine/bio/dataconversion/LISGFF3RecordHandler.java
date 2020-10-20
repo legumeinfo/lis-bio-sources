@@ -110,7 +110,8 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         // glyma.Wm82.gnm2.ss107913399
         String[] parts = id.split("\\.");
         if (parts.length<4) {
-            throw new RuntimeException("ID has too few dot-separated parts:"+id);
+            System.err.println(id+" skipped: has too few dot-separated parts.");
+            return;
         }
         String gensp = parts[0];
         String strainId = parts[1];
