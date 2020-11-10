@@ -35,7 +35,9 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     Item expressionSource;
     Item bioProject;
     Item publication;
+    String unit;
     List<Item> expressionValues = new ArrayList<>();
+    Map<String,Item> ontologyTerms = new HashMap<>();
     Map<String,Item> samples = new HashMap<>();
     Map<String,Item> genes = new HashMap<>();
 
@@ -67,6 +69,8 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
 	    processSamples(reader);
         } else if (getCurrentFile().getName().endsWith("values.tsv")) {
             processExpression(reader);
+        } else if (getCurrentFile().getName().endsWith("ontology.tsv")) {
+            processOntology(reader);
         }
     }
 
@@ -86,6 +90,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
         store(bioProject);
 	store(genes.values());
         store(samples.values());
+        store(ontologyTerms.values());
 	store(expressionValues);
     }
 
@@ -98,6 +103,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * SHORTNAME	Pigeonpea gene expression atlas
      * ORIGIN	SRA
      * DESCRIPTION	To be able to link the genome sequence information to the phenotype, especially...
+     * UNIT     TPM
      * BIOPROJ_ACC	PRJNA354681
      * BIOPROJ_TITLE	Gene expression atlas of pigeonpea
      * BIOPROJ_DESCRIPTION	Pigeonpea (Cajanus cajan) is an important grain legume of the semi-arid tropics, mainly used...
@@ -113,6 +119,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
         strain = getStrain(organism);
         Item dataSet = getDataSet();
         expressionSource.setReference("dataSet", dataSet);
+        unit = "TPM"; // default
 	BufferedReader br = new BufferedReader(reader);
         String line = null;
         while ((line=br.readLine())!=null) {
@@ -132,6 +139,8 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                 case "DESCRIPTION" :
                     expressionSource.setAttribute("description", parts[1]);
                     break;
+                case "UNIT" :
+                    unit = parts[1];
                 case "GEO_SERIES" :
                     expressionSource.setAttribute("geoSeries", parts[1]);
                     break;
@@ -198,8 +207,13 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                     System.err.println(line);
                     throw new RuntimeException("ERROR: colnames.length="+colnames.length+" but line has "+parts.length+" fields!");
                 }
-                String key = null;
-                Item sample = createItem("ExpressionSample");
+                // get/create the sample with primaryIdentifier in column 2
+                String id = parts[1];
+                Item sample = samples.get(id);
+                if (sample==null) {
+                    sample = createItem("ExpressionSample");
+                    sample.setAttribute("primaryIdentifier", id);
+                }
 		// common references
 		sample.setReference("organism", organism);
 		sample.setReference("strain", strain);
@@ -213,10 +227,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                     switch(colnames[i]) {
                     case "sample_name" :
                         sample.setAttribute("name", parts[i]);
-                        break;
-                    case "key" :
-                        key = parts[i];
-                        sample.setAttribute("primaryIdentifier", parts[i]);
                         break;
                     case "sample_uniquename" :
                         break;
@@ -255,9 +265,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                     case "sra_study" :
                         break;
                     }
-                }
-                if (key!=null && sample!=null) {
-                    samples.put(key, sample);
                 }
             }
         }
@@ -315,7 +322,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                     Item sample = sampleList.get(i-1);
                     Item expressionValue = createItem("ExpressionValue");
                     expressionValue.setAttribute("value", String.valueOf(value));
-                    expressionValue.setAttribute("unit", "TPM"); // NOTE: assume TPM
+                    expressionValue.setAttribute("unit", unit);
                     expressionValue.setReference("feature", gene);
                     expressionValue.setReference("sample", sample);
 		    expressionValues.add(expressionValue);
@@ -323,5 +330,39 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             }
         }
 	br.close();
+    }
+
+    /**
+     * Process a file relating samples to ontology terms.
+     */
+    void processOntology(Reader reader) throws IOException {
+	BufferedReader br = new BufferedReader(reader);
+        String line = null;
+        while ((line=br.readLine())!=null) {
+            if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
+            String[] parts = line.split("\t");
+            String sampleId = parts[0];
+            String ontologyTermId = parts[1];
+            Item sample = samples.get(sampleId);
+            if (sample==null) {
+                sample = createItem("ExpressionSample");
+                sample.setAttribute("primaryIdentifier", sampleId);
+                samples.put(sampleId, sample);
+            }
+            Item ontologyTerm = ontologyTerms.get(ontologyTermId);
+            if (ontologyTerm==null) {
+                ontologyTerm = createItem("OntologyTerm");
+                ontologyTerm.setAttribute("identifier", ontologyTermId);
+                ontologyTerms.put(ontologyTermId, ontologyTerm);
+            }
+            Item ontologyAnnotation = createItem("OntologyAnnotation");
+            ontologyAnnotation.setReference("subject", sample);
+            ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
+            try {
+                store(ontologyAnnotation);
+            } catch (ObjectStoreException e) {
+                throw new RuntimeException(e);
+            }
+        }
     }
 }
