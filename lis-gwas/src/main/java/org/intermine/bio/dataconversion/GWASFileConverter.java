@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Set;
+import java.util.HashSet;
 
 import org.apache.log4j.Logger;
 
@@ -42,9 +44,10 @@ public class GWASFileConverter extends DatastoreFileConverter {
     private static final Logger LOG = Logger.getLogger(GWASFileConverter.class);
 
     // local things to store
-    List<Item> publications = new LinkedList<>();
     List<Item> gwases = new LinkedList<>();
     List<Item> gwasResults = new LinkedList<>();
+    Map<Integer,Item> publicationPMIDMap = new HashMap<>(); // keyed by PMID if supplied
+    Map<String,Item> publicationDOIMap = new HashMap<>();   // keyed by DOI if supplied and PMID isn't
     Map<String,Item> ontologyAnnotationMap = new HashMap<>();
     Map<String,Item> phenotypeMap = new HashMap<>();
     Map<String,Item> markerMap = new HashMap<>(); // keyed by secondaryIdentifier
@@ -106,21 +109,31 @@ public class GWASFileConverter extends DatastoreFileConverter {
             } else if (key.toLowerCase().equals("pmid")) {
                 int pmid = Integer.parseInt(value); // make sure it's a number
                 if (publication==null) {
-                    publication = createItem("Publication");
-                    publication.setAttribute("pubMedId", String.valueOf(pmid));
-                    publications.add(publication);
+                    if (publicationPMIDMap.containsKey(pmid)) {
+                        publication = publicationPMIDMap.get(pmid);
+                    } else {
+                        publication = createItem("Publication");
+                        publication.setAttribute("pubMedId", String.valueOf(pmid));
+                        publicationPMIDMap.put(pmid, publication);
+                    }
                     gwas.addToCollection("publications", publication);
                 } else {
+                    // update DOI pub
                     publication.setAttribute("pubMedId", String.valueOf(pmid));
-                }
+                }                    
             } else if (key.toLowerCase().equals("doi")) {
                 String doi = value;
                 if (publication==null) {
-                    publication = createItem("Publication");
-                    publication.setAttribute("doi", doi);
-                    publications.add(publication);
+                    if (publicationDOIMap.containsKey(doi)) {
+                        publication = publicationDOIMap.get(doi);
+                    } else {
+                        publication = createItem("Publication");
+                        publication.setAttribute("doi", doi);
+                        publicationDOIMap.put(doi, publication);
+                    }
                     gwas.addToCollection("publications", publication);
                 } else {
+                    // update PMID pub
                     publication.setAttribute("doi", doi);
                 }
             } else {
@@ -136,7 +149,9 @@ public class GWASFileConverter extends DatastoreFileConverter {
                 }
                 marker.setReference("organism", organism);
                 marker.addToCollection("dataSets", dataSet);
-		marker.addToCollection("publications", publication);
+                if (publication!=null) {
+                    marker.addToCollection("publications", publication);
+                }
                 // Phenotype
                 Item phenotype = phenotypeMap.get(rec.phenotype);
 		if (phenotype==null) {
@@ -152,6 +167,9 @@ public class GWASFileConverter extends DatastoreFileConverter {
                 Item gwasResult = createItem("GWASResult");
 		gwasResult.setAttribute("identifier", rec.identifier);
                 gwasResult.setAttribute("pValue", String.valueOf(rec.pvalue));
+                if (rec.lod!=Double.MAX_VALUE) {
+                    gwasResult.setAttribute("lod", String.valueOf(rec.lod));
+                }
                 gwasResult.setReference("gwas", gwas);
                 gwasResult.setReference("marker", marker);
                 gwasResult.setReference("phenotype", phenotype);
@@ -215,6 +233,9 @@ public class GWASFileConverter extends DatastoreFileConverter {
 	store(dataSets.values());
 	store(organisms.values());
         // local
+        Set<Item> publications = new HashSet<>();
+        publications.addAll(publicationPMIDMap.values());
+        publications.addAll(publicationDOIMap.values());
 	store(publications);
 	store(gwases);
 	store(gwasResults);

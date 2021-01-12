@@ -22,6 +22,7 @@
   <class name="GWASResult" is-interface="true">
     <attribute name="identifier" type="java.lang.String"/>
     <attribute name="pValue" type="java.lang.Double"/>
+    <attribute name="lod" type="java.lang.Double"/>
     <reference name="phenotype" referenced-type="Phenotype" reverse-reference="gwasResults"/>
     <reference name="gwas" referenced-type="GWAS" reverse-reference="results"/>
     <reference name="marker" referenced-type="GeneticMarker" reverse-reference="gwasResults"/>

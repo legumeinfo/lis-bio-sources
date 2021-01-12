@@ -90,45 +90,42 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
      */
     @Override
     public void process(GFF3Record record) {
-        String id = record.getId();
-        String type = record.getType();
         Item feature = getFeature();
+        String type = record.getType();
         String className = feature.getClassName();
-        Map<String,List<String>> attributesMap = record.getAttributes();
-        // only update feature if ID is present
-        if (id==null) return;
-        // parse primaryIdentifier
-        // 0     1      2    3    4     5          6 7   8
-        // phavu.G19833.gnm2.ann1.Phvul.003G111100.1.CDS.1
-        // 0     1            2    3      4                         5
-        // medtr.jemalong_A17.gnm5.ann1_6.exon:MtrunA17Chr1g0187771.1
-        // 0     1            2    3      4
-        // medtr.jemalong_A17.gnm5.ann1_6.gene:MtrunA17CPg0492171
-        // 0     1            2    3
-        // vigun.IT97K-499-35.gnm1.1_0052;
-        // 0     1    2    3
-        // glyma.Wm82.gnm2.ss107913399
-        String[] parts = id.split("\\.");
-        if (parts.length<4) {
-            System.err.println(id+" skipped: has too few dot-separated parts.");
-            return;
-        }
-        String gensp = parts[0];
-        String strainId = parts[1];
-        String assemblyVersion = parts[2];
+        String id = record.getId();
+        String name = null;
+        if (record.getNames()!=null) name = record.getNames().get(0);
+        String seqId = record.getSequenceID();
+        String[] seqParts = seqId.split("\\.");
+        String gensp = seqParts[0];
+        String strainId = seqParts[1];
+        String assemblyVersion = seqParts[2];
+        String primaryIdentifier = null;
         String annotationVersion = null;
         boolean hasAnnotation = false;
-        if (parts.length>4) {
-            hasAnnotation = true;
-            annotationVersion = parts[3];
+        if (id.startsWith(gensp+"."+strainId+"."+assemblyVersion)) {
+            primaryIdentifier = id;
+            String[] idParts = id.split("\\.");
+            if (idParts.length>4) {
+                hasAnnotation = true;
+                annotationVersion = idParts[3];
+            }
+        } else if (name==null) {
+            throw new RuntimeException("Record does not have a full-yuck ID and is missing a Name attribute:"+record);
+        } else {
+            // build the primaryIdentifier from the sequence ID and the Name attribute.
+            String[] nameParts = name.split("\\."); // in case it's something like gensp.Name
+            if (nameParts.length==2) name = nameParts[1];
+            primaryIdentifier = gensp+"."+strainId+"."+assemblyVersion+"."+name;
         }
-        
-        // set other standard attributes
-        feature.setAttribute("secondaryIdentifier", DatastoreFileConverter.extractSecondaryIdentifier(id, hasAnnotation));
+        // set standard attributes
+        feature.setAttribute("primaryIdentifier", primaryIdentifier);
+        feature.setAttribute("secondaryIdentifier", DatastoreFileConverter.extractSecondaryIdentifier(primaryIdentifier, hasAnnotation));
         feature.setAttribute("assemblyVersion", assemblyVersion);
         if (annotationVersion!=null) feature.setAttribute("annotationVersion", annotationVersion);
         
-        // add marker type = SNP if it is a marker with length 1
+        // add marker type = SNP if it is a marker with length 1. This will be overridden if Type attribute is present.
         if (type.equals("genetic_marker") && (record.getStart()-record.getEnd())==0) {
             feature.setAttribute("type", "SNP");
         }
@@ -139,6 +136,7 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         }
 
         // more specific attributes
+        Map<String,List<String>> attributesMap = record.getAttributes();
         for (String key : attributesMap.keySet()) {
             List<String> attributes = attributesMap.get(key);
             if (key.equals("Name")) {
@@ -192,6 +190,8 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
                 }
             } else if (type.equals("genetic_marker") && key.equals("Alleles")) {
                 feature.setAttribute("alleles", attributes.get(0));
+            } else if (type.equals("genetic_marker") && key.equals("Type")) {
+                feature.setAttribute("type", attributes.get(0));
             } else if (key.equals("evid_id")) {
                 // [GAR_10012494]
                 // do nothing

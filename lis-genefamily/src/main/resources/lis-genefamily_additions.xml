@@ -34,6 +34,7 @@
 
   <!-- interpro loader has ProteinDomain extend BioEntity -->
   <class name="ProteinDomain" extends="BioEntity" is-interface="true">
+    <attribute name="description" type="java.lang.String"/>
     <collection name="geneFamilies" referenced-type="GeneFamily" reverse-reference="proteinDomains"/>
   </class>
 

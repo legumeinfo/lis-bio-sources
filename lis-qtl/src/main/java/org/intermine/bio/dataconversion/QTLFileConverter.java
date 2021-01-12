@@ -107,14 +107,14 @@ public class QTLFileConverter extends DatastoreFileConverter {
         while ((line=bufferedReader.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue;
             String[] fields = line.split("\t");
-	    if (fields[0].equals("Identifier")) {
+	    if (fields[0].toLowerCase().equals("identifier")) {
                 experiment.setAttribute("primaryIdentifier", fields[1]);
                 experimentMap.put(fields[1], experiment);
-	    } else if (fields[0].equals("Name")) {
+	    } else if (fields[0].toLowerCase().equals("name")) {
 		experiment.setAttribute("name", fields[1]);
-	    } else if (fields[0].equals("Description")) {
+	    } else if (fields[0].toLowerCase().equals("description")) {
 		experiment.setAttribute("description", fields[1]);
-	    } else if (fields[0].equals("MappingParent")) {
+	    } else if (fields[0].toLowerCase().equals("mappingparent")) {
                 String[] parts = fields[1].split("\\.");
                 if (parts.length!=2) {
                     throw new RuntimeException("MappingParent must have form gensp.StrainName. Aborting.");
@@ -122,24 +122,26 @@ public class QTLFileConverter extends DatastoreFileConverter {
                 String gensp = parts[0].trim();
                 String strainName = parts[1].trim();
                 experiment.addToCollection("mappingParents", getStrain(strainName, getOrganism(gensp)));
-	    } else if (fields[0].equals("MappingDescription")) {
+	    } else if (fields[0].toLowerCase().equals("mappingdescription")) {
 		experiment.setAttribute("mappingDescription", fields[1]);
-	    } else if (fields[0].equals("GenotypingPlatform")) {
+	    } else if (fields[0].toLowerCase().equals("genotypingplatform")) {
 		experiment.setAttribute("genotypingPlatform", fields[1]);
-	    } else if (fields[0].equals("GenotypingMethod")) {
+	    } else if (fields[0].toLowerCase().equals("genotypingmethod")) {
 		experiment.setAttribute("genotypingMethod", fields[1]);
-	    } else if (fields[0].equals("PMID")) {
+	    } else if (fields[0].toLowerCase().equals("pmid")) {
                 if (publication==null) {
                     publication = createItem("Publication");
                     publications.add(publication);
                 }
                 publication.setAttribute("pubMedId", fields[1]);
-	    } else if (fields[0].equals("DOI")) {
+	    } else if (fields[0].toLowerCase().equals("doi")) {
 		if (publication==null) {
                     publication = createItem("Publication");
                     publications.add(publication);
                 }
                 publication.setAttribute("doi", fields[1]);
+            } else if (fields[0].toLowerCase().equals("taxonid")) {
+                // do nothing
 	    } else {
 		// data line
 		if (publication==null) {
