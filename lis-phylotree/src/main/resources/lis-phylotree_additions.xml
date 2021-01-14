@@ -9,6 +9,13 @@
     <reference name="dataSet" referenced-type="DataSet"/>
   </class>
 
+  <class name="Newick" is-interface="false" extends="java.lang.Object">
+    <attribute name="identifier" type="java.lang.String"/>
+    <attribute name="contents" type="java.lang.String"/>
+    <reference name="phylotree" referenced-type="Phylotree"/>
+    <reference name="geneFamily" referenced-type="GeneFamily"/>
+  </class>
+
   <class name="Phylonode" is-interface="true">
     <attribute name="identifier" type="java.lang.String"/>
     <attribute name="name" type="java.lang.String"/>

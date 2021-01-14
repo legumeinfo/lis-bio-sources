@@ -30,6 +30,7 @@ import org.intermine.xml.full.Item;
  * PlatformDetails   Illumina Infinium Bead Chip
  * GenotypeDataset   LIS DS folder containing a VCF or HMP file underlying analysis
  * PhenotypeDataset  LIS DS folder containing a trait measurement file underlying analysis
+ * MarkerSet         SoyBead
  * PMID 123456
  * DOI	10.3835/plantgenome2015.04.0024
  * #identifier	   phenotype  marker	      pvalue
@@ -93,20 +94,22 @@ public class GWASFileConverter extends DatastoreFileConverter {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
             String[] parts = line.split("\t");
 	    if (parts.length<2) continue; // entry without value
-            String key = parts[0];
+            String key = parts[0].toLowerCase();
             String value = parts[1];
 	    if (value.length()==0) continue; // entry without value
-            if (key.toLowerCase().equals("identifier")) {
+            if (key.equals("identifier")) {
                 gwas.setAttribute("primaryIdentifier", value);
-	    } else if (key.toLowerCase().equals("name")) {
+	    } else if (key.equals("name")) {
 		gwas.setAttribute("name", value);
-            } else if (key.toLowerCase().equals("description")) {
+            } else if (key.equals("description")) {
                 gwas.setAttribute("description", value);
-            } else if (key.toLowerCase().equals("platformname")) {
+            } else if (key.equals("platformname")) {
                 gwas.setAttribute("platformName", value);
-            } else if (key.toLowerCase().equals("platformdetails")) {
+            } else if (key.equals("platformdetails")) {
                 gwas.setAttribute("platformDetails", value);
-            } else if (key.toLowerCase().equals("pmid")) {
+            } else if (key.equals("markerset")) {
+                // gwas.setAttribute("markerSet", value);
+            } else if (key.equals("pmid")) {
                 int pmid = Integer.parseInt(value); // make sure it's a number
                 if (publication==null) {
                     if (publicationPMIDMap.containsKey(pmid)) {
@@ -121,7 +124,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
                     // update DOI pub
                     publication.setAttribute("pubMedId", String.valueOf(pmid));
                 }                    
-            } else if (key.toLowerCase().equals("doi")) {
+            } else if (key.equals("doi")) {
                 String doi = value;
                 if (publication==null) {
                     if (publicationDOIMap.containsKey(doi)) {

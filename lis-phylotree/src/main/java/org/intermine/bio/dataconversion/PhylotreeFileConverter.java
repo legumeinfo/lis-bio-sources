@@ -48,6 +48,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
     Map<String,Integer> childCounts = new HashMap<>(); // key=(Phylotree.identifier).(Node.id)
     List<Item> geneFamilies = new LinkedList<>();      // unique per file
     List<Item> phylotrees = new LinkedList<>();        // unique per file
+    List<Item> newicks = new LinkedList<>();           // unique per file
 
     Item dataSource = null;
     Item dataSet = null;                            // set to be the folder, not individual files
@@ -93,6 +94,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         store(phylotrees);
         store(phylonodes.values());
 	store(proteins.values());
+        store(newicks);
     }
 
     /**
@@ -141,77 +143,6 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
             Item protein = getProtein(node.label);
             phylonode.setReference("protein", protein);
         }
-        // TODO:
-        // phylonode.setAttribute("length", String.valueOf(node.getWeight()));
-        // phylonode.setAttribute("bcnScore", String.valueOf(node.getBcnScore()));
-        // phylonode.setAttribute("numberChildren", String.valueOf(node.numberChildren()));
-        // phylonode.setAttribute("isLeaf", String.valueOf(node.isLeaf()));
-        // phylonode.setAttribute("isRoot", String.valueOf(node.isRoot()));
-        // parents and children - careful!
-        // TODO:
-        // try {
-        //     if (node.parent()!=null) {
-        //         Item parent;
-        //         String parentKey = identifier+"."+node.parent().getKey();
-        //         if (phylonodes.containsKey(parentKey)) {
-        //             parent = phylonodes.get(parentKey);
-        //         } else {
-        //             parent = createItem("Phylonode");
-        //             parent.setAttribute("key", String.valueOf(node.parent().getKey()));
-        //             phylonodes.put(parentKey, parent);
-        //         }
-        //         phylonode.setReference("parent", parent);
-        //     }
-        // } catch (IndexOutOfBoundsException e) {
-        //     // do nothing
-        // }
-        // TODO:
-        // try {
-        //     if (node.firstChild()!=null) {
-        //         Item firstChild;
-        //         String firstChildKey = identifier+"."+node.firstChild().getKey();
-        //         if (phylonodes.containsKey(firstChildKey)) {
-        //             firstChild = phylonodes.get(firstChildKey);
-        //         } else {
-        //             firstChild = createItem("Phylonode");
-        //             firstChild.setAttribute("key", String.valueOf(node.firstChild().getKey()));
-        //             phylonodes.put(firstChildKey, firstChild);
-        //         }
-        //         phylonode.setReference("firstChild", firstChild);
-        //     }
-        // } catch (IndexOutOfBoundsException e) {
-        //     // do nothing
-        // }
-        // TODO:
-        // try {
-        //     if (node.lastChild()!=null) {
-        //         Item lastChild;
-        //         String lastChildKey = identifier+"."+node.lastChild().getKey();
-        //         if (phylonodes.containsKey(lastChildKey)) {
-        //             lastChild = phylonodes.get(lastChildKey);
-        //         } else {
-        //             lastChild = createItem("Phylonode");
-        //             lastChild.setAttribute("key", String.valueOf(node.lastChild().getKey()));
-        //             phylonodes.put(lastChildKey, lastChild);
-        //         }
-        //         phylonode.setReference("lastChild", lastChild);
-        //     }
-        // } catch (IndexOutOfBoundsException e) {
-        //     // do nothing
-        // }
-        // TODO:
-        // for (TreeNode childNode : node.getChildren()) {
-        //     Item child;
-        //     String childKey = identifier+"."+childNode.getKey();
-        //     if (phylonodes.containsKey(childKey)) {
-        //         child = phylonodes.get(childKey);
-        //     } else {
-        //         child = createItem("Phylonode");
-        //         child.setAttribute("key", String.valueOf(childNode.getKey()));
-        //         phylonodes.put(childKey, child);
-        //     }
-        //     phylonode.addToCollection("children", child);
-        // }
         return phylonode;
     }
 
@@ -327,7 +258,22 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
                 }
             }
         }
+        reader.close();
         // set numLeaves for this tree
         phylotree.setAttribute("numLeaves", String.valueOf(numLeaves));
+        // now store the Newick file contents
+        Item newick = createItem("Newick");
+        newicks.add(newick);
+        newick.setAttribute("identifier", identifier);
+        newick.setReference("phylotree", phylotree);
+        newick.setReference("geneFamily", geneFamily);
+        String contents = "";
+        String line = null;
+        BufferedReader br = new BufferedReader(new FileReader(getCurrentFile()));
+        while ((line=br.readLine())!=null) {
+            contents += line;
+        }
+        br.close();
+        newick.setAttribute("contents", contents);
     }
 }
