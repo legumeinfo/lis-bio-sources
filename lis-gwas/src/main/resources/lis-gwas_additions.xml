@@ -13,8 +13,10 @@
     <reference name="dataSet" referenced-type="DataSet"/>
     <attribute name="name" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
+    <attribute name="synopsis" type="java.lang.String"/>
     <attribute name="platformName" type="java.lang.String"/>
     <attribute name="platformDetails" type="java.lang.String"/>
+    <attribute name="curationNotes" type="java.lang.String"/>
     <collection name="results" referenced-type="GWASResult" reverse-reference="gwas"/>
   </class>
 

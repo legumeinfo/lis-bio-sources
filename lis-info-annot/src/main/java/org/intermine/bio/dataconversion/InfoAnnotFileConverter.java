@@ -125,7 +125,7 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
             // phavu.Phvul.002G040500
             gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = extractSecondaryIdentifier(primaryIdentifier, true);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
 	    if (secondaryIdentifier!=null) gene.setAttribute("secondaryIdentifier", secondaryIdentifier);
             genes.put(primaryIdentifier, gene);
         }
@@ -142,7 +142,7 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
         } else {
             protein = createItem("Protein");
             protein.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = extractSecondaryIdentifier(primaryIdentifier, true);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
 	    if (secondaryIdentifier!=null) protein.setAttribute("secondaryIdentifier", secondaryIdentifier);
             proteins.put(primaryIdentifier, protein);
         }
@@ -175,7 +175,7 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
             // Phvul.002G040500.1
             mRNA = createItem("MRNA");
             mRNA.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = extractSecondaryIdentifier(primaryIdentifier, true);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
 	    if (secondaryIdentifier!=null) mRNA.setAttribute("secondaryIdentifier", secondaryIdentifier);
             mRNAs.put(primaryIdentifier, mRNA);
         }
@@ -202,10 +202,10 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
      */
     void processInfoAnnotFile(Reader reader) throws IOException {
 	Item dataSet = getDataSet();
-        String assemblyVersion = extractAssemblyVersion(getCurrentFile().getName());
-        String annotationVersion = extractAnnotationVersion(getCurrentFile().getName());
-	String gensp = extractGensp(getCurrentFile().getName());
-	String strainId = extractStrainIdentifier(getCurrentFile().getName());
+        String assemblyVersion = DatastoreUtils.extractAssemblyVersion(getCurrentFile().getName());
+        String annotationVersion = DatastoreUtils.extractAnnotationVersion(getCurrentFile().getName());
+	String gensp = DatastoreUtils.extractGensp(getCurrentFile().getName());
+	String strainId = DatastoreUtils.extractStrainIdentifier(getCurrentFile().getName());
 	// organism and strain
         Item organism = getOrganism(gensp);
         Item strain = getStrain(strainId, organism);
@@ -221,7 +221,7 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
             InfoAnnotRecord record = new InfoAnnotRecord(line);
             if (record.pacId!=null) {
                 // the gene
-                String geneIdentifier = formPrimaryIdentifier(gensp, strainId, assemblyVersion, annotationVersion, record.locusName);
+                String geneIdentifier = DatastoreUtils.formPrimaryIdentifier(gensp, strainId, assemblyVersion, annotationVersion, record.locusName);
                 Item gene = getGene(geneIdentifier);
                 gene.setAttribute("assemblyVersion", assemblyVersion);
                 gene.setAttribute("annotationVersion", annotationVersion);
@@ -229,7 +229,7 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
                 gene.setReference("strain", strain);
                 gene.addToCollection("dataSets", dataSet);
                 // the protein
-                String proteinIdentifier = formPrimaryIdentifier(gensp, strainId, assemblyVersion, annotationVersion, record.peptideName);
+                String proteinIdentifier = DatastoreUtils.formPrimaryIdentifier(gensp, strainId, assemblyVersion, annotationVersion, record.peptideName);
                 Item protein = getProtein(proteinIdentifier);
                 protein.setAttribute("assemblyVersion", assemblyVersion);
                 protein.setAttribute("annotationVersion", annotationVersion);
@@ -238,7 +238,7 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
                 protein.addToCollection("genes", gene);
                 protein.addToCollection("dataSets", dataSet);
                 // the transcript = mRNA
-                String mRNAIdentifier = formPrimaryIdentifier(gensp, strainId, assemblyVersion, annotationVersion, record.transcriptName);
+                String mRNAIdentifier = DatastoreUtils.formPrimaryIdentifier(gensp, strainId, assemblyVersion, annotationVersion, record.transcriptName);
                 Item mRNA = getMRNA(mRNAIdentifier);
                 mRNA.setAttribute("assemblyVersion", assemblyVersion);
                 mRNA.setAttribute("annotationVersion", annotationVersion);

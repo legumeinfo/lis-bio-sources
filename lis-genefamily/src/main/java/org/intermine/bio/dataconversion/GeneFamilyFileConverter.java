@@ -125,7 +125,7 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
         } else {
             protein = createItem("Protein");
             protein.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = extractSecondaryIdentifier(primaryIdentifier, true);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
 	    if (secondaryIdentifier!=null) protein.setAttribute("secondaryIdentifier", secondaryIdentifier);
             proteins.put(primaryIdentifier, protein);
         }
@@ -142,7 +142,7 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
         } else {
             gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = extractSecondaryIdentifier(primaryIdentifier, true);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
 	    if (secondaryIdentifier!=null) gene.setAttribute("secondaryIdentifier", secondaryIdentifier);
             genes.put(primaryIdentifier, gene);
         }
@@ -230,7 +230,7 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
                         if (desiredOrganisms.contains(gensp)) {
                             Item organism = getOrganism(gensp);
                             Item protein = getProtein(name);
-                            String geneIdentifier = extractGeneIdentifierFromProteinIdentifier(name);
+                            String geneIdentifier = DatastoreUtils.extractGeneIdentifierFromProteinIdentifier(name);
                             Item gene = getGene(geneIdentifier);
                             protein.setReference("geneFamily", geneFamily);
                             protein.addToCollection("genes", gene);

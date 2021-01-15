@@ -62,11 +62,11 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
 	if (chromosomeMap.containsKey(primaryIdentifier)) {
 	    return chromosomeMap.get(primaryIdentifier);
 	} else {
-	    String secondaryIdentifier = extractSecondaryIdentifier(primaryIdentifier, false);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, false);
 	    if (secondaryIdentifier==null) {
 		throw new RuntimeException("Error in chromosome primaryIdentifier:"+primaryIdentifier);
 	    }
-            String assemblyVersion = extractAssemblyVersion(primaryIdentifier);
+            String assemblyVersion = DatastoreUtils.extractAssemblyVersion(primaryIdentifier);
             if (assemblyVersion==null) {
                 throw new RuntimeException("Error in chromosome assemblyVersion:"+primaryIdentifier);
             }
@@ -233,7 +233,7 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
      */
     void populateSourceRegion(Item syntenicRegion, SyntenyGFF3Record gff, Item organism, Item strain, Item chromosome, Item chromosomeLocation) {
 	syntenicRegion.setAttribute("primaryIdentifier", getSourceRegionName(gff));
-	syntenicRegion.setAttribute("secondaryIdentifier", extractSecondaryIdentifier(getSourceRegionName(gff), false));
+	syntenicRegion.setAttribute("secondaryIdentifier", DatastoreUtils.extractSecondaryIdentifier(getSourceRegionName(gff), false));
 	syntenicRegion.setAttribute("length", String.valueOf(getSourceEnd(gff)-getSourceStart(gff)+1));
 	syntenicRegion.setAttribute("score", String.valueOf(gff.getScore()));
 	syntenicRegion.setReference("organism", organism);
@@ -257,7 +257,7 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
      */
     void populateTargetRegion(Item syntenicRegion, SyntenyGFF3Record gff, Item organism, Item strain, Item chromosome, Item chromosomeLocation) {
 	syntenicRegion.setAttribute("primaryIdentifier", getTargetRegionName(gff));
-	syntenicRegion.setAttribute("secondaryIdentifier", extractSecondaryIdentifier(getTargetRegionName(gff), false));
+	syntenicRegion.setAttribute("secondaryIdentifier", DatastoreUtils.extractSecondaryIdentifier(getTargetRegionName(gff), false));
 	syntenicRegion.setAttribute("length", String.valueOf(getTargetEnd(gff)-getTargetStart(gff)+1));
 	syntenicRegion.setAttribute("score", String.valueOf(gff.getScore()));
 	syntenicRegion.setReference("organism", organism);

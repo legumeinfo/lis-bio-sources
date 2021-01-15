@@ -7,15 +7,32 @@
     <attribute name="abbreviation" type="java.lang.String"/>
   </class>
 
+  <!-- Identifier          Experiment unique identifier, e.g. 22691139 -->
+  <!-- Name                Experiment name, e.g. Jones, Smith, et al. 2005 -->
+  <!-- Description         Description of the experiment; often from the pub abstract -->
+  <!-- MappingParent       gensp.Accession = one of the accessions used in the map -->
+  <!-- MappingParent       gensp.Accession = another of the accessions used in the map -->
+  <!-- MappingParent       gensp.Accession = yet another accession, etc. -->
+  <!-- MappingDescription  Description of the development of the mapping population -->
+  <!-- PMID                PubMed ID of the publication; one of PMID, DOI required -->
+  <!-- DOI                 DOI of the publication; one of PMID, DOI required -->
+  <!-- GenotypingPlatform  Description of the genotyping platform -->
+  <!-- GenotypingMethod    Description of the genotyping method -->
+  <!-- PlatformName        Identifies the GFF files linking markers to genomes, e.g. SoySNP50K. -->
+  <!--                     This name is used in the GFF filename, following .key4. -->
+  <!-- Treatment           Description of treatment applied to detect specific traits (e.g. high and low salt treatments to find salt tolerance QTLs). -->
+  <!-- AnalysisMethod      Method used to detect QTL or marker-trait associations (e.g., SMA, IM, SIM, CIM, ICIM.) -->
+  
   <class name="QTLExperiment" extends="Annotatable" is-interface="true">
     <attribute name="name" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
+    <collection name="mappingParents" referenced-type="Strain"/>
     <attribute name="mappingDescription" type="java.lang.String"/>
     <attribute name="genotypingPlatform" type="java.lang.String"/>
     <attribute name="genotypingMethod" type="java.lang.String"/>
+    <attribute name="platformName" type="java.lang.String"/>
     <reference name="organism" referenced-type="Organism"/>
     <collection name="dataSets" referenced-type="DataSet"/>
-    <collection name="mappingParents" referenced-type="Strain"/>
     <collection name="QTLs" referenced-type="QTL" reverse-reference="experiment"/>
   </class>
 

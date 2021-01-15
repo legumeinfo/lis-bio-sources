@@ -33,7 +33,8 @@ import org.intermine.xml.full.ItemHelper;
  * three_prime_UTR ID=phavu.G19833.gnm1.ann1.Phvul.001G000100.1.v1.0.three_prime_UTR.1;Parent=phavu.G19833.gnm1.ann1.Phvul.001G000100.1;
  * rRNA_primary_transcript ID=glyma.Zh13.gnm1.ann1.SoyZH13_CG009100.rRNA1;Name=SoyZH13_CG009100.rRNA1;Parent=glyma.Zh13.gnm1.ann1.SoyZH13_CG009100
  * tRNA_primary_transcript ID=glyma.Zh13.gnm1.ann1.SoyZH13_CG003000.tRNA1;Name=SoyZH13_CG003000.tRNA1;Parent=glyma.Zh13.gnm1.ann1.SoyZH13_CG003000
- * genetic_marker  ID=phavu.G19833.gnm1.mrk.3_12345;Name=3_12345;Alleles=A/T
+ *
+ * genetic_marker  ID=FOOBAR123;Name=3_12345;Alleles=A/T
  *
  * Parents:
  *
@@ -104,26 +105,31 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         String primaryIdentifier = null;
         String annotationVersion = null;
         boolean hasAnnotation = false;
+        // ID values are notoriously incorrect, so DO NOT USE THEM for primaryIdentifier
+        // HOWEVER, if id contains ann# then we'll grab annotationVersion from it since we can't get at the filename
+        // ID=gensp.strain.gnm.ann.stuff-to-ignore
         if (id.startsWith(gensp+"."+strainId+"."+assemblyVersion)) {
-            primaryIdentifier = id;
             String[] idParts = id.split("\\.");
             if (idParts.length>4) {
                 hasAnnotation = true;
                 annotationVersion = idParts[3];
             }
-        } else if (name==null) {
-            throw new RuntimeException("Record does not have a full-yuck ID and is missing a Name attribute:"+record);
+        }
+        if (name==null) {
+            throw new RuntimeException("Record is missing the required Name attribute:"+record);
         } else {
             // build the primaryIdentifier from the sequence ID and the Name attribute.
-            String[] nameParts = name.split("\\."); // in case it's something like gensp.Name
-            if (nameParts.length==2) name = nameParts[1];
-            primaryIdentifier = gensp+"."+strainId+"."+assemblyVersion+"."+name;
+            if (hasAnnotation) {
+                primaryIdentifier = gensp+"."+strainId+"."+assemblyVersion+"."+annotationVersion+"."+name;
+            } else {
+                primaryIdentifier = gensp+"."+strainId+"."+assemblyVersion+"."+name;
+            }
         }
         // set standard attributes
         feature.setAttribute("primaryIdentifier", primaryIdentifier);
-        feature.setAttribute("secondaryIdentifier", DatastoreFileConverter.extractSecondaryIdentifier(primaryIdentifier, hasAnnotation));
+        feature.setAttribute("secondaryIdentifier", DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, hasAnnotation));
         feature.setAttribute("assemblyVersion", assemblyVersion);
-        if (annotationVersion!=null) feature.setAttribute("annotationVersion", annotationVersion);
+        if (hasAnnotation) feature.setAttribute("annotationVersion", annotationVersion);
         
         // add marker type = SNP if it is a marker with length 1. This will be overridden if Type attribute is present.
         if (type.equals("genetic_marker") && (record.getStart()-record.getEnd())==0) {

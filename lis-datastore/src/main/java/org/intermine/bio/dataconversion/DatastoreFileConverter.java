@@ -146,8 +146,8 @@ public class DatastoreFileConverter extends FileConverter {
 	    throw new RuntimeException("You must set dataSetUrl and dataSetDescription in project.xml.");
 	}
 	// extract attributes
-	String assemblyVersion = extractAssemblyVersion(name);
-	String annotationVersion = extractAnnotationVersion(name);
+	String assemblyVersion = DatastoreUtils.extractAssemblyVersion(name);
+	String annotationVersion = DatastoreUtils.extractAnnotationVersion(name);
 	String dataSetVersion = null;
 	if (assemblyVersion!=null && annotationVersion!=null) {
 	    dataSetVersion = assemblyVersion+"."+annotationVersion;
@@ -178,7 +178,7 @@ public class DatastoreFileConverter extends FileConverter {
      * Get the gensp string for the current filename.
      */
     String getGensp() {
-        return extractGensp(getCurrentFile().getName());
+        return DatastoreUtils.extractGensp(getCurrentFile().getName());
     }
 
     /**
@@ -230,7 +230,7 @@ public class DatastoreFileConverter extends FileConverter {
      * Get/add the strainItem associated with the current filename and organism.
      */
     Item getStrain(Item organism) {
-	String identifier = extractStrainIdentifier(getCurrentFile().getName());
+	String identifier = DatastoreUtils.extractStrainIdentifier(getCurrentFile().getName());
 	return getStrain(identifier, organism);
     }
     
@@ -248,114 +248,5 @@ public class DatastoreFileConverter extends FileConverter {
             strains.put(identifier, strain);
 	    return strain;
         }
-    }
-
-    /**
-     * Extract the gensp string from the given filename.
-     * gensp.strain.assy.anno.key.content.ext
-     */
-    public static String extractGensp(String filename) {
-	String[] fields = filename.split("\\.");
-	if (fields.length>1) {
-	    return fields[0];
-	} else {
-	    return null;
-	}
-    }
-
-    /**
-     * Extract the Strain identifier from the given filename.
-     * gensp.strain.assy.anno.key.content.ext
-     */
-    public static String extractStrainIdentifier(String filename) {
-	String[] fields = filename.split("\\.");
-	if (fields.length>1) {
-	    return fields[1];
-	} else {
-	    return null;
-	}
-    }
-
-    /**
-     * Extract the assembly version from the given filename.
-     * gensp.strain.assy.anno.key.content.ext
-     */
-    public static String extractAssemblyVersion(String filename) {
-        String[] fields = filename.split("\\.");
-        if (fields.length>2 && fields[2].startsWith("gnm")) {
-            return fields[2];
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Extract the annotation version from the given filename.
-     * gensp.strain.assy.anno.key.content.ext
-     */
-    public static String extractAnnotationVersion(String filename) {
-        String[] fields = filename.split("\\.");
-        if (fields.length>3 && fields[3].startsWith("ann")) {
-            return fields[3];
-        } else {
-            return null;
-        }
-    }
-
-    /**
-     * Extract the secondaryIdentifier from a full-yuck LIS identifier.
-     * Set isAnnotationFeature=true if this is an annotation feature (at least five dot-separated parts) as opposed to an assembly feature (at least four dot-separated parts).
-     *
-     * isAnnotationFeature==true:
-     * 0      1      2   3 
-     * genesp.strain.gnm.secondaryIdentifier
-     *
-     * isAnnotationFeature==false:
-     * 0      1      2   3   4
-     * genesp.strain.gnm.ann.secondaryIdentifier
-     *
-     * @param   lisIdentifier the LIS full-yuck identifier
-     * @param   isAnnotationFeature true if this is an annotation feature with five or more dot-separated parts
-     * @returns the secondaryIdentifier
-     */
-    public static String extractSecondaryIdentifier(String lisIdentifier, boolean isAnnotationFeature) {
-	String[] fields = lisIdentifier.split("\\.");
-	if (isAnnotationFeature && fields.length>=5) {
-	    String secondaryIdentifier = fields[4];
-	    for (int i=5; i<fields.length; i++) {
-		secondaryIdentifier += "."+fields[i];
-	    }
-	    return secondaryIdentifier;
-	} else if (!isAnnotationFeature && fields.length>=4) {
-	    String secondaryIdentifier = fields[3];
-	    for (int i=4; i<fields.length; i++) {
-		secondaryIdentifier += "."+fields[i];
-	    }
-	    return secondaryIdentifier;
-	} else {
-	    return null;
-	}
-    }
-
-    /**
-     * Extract the gene identifier from a protein identifier, which is assumed to be [geneIdentifier].n.
-     * 
-     * @param proteinIdentifier the protein LIS identifier
-     * @returns the corresponding gene LIS identifier
-     */
-    public static String extractGeneIdentifierFromProteinIdentifier(String proteinIdentifier) {
-	String[] fields = proteinIdentifier.split("\\.");
-	String geneIdentifier = fields[0];
-	for (int i=1; i<(fields.length-1); i++) {
-	    geneIdentifier += "."+fields[i];
-	}
-	return geneIdentifier;
-    }
-
-    /**
-     * Form a primaryIdentifier from the secondaryIdentifier, gensp, strain, assembly and annotation
-     */
-    public static String formPrimaryIdentifier(String gensp, String strain, String assembly, String annotation, String secondaryIdentifier) {
-        return gensp+"."+strain+"."+assembly+"."+annotation+"."+secondaryIdentifier;
     }
 }

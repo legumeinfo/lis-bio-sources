@@ -282,8 +282,8 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         System.out.println(hashes);
         LOG.info("LISFastaLoaderTask loading file "+file.getName());
 	this.fastaFile = file;
-	assemblyVersion = DatastoreFileConverter.extractAssemblyVersion(file.getName());
-	annotationVersion = DatastoreFileConverter.extractAnnotationVersion(file.getName());
+	assemblyVersion = DatastoreUtils.extractAssemblyVersion(file.getName());
+	annotationVersion = DatastoreUtils.extractAnnotationVersion(file.getName());
         try {
             // process FASTA file
             if (sequenceType.equalsIgnoreCase("dna")) {
@@ -540,7 +540,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
 	    // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreFileConverter.extractSecondaryIdentifier(identifier, false);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, false);
 	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
             // name from ID attribute
             if (idAttribute!=null) {
@@ -558,7 +558,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
             // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreFileConverter.extractSecondaryIdentifier(identifier, false);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, false);
 	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
 	    // name from idAttribute
             if (idAttribute!=null) {
@@ -575,7 +575,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 	    // primaryIdentifier
 	    feature.setPrimaryIdentifier(identifier);
             // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreFileConverter.extractSecondaryIdentifier(identifier, true);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, true);
 	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
 	    // name from idAttribute
             if (idAttribute!=null) {
@@ -594,7 +594,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
             // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreFileConverter.extractSecondaryIdentifier(identifier, true);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, true);
 	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
 	    // name from idAttribute
             if (idAttribute!=null) {
@@ -615,7 +615,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
             // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreFileConverter.extractSecondaryIdentifier(identifier, true);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, true);
 	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
 	    // name from idAttribute
             if (idAttribute!=null) {

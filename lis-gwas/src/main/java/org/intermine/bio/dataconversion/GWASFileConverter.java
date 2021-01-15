@@ -30,7 +30,7 @@ import org.intermine.xml.full.Item;
  * PlatformDetails   Illumina Infinium Bead Chip
  * GenotypeDataset   LIS DS folder containing a VCF or HMP file underlying analysis
  * PhenotypeDataset  LIS DS folder containing a trait measurement file underlying analysis
- * MarkerSet         SoyBead
+ * CurationNotes     Bunch of words about stuff having to do with curation
  * PMID 123456
  * DOI	10.3835/plantgenome2015.04.0024
  * #identifier	   phenotype  marker	      pvalue
@@ -107,8 +107,10 @@ public class GWASFileConverter extends DatastoreFileConverter {
                 gwas.setAttribute("platformName", value);
             } else if (key.equals("platformdetails")) {
                 gwas.setAttribute("platformDetails", value);
-            } else if (key.equals("markerset")) {
-                // gwas.setAttribute("markerSet", value);
+            } else if (key.equals("synopsis")) {
+                gwas.setAttribute("synopsis", value);
+            } else if (key.equals("curationnotes")) {
+                gwas.setAttribute("curationNotes", value);
             } else if (key.equals("pmid")) {
                 int pmid = Integer.parseInt(value); // make sure it's a number
                 if (publication==null) {

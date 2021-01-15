@@ -31,17 +31,21 @@ import org.intermine.xml.full.Item;
  *
  * gensp.mixed.qtl.KEY4.identifier.expt.tsv
  * ----------------------------------------
- * Identifier	22691139
- * Name	Pottorff et al. 2012
- * Description	In this study, we analyzed the genetics of leaf morphology in a segregating cowpea RIL population....
- * MappingParent	Sanzi
- * MappingParent	Vita7
- * MappingDescription	The mapping population consisted of 122 RILs which were advanced from the Sanzi x Vita7 cross.
- * GenotypingPlatform	Illumina GoldenGate Array
- * GenotypingMethod	The Sanzi x Vita 7 population was genotyped at the F8 generation using bi-allelic SNP markers from the 1536-marker Illumina GoldenGate Assay.
- * PMID	22691139
- * #Identifier  Trait
- * Hls          Hastate leaf shape	
+ * Identifier          Experiment unique identifier, e.g. 22691139
+ * Name                Experiment name, e.g. Jones, Smith, et al. 2005
+ * Description         Description of the experiment; often from the pub abstract
+ * MappingParent       gensp.Accession = one of the accessions used in the map
+ * MappingParent       gensp.Accession = another of the accessions used in the map
+ * MappingParent       gensp.Accession = yet another accession, etc.
+ * MappingDescription  Description of the development of the mapping population
+ * PMID                PubMed ID of the publication; one of PMID, DOI required
+ * DOI                 DOI of the publication; one of PMID, DOI required
+ * GenotypingPlatform  Description of the genotyping platform
+ * GenotypingMethod    Description of the genotyping method
+ * PlatformName        Identifies the GFF files linking markers to genomes, e.g. SoySNP50K.
+ *                     This name is used in the GFF filename, following .key4.
+ * Treatment           Description of treatment applied to detect specific traits (e.g. high and low salt treatments to find salt tolerance QTLs).
+ * AnalysisMethod      Method used to detect QTL or marker-trait associations (e.g., SMA, IM, SIM, CIM, ICIM.)
  *
  * gensp.mixed.qtl.KEY4.identifier.markers.tsv
  * -------------------------------------------
@@ -102,45 +106,50 @@ public class QTLFileConverter extends DatastoreFileConverter {
         experiment.setReference("organism", organism);
         experiment.addToCollection("dataSets", dataSet);
 	Item publication = null; // based on PMID or DOI or both
-        BufferedReader bufferedReader = new BufferedReader(reader);
 	String line;
+        BufferedReader bufferedReader = new BufferedReader(reader);
         while ((line=bufferedReader.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue;
             String[] fields = line.split("\t");
-	    if (fields[0].toLowerCase().equals("identifier")) {
-                experiment.setAttribute("primaryIdentifier", fields[1]);
-                experimentMap.put(fields[1], experiment);
-	    } else if (fields[0].toLowerCase().equals("name")) {
-		experiment.setAttribute("name", fields[1]);
-	    } else if (fields[0].toLowerCase().equals("description")) {
-		experiment.setAttribute("description", fields[1]);
-	    } else if (fields[0].toLowerCase().equals("mappingparent")) {
-                String[] parts = fields[1].split("\\.");
+            String key = fields[0].toLowerCase();
+            String value = fields[1];
+	    if (key.equals("identifier")) {
+                // QTLExperiment.primaryIdentifier because it is Annotatable
+                experiment.setAttribute("primaryIdentifier", value);
+                experimentMap.put(value, experiment);
+	    } else if (key.equals("name")) {
+		experiment.setAttribute("name", value);
+	    } else if (key.equals("description")) {
+		experiment.setAttribute("description", value);
+	    } else if (key.equals("mappingparent")) {
+                String[] parts = value.split("\\.");
                 if (parts.length!=2) {
                     throw new RuntimeException("MappingParent must have form gensp.StrainName. Aborting.");
                 }
                 String gensp = parts[0].trim();
                 String strainName = parts[1].trim();
                 experiment.addToCollection("mappingParents", getStrain(strainName, getOrganism(gensp)));
-	    } else if (fields[0].toLowerCase().equals("mappingdescription")) {
-		experiment.setAttribute("mappingDescription", fields[1]);
-	    } else if (fields[0].toLowerCase().equals("genotypingplatform")) {
-		experiment.setAttribute("genotypingPlatform", fields[1]);
-	    } else if (fields[0].toLowerCase().equals("genotypingmethod")) {
-		experiment.setAttribute("genotypingMethod", fields[1]);
-	    } else if (fields[0].toLowerCase().equals("pmid")) {
+	    } else if (key.equals("mappingdescription")) {
+		experiment.setAttribute("mappingDescription", value);
+	    } else if (key.equals("genotypingplatform")) {
+		experiment.setAttribute("genotypingPlatform", value);
+	    } else if (key.equals("genotypingmethod")) {
+		experiment.setAttribute("genotypingMethod", value);
+            } else if (key.equals("platformname")) {
+                experiment.setAttribute("platformName", value);
+	    } else if (key.equals("pmid")) {
                 if (publication==null) {
                     publication = createItem("Publication");
                     publications.add(publication);
                 }
-                publication.setAttribute("pubMedId", fields[1]);
-	    } else if (fields[0].toLowerCase().equals("doi")) {
+                publication.setAttribute("pubMedId", value);
+	    } else if (key.equals("doi")) {
 		if (publication==null) {
                     publication = createItem("Publication");
                     publications.add(publication);
                 }
-                publication.setAttribute("doi", fields[1]);
-            } else if (fields[0].toLowerCase().equals("taxonid")) {
+                publication.setAttribute("doi", value);
+            } else if (key.equals("taxonid")) {
                 // do nothing
 	    } else {
 		// data line
