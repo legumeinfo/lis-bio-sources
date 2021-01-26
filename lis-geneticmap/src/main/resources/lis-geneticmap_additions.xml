@@ -8,7 +8,7 @@
     <collection name="dataSets" referenced-type="DataSet"/>
     <collection name="mappingParents" referenced-type="Strain"/>
     <collection name="linkageGroups" referenced-type="LinkageGroup" reverse-reference="geneticMap"/>
-    <collection name="QTLs" referenced-type="QTL" reverse-reference="geneticMap"/>
+    <collection name="qtls" referenced-type="QTL" reverse-reference="geneticMap"/>
   </class>
 
   <class name="LinkageGroup" is-interface="true">
@@ -19,7 +19,7 @@
     <reference name="geneticMap" referenced-type="GeneticMap" reverse-reference="linkageGroups"/>
     <collection name="dataSets" referenced-type="DataSet"/>
     <collection name="markers" referenced-type="GeneticMarker"/>
-    <collection name="QTLs" referenced-type="QTL" reverse-reference="linkageGroup"/>
+    <collection name="qtls" referenced-type="QTL" reverse-reference="linkageGroup"/>
   </class>
 
   <class name="GeneticMarker" extends="SequenceFeature" is-interface="true">
@@ -36,9 +36,9 @@
     <attribute name="identifier" type="java.lang.String"/>
     <attribute name="intervalDescription" type="java.lang.String"/>
     <reference name="organism" referenced-type="Organism"/>
-    <reference name="geneticMap" referenced-type="GeneticMap" reverse-reference="QTLs"/>
-    <reference name="phenotype" referenced-type="Phenotype" reverse-reference="QTLs"/>
-    <reference name="linkageGroup" referenced-type="LinkageGroup" reverse-reference="QTLs"/>
+    <reference name="geneticMap" referenced-type="GeneticMap" reverse-reference="qtls"/>
+    <reference name="phenotype" referenced-type="Phenotype" reverse-reference="qtls"/>
+    <reference name="linkageGroup" referenced-type="LinkageGroup" reverse-reference="qtls"/>
     <attribute name="start" type="java.lang.Double"/>
     <attribute name="end" type="java.lang.Double"/>
     <attribute name="lod" type="java.lang.Double"/>
@@ -48,7 +48,7 @@
   
   <!-- associate with an ontology term -->
   <class name="Phenotype" extends="BioEntity" is-interface="true" term="http://semanticscience.org/resource/SIO_010056">
-    <collection name="QTLs" referenced-type="QTL" reverse-reference="phenotype"/>
+    <collection name="qtls" referenced-type="QTL" reverse-reference="phenotype"/>
   </class>
 
   <!-- <!-\- phenotype measurements can be all sorts of things, and refer to a Strain -\-> -->

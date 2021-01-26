@@ -233,7 +233,7 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
                     throw new RuntimeException("File "+getCurrentFile().getName()+" data line does not contain five required fields: identifier, trait, linkagegroup, start, end:"+line);
                 }
                 String identifier = fields[0].trim();
-                String trait = fields[1].trim();
+                String trait = fields[1].trim().toLowerCase();
                 String lgId = fields[2].trim();
                 double start = Double.parseDouble(fields[3]);
                 double end = Double.parseDouble(fields[4]);
@@ -241,6 +241,8 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
                 if (fields.length>5 && fields[5]!=null && fields[5].trim().length()>0) lod = Double.parseDouble(fields[5]);
                 double likelihoodRatio = 0.0;
                 if (fields.length>6 && fields[6]!=null && fields[6].trim().length()>0) likelihoodRatio = Double.parseDouble(fields[6]);
+                // init cap trait
+                trait = trait.substring(0,1).toUpperCase() + trait.substring(1);
                 // QTL etc.
                 Item qtl = createItem("QTL");
                 qtl.setReference("organism", organism);
@@ -287,8 +289,10 @@ public class GeneticMapFileConverter extends DatastoreFileConverter {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
             String[] parts = line.split("\t");
 	    if (parts.length<2) continue; // entry without value
-            String trait = parts[0];
+            String trait = parts[0].trim().toLowerCase();
             String ontologyId = parts[1];
+            // init cap trait
+            trait = trait.substring(0,1).toUpperCase() + trait.substring(1);
             // Phenotype
             Item phenotype = phenotypeMap.get(trait);
             if (phenotype==null) {

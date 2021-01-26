@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+
+<classes>
+
+  <!-- identifier: 0SZD -->
+  <!-- subject: VCF file containing genotype information for 31 wild and cultivated soybeans received from Meng Ni, Tin Hang, and Hon-Ming Lam.   -->
+  <!-- description: VCF file from resequencing 31 wild and cultivated chinese soybean accessions .... -->
+  <!-- genbank_accession: SRA020131 -->
+  <!-- publication_doi: 10.1038/ng.715 -->
+  <class name="GenotypingStudy" is-interface="true">
+    <attribute name="identifier" type="java.lang.String"/>
+    <attribute name="subject" type="java.lang.String"/>
+    <attribute name="description" type="java.lang.String"/>
+    <attribute name="genbank" type="java.lang.String"/>
+    <reference name="publication" referenced-type="Publication"/>
+    <reference name="organism" referenced-type="Organism"/>
+    <reference name="strain" referenced-type="Strain"/>
+    <reference name="dataSet" referenced-type="DataSet"/>
+    <collection name="samples" referenced-type="GenotypingSample"/>
+  </class>
+
+  <class name="GenotypingSample" is-interface="true">
+    <attribute name="identifier" type="java.lang.String"/>
+    <reference name="organism" referenced-type="Organism"/>
+    <reference name="strain" referenced-type="Strain"/>
+  </class>
+
+  <!-- #CHROM  POS ID REF ALT QUAL FILTER INFO                       FORMAT  C01         C02        C08          C12          C14         ...
+       Chr01   5   .  T   G   97   .      DP=327;VDB=1.18178e-13;... GT:PL   0/0:0,12,85 0/0:0,9,61 0/0:0,25,126 0/0:0,60,170 0/0:0,3,124 ... -->
+  <class name="VCFRecord" is-interface="true">
+    <attribute name="identifier" type="java.lang.String"/>
+    <attribute name="ref" type="java.lang.String"/>
+    <attribute name="alt" type="java.lang.String"/>
+    <attribute name="qual" type="java.lang.Double"/>
+    <attribute name="filter" type="java.lang.String"/>
+    <attribute name="info" type="java.lang.String"/>
+    <reference name="genotypingStudy" referenced-type="GenotypingStudy"/>
+    <reference name="chromosome" referenced-type="Chromosome"/>
+    <reference name="location" referenced-type="Location"/>
+  </class>
+
+  <!--  GT:PL
+       0/0:0,12,85
+       PL=list of Phred-scaled genotype likelihoods for 0/0,0/1,1/1 with most likely set to 0 -->
+  <class name="VCFSampleRecord" extends="java.lang.Object" is-interface="false">
+    <attribute name="genotype" type="java.lang.String"/>
+    <attribute name="likelihoods" type="java.lang.String"/>
+    <reference name="sample" referenced-type="GenotypingSample"/>
+    <reference name="vcfRecord" referenced-type="VCFRecord"/>
+  </class>
+
+</classes>

@@ -176,7 +176,7 @@ public class DatastoreUtils {
     }
     /**
      * Extract the gensp string from the given filename.
-     * gensp.strain.assy.anno.key.content.ext
+     * gensp.strain.assy.anno.key4.content.ext
      */
     public static String extractGensp(String filename) {
 	String[] fields = filename.split("\\.");
@@ -189,7 +189,7 @@ public class DatastoreUtils {
 
     /**
      * Extract the Strain identifier from the given filename.
-     * gensp.strain.assy.anno.key.content.ext
+     * gensp.strain.assy.anno.key4.content.ext
      */
     public static String extractStrainIdentifier(String filename) {
 	String[] fields = filename.split("\\.");
@@ -202,7 +202,7 @@ public class DatastoreUtils {
 
     /**
      * Extract the assembly version from the given filename.
-     * gensp.strain.assy.anno.key.content.ext
+     * gensp.strain.assy.anno.key4.content.ext
      */
     public static String extractAssemblyVersion(String filename) {
         String[] fields = filename.split("\\.");
@@ -215,12 +215,26 @@ public class DatastoreUtils {
 
     /**
      * Extract the annotation version from the given filename.
-     * gensp.strain.assy.anno.key.content.ext
+     * gensp.strain.assy.anno.key4.content.ext
      */
     public static String extractAnnotationVersion(String filename) {
         String[] fields = filename.split("\\.");
         if (fields.length>3 && fields[3].startsWith("ann")) {
             return fields[3];
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Extract the KEY4 portion of the given filename.
+     * gensp.strain.assy.xxx.key4.extension
+     * glyma.Wm82.gnm2.div.0SZD.SNPData.vcf.gz
+     */
+    public static String extractKEY4(String filename) {
+        String[] fields = filename.split("\\.");
+        if (fields.length>=6) {
+            return fields[4];
         } else {
             return null;
         }

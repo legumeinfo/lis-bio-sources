@@ -18,10 +18,12 @@ sourceSets {
 }
 
 dependencies {
-    compile group: 'org.intermine', name: 'bio-model', version: bioVersion //to read genomic_keyDefs.properties
+    implementation group: 'org.intermine', name: 'bio-model', version: bioVersion, transitive: false
+    implementation group: 'org.intermine', name: 'intermine-integrate', version: imVersion
+    // https://mvnrepository.com/artifact/com.github.samtools/htsjdk
+    implementation group: 'com.github.samtools', name: 'htsjdk', version: '2.23.0'
+    implementation fileTree(dir: 'libs', include: '*.jar')
     bioModel group: 'org.intermine', name: 'bio-model', version: bioVersion, transitive: false
-    // https://mvnrepository.com/artifact/com.fasterxml.jackson.dataformat/jackson-dataformat-yaml
-    implementation group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.12.1'
 }
 
 processResources {

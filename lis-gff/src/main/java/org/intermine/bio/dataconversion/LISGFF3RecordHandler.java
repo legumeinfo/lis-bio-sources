@@ -105,7 +105,7 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         String primaryIdentifier = null;
         String annotationVersion = null;
         boolean hasAnnotation = false;
-        // ID values are notoriously incorrect, so DO NOT USE THEM for primaryIdentifier
+        // ID values are notoriously incorrect, so DO NOT USE THEM for primaryIdentifier if Name is present
         // HOWEVER, if id contains ann# then we'll grab annotationVersion from it since we can't get at the filename
         // ID=gensp.strain.gnm.ann.stuff-to-ignore
         if (id.startsWith(gensp+"."+strainId+"."+assemblyVersion)) {
@@ -116,7 +116,8 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
             }
         }
         if (name==null) {
-            throw new RuntimeException("Record is missing the required Name attribute:"+record);
+            // use ID when Name is not present
+            primaryIdentifier = id;
         } else {
             // build the primaryIdentifier from the sequence ID and the Name attribute.
             if (hasAnnotation) {
@@ -130,27 +131,24 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         feature.setAttribute("secondaryIdentifier", DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, hasAnnotation));
         feature.setAttribute("assemblyVersion", assemblyVersion);
         if (hasAnnotation) feature.setAttribute("annotationVersion", annotationVersion);
-        
         // add marker type = SNP if it is a marker with length 1. This will be overridden if Type attribute is present.
         if (type.equals("genetic_marker") && (record.getStart()-record.getEnd())==0) {
             feature.setAttribute("type", "SNP");
         }
-
         // set source if it is a marker; could be an array name, which is useful
         if (type.equals("genetic_marker")) {
             feature.setAttribute("source", record.getSource());
         }
-
         // more specific attributes
         Map<String,List<String>> attributesMap = record.getAttributes();
         for (String key : attributesMap.keySet()) {
             List<String> attributes = attributesMap.get(key);
-            if (key.equals("Name")) {
+            if (key.equalsIgnoreCase("Name")) {
                 feature.setAttribute("name", attributes.get(0));
-            } else if (key.equals("Note")) {
+            } else if (key.equalsIgnoreCase("Note")) {
                 // Note=ATP binding protein... IPR002624 (...)%2C IPR027417 (...)%3B GO:0005524 (...)%2C GO:0006139 (...);
                 feature.setAttribute("description", attributes.get(0));
-            } else if (type.equals("gene") && key.equals("Dbxref")) {
+            } else if (type.equals("gene") && key.equalsIgnoreCase("Dbxref")) {
                 // Dbxref=Gene3D:G3DSA:3.40.50.300,InterPro:IPR002624,InterPro:IPR027417,PANTHER:PTHR10513,PANTHER:PTHR10513:SF6,Pfam:PF01712,Superfamily:SSF52540;
                 for (String term : attributes) {
                     String[] pieces = term.split(":");
@@ -176,7 +174,7 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
                         // need Superfamily ProteinDomain Item
                     }
                 }
-            } else if (type.equals("gene") && key.equals("Ontology_term")) {
+            } else if (type.equals("gene") && key.equalsIgnoreCase("Ontology_term")) {
                 // Ontology_term=GO:0005524,GO:0006139,GO:0016773;
                 for (String term : attributes) {
                     if (term.startsWith("GO:")) {
@@ -194,14 +192,14 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
                         addItem(goAnnotation);
                     }
                 }
-            } else if (type.equals("genetic_marker") && key.equals("Alleles")) {
+            } else if (type.equals("genetic_marker") && key.equalsIgnoreCase("Alleles")) {
                 feature.setAttribute("alleles", attributes.get(0));
-            } else if (type.equals("genetic_marker") && key.equals("Type")) {
+            } else if (type.equals("genetic_marker") && key.equalsIgnoreCase("Type")) {
                 feature.setAttribute("type", attributes.get(0));
-            } else if (key.equals("evid_id")) {
+            } else if (key.equalsIgnoreCase("evid_id")) {
                 // [GAR_10012494]
                 // do nothing
-            } else if (key.equals("geneFamily")) {
+            } else if (key.equalsIgnoreCase("geneFamily")) {
                 // geneFamily=phytozome_10_2.59141255
                 // gene family association
             }

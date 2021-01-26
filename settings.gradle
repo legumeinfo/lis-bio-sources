@@ -13,7 +13,8 @@ include ':bio-source-lis-datastore',
 	':bio-source-lis-geneticmap',
 	':bio-source-lis-gfa',
 	':bio-source-lis-pathway',
-	':bio-source-lis-phylotree'
+	':bio-source-lis-phylotree',
+	':bio-source-lis-gt-vcf'
 
 project(':bio-source-lis-datastore').projectDir = new File(settingsDir, 'lis-datastore')
 project(':bio-source-lis-about').projectDir = new File(settingsDir, 'lis-about')
@@ -29,3 +30,4 @@ project(':bio-source-lis-geneticmap').projectDir = new File(settingsDir, 'lis-ge
 project(':bio-source-lis-gfa').projectDir = new File(settingsDir, 'lis-gfa')
 project(':bio-source-lis-pathway').projectDir = new File(settingsDir, 'lis-pathway')
 project(':bio-source-lis-phylotree').projectDir = new File(settingsDir, 'lis-phylotree')
+project(':bio-source-lis-gt-vcf').projectDir = new File(settingsDir, 'lis-gt-vcf')

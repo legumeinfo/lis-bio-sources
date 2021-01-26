@@ -91,7 +91,7 @@ public class QTLFileConverter extends DatastoreFileConverter {
 	    processExperiment(reader);
         } else if (getCurrentFile().getName().endsWith("phen.tsv")) {
             processPhenFile(reader);
-	} else if (getCurrentFile().getName().endsWith("marker.tsv")) {
+	} else if (getCurrentFile().getName().endsWith("mrk.tsv")) {
 	    processMarkers(reader);
 	}
     }
@@ -156,9 +156,11 @@ public class QTLFileConverter extends DatastoreFileConverter {
 		if (publication==null) {
                     throw new RuntimeException("Experiment file "+getCurrentFile().getName()+" lacks a publication PMID or DOI record.");
                 }
-		// phenotype-QTL record
-		String qtlId = fields[0];
-		String trait = fields[1];
+		// phenotype-QTL record: QTL and trait identifier to Cap lower case for consistency
+		String qtlId = fields[0].toLowerCase();
+		String trait = fields[1].trim().toLowerCase();
+                qtlId = qtlId.substring(0,1).toUpperCase() + qtlId.substring(1);
+                trait = trait.substring(0,1).toUpperCase() + trait.substring(1);
 		Item qtl = qtlMap.get(qtlId);
 		if (qtl==null) {
 		    qtl = createItem("QTL");
@@ -193,8 +195,10 @@ public class QTLFileConverter extends DatastoreFileConverter {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
             String[] parts = line.split("\t");
 	    if (parts.length<2) continue; // entry without value
-            String trait = parts[0];
+            String trait = parts[0].trim().toLowerCase();
             String ontologyId = parts[1];
+            // initcap trait
+            trait = trait.substring(0,1).toUpperCase() + trait.substring(1);
             if (ontologyId==null || ontologyId.trim().length()==0) continue; // placeholder
             // Phenotype
             Item phenotype = phenotypeMap.get(trait);
@@ -228,6 +232,10 @@ public class QTLFileConverter extends DatastoreFileConverter {
 
     /**
      * Process a QTL-markers file. Data lines are tab-separated fields, some empty.
+     *
+     * #Identifier       Marker       Distinction
+     * Pod dehiscence-1  ss715639553  flanking
+     * Pod dehiscence-1  ss715639323  flanking
      */
     void processMarkers(Reader reader) throws IOException {
 	Item dataSet = getDataSet();
@@ -257,10 +265,9 @@ public class QTLFileConverter extends DatastoreFileConverter {
 	    }
 	    marker.addToCollection("dataSets", dataSet);
 	    Item qtlMarker = createItem("QTLMarker");
-	    qtlMarker.setReference("QTL", qtl);
-	    qtlMarker.setReference("marker", marker);
-            qtlMarker.setReference("dataSet", dataSet);
 	    if (distinction!=null) qtlMarker.setAttribute("distinction", distinction);
+	    qtlMarker.setReference("qtl", qtl);
+	    qtlMarker.setReference("marker", marker);
 	    qtlMarkers.add(qtlMarker);
 	}
     }

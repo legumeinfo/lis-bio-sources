@@ -14,9 +14,11 @@ package org.intermine.bio.dataconversion;
  * Encapsulates a single tab-delimited GWAS experiment file record.
  *
  * 0               1          2            3
- * #identifier     phenotype  marker       pvalue                                                                                                                                                                                            
- * Seed oil 4-g14  Seed oil   ss715591641  3.16E-09                                                                                                                                                                             
+ * #identifier     phenotype  marker       pvalue
+ * Seed oil 4-g14  Seed oil   ss715591641  3.16E-09
  * Seed oil 4-g15  Seed oil   ss715591642  3.16E-08
+ *
+ * NOTE: identifier and phenotype are converted to capitalized lower-case.
  *
  * @author Sam Hokin, NCGR
  */
@@ -35,15 +37,32 @@ public class GWASFileRecord {
     public GWASFileRecord(String line) {
         String[] parts = line.split("\t");
         if (parts.length<4) {
-            System.err.println("ERROR: GWASFileRecord input has fewer than 4 fields:"+line);
+            System.err.println("ERROR: GWASFileRecord input has fewer than 4 fields:");
+            System.err.println(line);
             System.exit(1);
         }
-	identifier = parts[0].trim();
-        phenotype = parts[1].trim();
+	identifier = parts[0].trim().toLowerCase();
+        phenotype = parts[1].trim().toLowerCase();
+        identifier = identifier.substring(0,1).toUpperCase() + identifier.substring(1);
+        phenotype = phenotype.substring(0,1).toUpperCase() + phenotype.substring(1);
 	marker = parts[2].trim();
-	pvalue = Double.parseDouble(parts[3].trim());
+        try {
+            pvalue = Double.parseDouble(parts[3].trim());
+        } catch (NumberFormatException ex) {
+            System.err.println("Error parsing p value in line:");
+            System.err.println(line);
+            System.err.println(ex);
+            System.exit(1);
+        }
         if (parts.length>4 && !parts[4].toLowerCase().equals("na")) {
-            lod = Double.parseDouble(parts[4].trim());
+            try {
+                lod = Double.parseDouble(parts[4].trim());
+            } catch (NumberFormatException ex) {
+                System.err.println("Error parsing lod value in line:");
+                System.err.println(line);
+                System.err.println(ex);
+                System.exit(1);
+            }
         }
     }
 
@@ -51,12 +70,6 @@ public class GWASFileRecord {
      * For diagnostics
      */
     public String toString() {
-        String str = "";
-	str += " identifier="+identifier;
-        str += " phenotype="+phenotype;
-        str += " marker="+marker;
-        str += " pvalue="+pvalue;
-        str += " lod="+lod;
-        return str;
+        return "[identifier,phenotype,marker,pvalue,lod]=["+identifier+","+phenotype+","+marker+","+pvalue+","+lod+"]";
     }
 }

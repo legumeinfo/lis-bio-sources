@@ -60,6 +60,11 @@ subprojects {
     testCompile group: 'org.intermine', name: 'intermine-integrate', version: System.getProperty("imVersion"), classifier: "testClasses"
     testCompile group: 'xmlunit', name: 'xmlunit', version: '1.0'
     mergeModel group : 'org.intermine', name: 'intermine-objectstore', version: System.getProperty("imVersion")
+
+    // https://mvnrepository.com/artifact/org.apache.commons/commons-collections4
+    compile group: 'org.apache.commons', name: 'commons-collections4', version: '4.4'
+    // https://mvnrepository.com/artifact/net.sourceforge.owlapi/owlapi-api
+    compile group: 'net.sourceforge.owlapi', name: 'owlapi-api', version: '5.1.17'
   }
 
   dbModelConfig {

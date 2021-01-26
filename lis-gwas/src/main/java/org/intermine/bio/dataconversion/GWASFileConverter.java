@@ -47,11 +47,12 @@ public class GWASFileConverter extends DatastoreFileConverter {
     // local things to store
     List<Item> gwases = new LinkedList<>();
     List<Item> gwasResults = new LinkedList<>();
-    Map<Integer,Item> publicationPMIDMap = new HashMap<>(); // keyed by PMID if supplied
-    Map<String,Item> publicationDOIMap = new HashMap<>();   // keyed by DOI if supplied and PMID isn't
+    Map<String,Item> qtls = new HashMap<>();              // keyed by identifier
+    Map<Integer,Item> publicationPMIDMap = new HashMap<>();   // keyed by PMID if supplied
+    Map<String,Item> publicationDOIMap = new HashMap<>();     // keyed by DOI if supplied and PMID isn't
     Map<String,Item> ontologyAnnotationMap = new HashMap<>();
     Map<String,Item> phenotypeMap = new HashMap<>();
-    Map<String,Item> markerMap = new HashMap<>(); // keyed by secondaryIdentifier
+    Map<String,Item> markerMap = new HashMap<>();             // keyed by secondaryIdentifier
     Map<String,Item> ontologyTermMap = new HashMap<>();
 
     /**
@@ -142,7 +143,9 @@ public class GWASFileConverter extends DatastoreFileConverter {
                     publication.setAttribute("doi", doi);
                 }
             } else {
-                // data record
+                /////////////////
+                // data record //
+                /////////////////
                 GWASFileRecord rec = new GWASFileRecord(line);
                 // GeneticMarker
                 String secondaryIdentifier = rec.marker;
@@ -150,9 +153,9 @@ public class GWASFileConverter extends DatastoreFileConverter {
 		if (marker==null) {
                     marker = createItem("GeneticMarker");
                     marker.setAttribute("secondaryIdentifier", secondaryIdentifier);
+                    marker.setReference("organism", organism);
                     markerMap.put(secondaryIdentifier, marker);
                 }
-                marker.setReference("organism", organism);
                 marker.addToCollection("dataSets", dataSet);
                 if (publication!=null) {
                     marker.addToCollection("publications", publication);
@@ -162,22 +165,32 @@ public class GWASFileConverter extends DatastoreFileConverter {
 		if (phenotype==null) {
                     phenotype = createItem("Phenotype");
 		    phenotype.setAttribute("primaryIdentifier", rec.phenotype);
+                    phenotype.setAttribute("secondaryIdentifier", rec.phenotype);
+                    phenotype.setReference("organism", organism);
                     phenotypeMap.put(rec.phenotype, phenotype);
                 }
-                phenotype.setAttribute("secondaryIdentifier", rec.phenotype);
-                phenotype.setReference("organism", organism);
-                // phenotype.addToCollection("publications", publication);
                 phenotype.addToCollection("dataSets", dataSet);
+                // QTL
+                Item qtl = qtls.get(rec.identifier);
+                if (qtl==null) {
+                    qtl = createItem("QTL");
+                    qtl.setAttribute("identifier", rec.identifier);
+                    qtl.setReference("phenotype", phenotype);
+                    qtl.setReference("gwas", gwas);
+                    qtl.setReference("organism", organism);
+                    qtls.put(rec.identifier, qtl);
+                }
+                qtl.addToCollection("dataSets", dataSet);
                 // GWASResult
                 Item gwasResult = createItem("GWASResult");
-		gwasResult.setAttribute("identifier", rec.identifier);
                 gwasResult.setAttribute("pValue", String.valueOf(rec.pvalue));
                 if (rec.lod!=Double.MAX_VALUE) {
                     gwasResult.setAttribute("lod", String.valueOf(rec.lod));
                 }
-                gwasResult.setReference("gwas", gwas);
-                gwasResult.setReference("marker", marker);
                 gwasResult.setReference("phenotype", phenotype);
+                gwasResult.setReference("marker", marker);
+                gwasResult.setReference("gwas", gwas);
+                gwasResult.setReference("qtl", qtl);
 		gwasResults.add(gwasResult);
             }
         }
@@ -196,8 +209,10 @@ public class GWASFileConverter extends DatastoreFileConverter {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
             String[] parts = line.split("\t");
 	    if (parts.length<2) continue; // entry without value
-            String trait = parts[0];
+            String trait = parts[0].trim().toLowerCase();
             String ontologyId = parts[1];
+            // init cap trait
+            trait = trait.substring(0,1).toUpperCase() + trait.substring(1);
             // Phenotype
             Item phenotype = phenotypeMap.get(trait);
             if (phenotype==null) {
@@ -244,6 +259,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
 	store(publications);
 	store(gwases);
 	store(gwasResults);
+        store(qtls.values());
         store(ontologyAnnotationMap.values());
 	store(markerMap.values());
         store(phenotypeMap.values());

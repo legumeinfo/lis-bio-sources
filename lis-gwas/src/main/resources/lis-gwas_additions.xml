@@ -18,38 +18,34 @@
     <attribute name="platformDetails" type="java.lang.String"/>
     <attribute name="curationNotes" type="java.lang.String"/>
     <collection name="results" referenced-type="GWASResult" reverse-reference="gwas"/>
+    <collection name="qtls" referenced-type="QTL" reverse-reference="gwas"/>
   </class>
 
-  <!-- GWASResult connects a marker to a phenotype -->
-  <class name="GWASResult" is-interface="true">
+  <!-- A GWAS QTL is a collection of GWASResults with the same identifier -->
+  <class name="QTL" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645">
     <attribute name="identifier" type="java.lang.String"/>
+    <reference name="phenotype" referenced-type="Phenotype" reverse-reference="qtls"/>
+    <reference name="gwas" referenced-type="GWAS" reverse-reference="qtls"/>
+    <collection name="gwasResults" referenced-type="GWASResult" reverse-reference="qtl"/>
+  </class>
+
+  <!-- GWASResult connects a marker to a phenotype with a p-value and LOD -->
+  <class name="GWASResult" is-interface="true">
     <attribute name="pValue" type="java.lang.Double"/>
     <attribute name="lod" type="java.lang.Double"/>
-    <reference name="phenotype" referenced-type="Phenotype" reverse-reference="gwasResults"/>
-    <reference name="gwas" referenced-type="GWAS" reverse-reference="results"/>
+    <reference name="phenotype" referenced-type="Phenotype"/>
     <reference name="marker" referenced-type="GeneticMarker" reverse-reference="gwasResults"/>
-    <!-- <collection name="associatedGenes" referenced-type="Gene"/> -->
+    <reference name="gwas" referenced-type="GWAS" reverse-reference="results"/>
+    <reference name="qtl" referenced-type="QTL" reverse-reference="gwasResults"/>
   </class>
 
-  <!-- associate a phenotype with its measured values and ontology annotation -->
+  <!-- associate a phenotype with QTLs -->
   <class name="Phenotype" extends="BioEntity" is-interface="true" term="http://semanticscience.org/resource/SIO_010056">
-    <collection name="gwasResults" referenced-type="GWASResult" reverse-reference="phenotype"/>
-    <!-- <collection name="phenotypeValues" referenced-type="PhenotypeValue" reverse-reference="phenotype"/> -->
+    <collection name="qtls" referenced-type="QTL" reverse-reference="phenotype"/>
   </class>
-
-  <!-- <!-\- phenotype measurements can be all sorts of things, and refer to a Strain -\-> -->
-  <!-- <class name="PhenotypeValue" is-interface="true"> -->
-  <!--   <!-\- future core model -\-> -->
-  <!--   <reference name="phenotype" referenced-type="Phenotype" reverse-reference="phenotypeValues"/> -->
-  <!--   <reference name="strain" referenced-type="Strain"/> -->
-  <!--   <attribute name="textValue" type="java.lang.String"/> -->
-  <!--   <attribute name="numericValue" type="java.lang.Double"/> -->
-  <!--   <attribute name="booleanValue" type="java.lang.Boolean"/> -->
-  <!-- </class> -->
 
   <!-- the marker type will typically be "SNP", but could be another type -->
   <class name="GeneticMarker" extends="SequenceFeature" is-interface="true">
-    <attribute name="type" type="java.lang.String"/>
     <collection name="gwasResults" referenced-type="GWASResult" reverse-reference="marker"/>
   </class>
 
