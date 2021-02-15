@@ -56,7 +56,7 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
     Map<String, Integer> ids = new HashMap<>();
     int nextClsId = 0;
 
-    // ProteinDomain Items
+    // Item maps
     Map<String,Item> proteinDomainMap = new HashMap<>();
 
     // OntologyTerm Items
@@ -91,8 +91,10 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
      */
     @Override
     public void process(GFF3Record record) {
-        Item feature = getFeature();
         String type = record.getType();
+        // does this work?
+        if (type.equals("protein_match") || type.equals("protein_hmm_match")) return;
+        Item feature = getFeature();
         String className = feature.getClassName();
         String id = record.getId();
         String name = null;
@@ -108,7 +110,7 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         // ID values are notoriously incorrect, so DO NOT USE THEM for primaryIdentifier if Name is present
         // HOWEVER, if id contains ann# then we'll grab annotationVersion from it since we can't get at the filename
         // ID=gensp.strain.gnm.ann.stuff-to-ignore
-        if (id.startsWith(gensp+"."+strainId+"."+assemblyVersion)) {
+        if (id!=null && id.startsWith(gensp+"."+strainId+"."+assemblyVersion)) {
             String[] idParts = id.split("\\.");
             if (idParts.length>4) {
                 hasAnnotation = true;
@@ -125,6 +127,10 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
             } else {
                 primaryIdentifier = gensp+"."+strainId+"."+assemblyVersion+"."+name;
             }
+        }
+        // catch non-existence of primaryIdentifier
+        if (primaryIdentifier==null) {
+            throw new RuntimeException("Cannot determine primaryIdentifier from GFF record:\n"+record.toString());
         }
         // set standard attributes
         feature.setAttribute("primaryIdentifier", primaryIdentifier);
@@ -143,9 +149,9 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         Map<String,List<String>> attributesMap = record.getAttributes();
         for (String key : attributesMap.keySet()) {
             List<String> attributes = attributesMap.get(key);
-            if (key.equalsIgnoreCase("Name")) {
+            if (key.equalsIgnoreCase("Name") && attributes.size()>0 && attributes.get(0).length()>0) {
                 feature.setAttribute("name", attributes.get(0));
-            } else if (key.equalsIgnoreCase("Note")) {
+            } else if (key.equalsIgnoreCase("Note") && attributes.size()>0 && attributes.get(0).length()>0) {
                 // Note=ATP binding protein... IPR002624 (...)%2C IPR027417 (...)%3B GO:0005524 (...)%2C GO:0006139 (...);
                 feature.setAttribute("description", attributes.get(0));
             } else if (type.equals("gene") && key.equalsIgnoreCase("Dbxref")) {

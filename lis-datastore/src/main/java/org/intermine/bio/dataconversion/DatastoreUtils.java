@@ -10,7 +10,7 @@ import java.util.HashMap;
 import java.util.Properties;
 
 /**
- * Utility non-static methods for datastore loaders. 
+ * Utility static and non-static methods for datastore loaders. 
  *
  * @author Sam Hokin
  */

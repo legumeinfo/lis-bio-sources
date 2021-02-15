@@ -1,13 +1,12 @@
 package org.intermine.bio.dataconversion;
 
 /*
- * Copyright (C) 2002-2019 FlyMine
+ * Copyright (C) 2021 NCGR
  *
  * This code may be freely distributed and modified under the
  * terms of the GNU Lesser General Public Licence.  This should
  * be distributed with the code.  See the LICENSE file for more
  * information or http://www.gnu.org/copyleft/lesser.html.
- *
  */
 
 import java.io.File;
@@ -237,11 +236,10 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 
     /**
      * Be sure to close the data loader so the last batch gets stored. only needed for tests
-     * since the data loading task usually does that for hte live builds.
+     * since the data loading task usually does that for the live builds.
      * @throws ObjectStoreException if we can't store to db
      */
     public void close() throws ObjectStoreException {
-        // store any data left over
         getDirectDataLoader().close();
     }
 

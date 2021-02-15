@@ -26,14 +26,6 @@
   <class name="FivePrimeUTR" extends="UTR" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000204" />
   <class name="ThreePrimeUTR" extends="UTR" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000205" />
 
-  <!-- InterPro terms -->
-  <class name="ProteinDomain" extends="BioEntity" is-interface="true"/>
-
-  <!-- associate InterPro terms with genes -->
-  <class name="Gene" is-interface="true">
-    <collection name="proteinDomains" referenced-type="ProteinDomain"/>
-  </class>
-
   <!-- extra terms in some GFFs -->
   <class name="TransposableElementGene" extends="Gene" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000111" />
 
@@ -61,8 +53,30 @@
   <class name="LongTerminalRepeat" extends="LTRRetrotransposon" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000286" />
   <class name="PrimerBindingSite" extends="LTRRetrotransposon" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0005850" />
 
-  <class name="ProteinMatch" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000349" />
+  <!-- InterPro terms -->
+  <class name="ProteinDomain" extends="BioEntity" is-interface="true"/>
+  <class name="ProteinMatch" extends="BioEntity" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000349">
+    <attribute name="length" type="java.lang.Integer"/>
+    <reference name="protein" referenced-type="Protein" reverse-reference="proteinMatches"/>
+    <reference name="location" referenced-type="Location"/>
+  </class>
+  <class name="ProteinHmmMatch" extends="BioEntity" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001831">
+    <attribute name="length" type="java.lang.Integer"/>
+    <reference name="protein" referenced-type="Protein" reverse-reference="proteinHmmMatches"/>
+    <reference name="location" referenced-type="Location"/>
+  </class>
 
+  <!-- associate InterPro terms with genes -->
+  <class name="Gene" is-interface="true">
+    <collection name="proteinDomains" referenced-type="ProteinDomain"/>
+  </class>
+
+  <!-- associate InterProScan terms with proteins -->
+  <class name="Protein" is-interface="true">
+    <collection name="proteinMatches" referenced-type="ProteinMatch" reverse-reference="protein"/>
+    <collection name="proteinHmmMatches" referenced-type="ProteinHmmMatch" reverse-reference="protein"/>
+  </class>
+  
   <!-- Alleles=A/T in attributes. type=SNP if length=1 -->
   <class name="GeneticMarker" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645">
     <attribute name="type" type="java.lang.String"/>
