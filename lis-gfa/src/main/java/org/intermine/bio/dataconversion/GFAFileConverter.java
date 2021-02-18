@@ -75,8 +75,10 @@ public class GFAFileConverter extends DatastoreFileConverter {
             throw new RuntimeException("GFA file does not have the required 9 dot-separated parts: "+getCurrentFile().getName());
         }
         String version = fileParts[5];
-        String scoreMeaning = null;
 	Item dataSet = getDataSet();
+        Item organism = getOrganism();
+        Item strain = getStrain(organism);
+        String scoreMeaning = null;
         // spin through the file
         BufferedReader br = new BufferedReader(reader);
         String line = null;
@@ -101,6 +103,8 @@ public class GFAFileConverter extends DatastoreFileConverter {
                 geneFamily.setAttribute("version", version);
                 // Gene
                 Item gene = getGene(geneIdentifier);
+                gene.setReference("organism", organism);
+                gene.setReference("strain", strain);
                 gene.setReference("geneFamily", geneFamily);
                 gene.addToCollection("dataSets", dataSet);
                 if (hasScore) {
@@ -109,6 +113,8 @@ public class GFAFileConverter extends DatastoreFileConverter {
                 }
                 // Protein
                 Item protein = getProtein(proteinIdentifier);
+                protein.setReference("organism", organism);
+                protein.setReference("strain", strain);
                 protein.setReference("geneFamily", geneFamily);
                 protein.addToCollection("dataSets", dataSet);
                 if (hasScore) {
@@ -179,6 +185,8 @@ public class GFAFileConverter extends DatastoreFileConverter {
     public void close() throws ObjectStoreException {
 	store(dataSource);
 	store(dataSets.values());
+        store(organisms.values());
+        store(strains.values());
         store(geneFamilies.values());
         store(genes.values());
         store(proteins.values());
