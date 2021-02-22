@@ -23,6 +23,7 @@
     <attribute name="subject" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
     <attribute name="genbank" type="java.lang.String"/>
+    <attribute name="contributors" type="java.lang.String"/>
     <reference name="publication" referenced-type="Publication"/>
     <reference name="organism" referenced-type="Organism"/>
     <reference name="strain" referenced-type="Strain"/>

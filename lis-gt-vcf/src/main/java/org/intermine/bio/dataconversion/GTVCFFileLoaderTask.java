@@ -121,14 +121,15 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
      */
     @Override
     public void processFile(File file) {
-        System.err.println("********** processing "+file.getName()+" **********");
         if (file.getName().endsWith("vcf.gz")) {
+            System.err.println("Processing "+file.getName());
             try {
                 processVCFFile(file);
             } catch (Exception ex) {
                 throw new BuildException(ex);
             }
         } else if (file.getName().startsWith("README")) {
+            System.err.println("Processing "+file.getName());
             try {
                 processREADME(file);
             } catch (Exception ex) {
@@ -211,10 +212,12 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
         study.setSubject(readme.subject);
         study.setDescription(readme.description);
         study.setGenbank(readme.genbank_accession);
+        study.setContributors(readme.contributors);
         Publication publication = getDirectDataLoader().createObject(org.intermine.model.bio.Publication.class);
         publication.setDoi(readme.publication_doi);
-        getDirectDataLoader().store(publication);
+        publication.setTitle(readme.publication_title);
         study.setPublication(publication);
+        getDirectDataLoader().store(publication);
     }
 
     /**
@@ -250,8 +253,8 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
                 sample.setOrganism(organism);
                 sample.setStrain(strain);
                 sample.setStudy(study);
-                getDirectDataLoader().store(sample);
                 samples.put(sampleName, sample);
+                getDirectDataLoader().store(sample);
             }
             study.setSamples(new HashSet(samples.values()));
             LOG.info("Loaded "+samples.size()+" samples from VCF header.");
@@ -292,8 +295,8 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
                 chromosome.setOrganism(organism);
                 chromosome.setStrain(strain);
                 chromosome.addDataSets(dataSet);
-                getDirectDataLoader().store(chromosome);
                 chromosomes.put(vc.getContig(), chromosome);
+                getDirectDataLoader().store(chromosome);
             }
             // Location
             Location location = getDirectDataLoader().createObject(org.intermine.model.bio.Location.class);

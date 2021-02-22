@@ -11,6 +11,7 @@ package org.intermine.bio.dataconversion;
  */
 
 import java.util.List;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -51,16 +52,14 @@ import org.intermine.xml.full.ItemHelper;
  */
 public class LISGFF3RecordHandler extends GFF3RecordHandler {
 
-    ItemFactory itemFactory;
-    Map<String, String> aliases = new HashMap<>();
-    Map<String, Integer> ids = new HashMap<>();
-    int nextClsId = 0;
-
     // Item maps
     Map<String,Item> proteinDomainMap = new HashMap<>();
 
     // OntologyTerm Items
     Map<String,Item> ontologyTermMap = new HashMap<>();
+
+    // primary identifiers to avoid loading same feature twice
+    List<String> primaryIdentifiers = new LinkedList<>();
 
     /**
      * Create a new LISGFF3RecordHandler object.
@@ -112,10 +111,8 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         // ID=gensp.strain.gnm.ann.stuff-to-ignore
         if (id!=null && id.startsWith(gensp+"."+strainId+"."+assemblyVersion)) {
             String[] idParts = id.split("\\.");
-            if (idParts.length>4) {
-                hasAnnotation = true;
-                annotationVersion = idParts[3];
-            }
+            hasAnnotation = idParts.length>4 && idParts[3].startsWith("ann");
+            if (hasAnnotation) annotationVersion = idParts[3];
         }
         if (name==null) {
             // use ID when Name is not present
@@ -131,6 +128,10 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         // catch non-existence of primaryIdentifier
         if (primaryIdentifier==null) {
             throw new RuntimeException("Cannot determine primaryIdentifier from GFF record:\n"+record.toString());
+        }
+        // bail if we've already hit this feature in another file
+        if (primaryIdentifiers.contains(primaryIdentifier)) {
+            return;
         }
         // set standard attributes
         feature.setAttribute("primaryIdentifier", primaryIdentifier);
