@@ -6,12 +6,6 @@
   <class name="Organism" is-interface="true">
     <attribute name="abbreviation" type="java.lang.String"/>
   </class>
-  
-  <!-- add LIS assembly and annotation versions -->
-  <class name="SequenceFeature" is-interface="true">
-    <attribute name="assemblyVersion" type="java.lang.String"/>
-    <attribute name="annotationVersion" type="java.lang.String"/>
-  </class>
 
   <!-- Annotatable: primaryIdentifier, ontologyAnnotations, publications -->
   <class name="GenotypingStudy" extends="Annotatable" is-interface="true">
@@ -19,14 +13,14 @@
     <attribute name="description" type="java.lang.String"/>
     <attribute name="genbank" type="java.lang.String"/>
     <attribute name="contributors" type="java.lang.String"/>
+    <attribute name="parents" type="java.lang.String"/>
     <reference name="publication" referenced-type="Publication"/>
     <reference name="organism" referenced-type="Organism"/>
-    <reference name="strain" referenced-type="Strain"/>
     <reference name="dataSet" referenced-type="DataSet"/>
     <collection name="samples" referenced-type="GenotypingSample" reverse-reference="study"/>
   </class>
 
-  <!-- BioEntity: primaryIdentifier, etc. -->
+  <!-- sample1 sample2 sample3 ... -->
   <class name="GenotypingSample" extends="BioEntity" is-interface="true">
     <reference name="organism" referenced-type="Organism"/>
     <reference name="strain" referenced-type="Strain"/>
@@ -34,30 +28,21 @@
   </class>
 
   <!-- we just get marker.secondaryIdentifier here -->
-  <class name="GeneticMarker" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645">
-    <attribute name="alleles" type="java.lang.String"/>
-    <attribute name="type"  type="java.lang.String"/>
+  <class name="GeneticMarker" extends="SequenceFeature" is-interface="true">
     <collection name="genotypingRecords" referenced-type="GenotypingRecord" reverse-reference="marker"/>
   </class>
-  
-  <!-- genotyping record references a marker for genomic position -->
+
+  <!-- represents a row in the MSTmap genotype file here (more info when VCF record) -->
+  <!-- allows VCF files that do not have markers -->
   <class name="GenotypingRecord" is-interface="true">
     <attribute name="identifier" type="java.lang.String"/>
     <reference name="study" referenced-type="GenotypingStudy"/>
     <reference name="marker" referenced-type="GeneticMarker" reverse-reference="genotypingRecords"/>
-    <attribute name="ref" type="java.lang.String"/>
-    <attribute name="alt" type="java.lang.String"/>
-    <attribute name="qual" type="java.lang.Double"/>
-    <attribute name="filter" type="java.lang.String"/>
-    <attribute name="info" type="java.lang.String"/>
-    <reference name="dataSet" referenced-type="DataSet"/>
   </class>
 
-
-  <!-- simple object contains a single genotype for a sample+marker-->
+  <!-- simple object -->
   <class name="Genotype" extends="java.lang.Object" is-interface="false">
     <attribute name="value" type="java.lang.String"/>
-    <attribute name="likelihoods" type="java.lang.String"/>
     <reference name="sample" referenced-type="GenotypingSample"/>
     <reference name="record" referenced-type="GenotypingRecord"/>
   </class>

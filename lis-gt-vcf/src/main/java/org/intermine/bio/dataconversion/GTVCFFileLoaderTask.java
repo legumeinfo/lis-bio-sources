@@ -32,10 +32,11 @@ import org.intermine.model.bio.Organism;
 import org.intermine.model.bio.Publication;
 import org.intermine.model.bio.Strain;
 
+import org.intermine.model.bio.GeneticMarker;
 import org.intermine.model.bio.GenotypingStudy;
 import org.intermine.model.bio.GenotypingSample;
-import org.intermine.model.bio.VCFRecord;
-import org.intermine.model.bio.VCFSampleRecord;
+import org.intermine.model.bio.GenotypingRecord;
+import org.intermine.model.bio.Genotype;
 
 import org.apache.log4j.Logger;
 import org.apache.tools.ant.BuildException;
@@ -59,22 +60,22 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
     // up here since it's touched by both processREADME and processVCF
     GenotypingStudy study;
 
-    // only want to store each chromosome and sample once
+    // only want to store these things once
     Map<String,Chromosome> chromosomes = new HashMap<>();
     Map<String,GenotypingSample> samples = new HashMap<>();
 
-    // set by setters
-    String dataSourceName, dataSourceUrl, dataSourceDescription;
-    String dataSetName, dataSetUrl, dataSetDescription, dataSetVersion, dataSetLicence;
-
-    // assume singles of these per loader invocation
+    // objects common to a load
     Organism organism;
     Strain strain;
     DataSource dataSource;
     DataSet dataSet;
 
+    // attributes hopefully set by setters
+    String dataSourceName, dataSourceUrl, dataSourceDescription;
+    String dataSetName, dataSetUrl, dataSetVersion, dataSetLicence;
+
     /**
-     * Process and load all of the fasta files.
+     * Process and load all of the included files.
      */
     @Override
     public void process() {
@@ -83,6 +84,10 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
             super.process();
             // store-once objects touched in multiple methods
             getDirectDataLoader().store(study);
+            getDirectDataLoader().store(organism);
+            getDirectDataLoader().store(strain);
+            getDirectDataLoader().store(dataSource);
+            getDirectDataLoader().store(dataSet);
             // wrap up
             getIntegrationWriter().commitTransaction();
             getIntegrationWriter().beginTransaction();
@@ -96,22 +101,22 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
      * since the data loading task usually does that for the live builds.
      * @throws ObjectStoreException if we can't store to db
      */
-    public void close() throws ObjectStoreException {
-        getDirectDataLoader().close();
-    }
+    // public void close() throws ObjectStoreException {
+    //     getDirectDataLoader().close();
+    // }
 
     /**
      * @throws BuildException if an ObjectStore method fails
      */
-    @Override
-    public void execute() {
-        // don't configure dynamic attributes if this is a unit test!
-        if (getProject()!=null) {
-            configureDynamicAttributes(this);
-        }
-        // this will call processFile() for each file
-        super.execute();
-    }
+    // @Override
+    // public void execute() {
+    //     // don't configure dynamic attributes if this is a unit test!
+    //     if (getProject()!=null) {
+    //         configureDynamicAttributes(this);
+    //     }
+    //     // this will call processFile() for each file
+    //     super.execute();
+    // }
 
     /**
      * Process a VCF file or a README.
@@ -122,19 +127,21 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
     @Override
     public void processFile(File file) {
         if (file.getName().endsWith("vcf.gz")) {
-            System.err.println("Processing "+file.getName());
             try {
+                System.err.println("Processing "+file.getName());
                 processVCFFile(file);
             } catch (Exception ex) {
                 throw new BuildException(ex);
             }
         } else if (file.getName().startsWith("README")) {
-            System.err.println("Processing "+file.getName());
             try {
+                System.err.println("Processing "+file.getName());
                 processREADME(file);
             } catch (Exception ex) {
                 throw new BuildException(ex);
             }
+        } else {
+            System.err.println("Skipping "+file.getName());
         }
     }
 
@@ -172,14 +179,6 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
 
     /**
      * If a value is specified this description will used when a DataSet is created.
-     * @param dataSetDescription the description of the DataSet of any new features
-     */
-    public void setDataSetDescription(String dataSetDescription) {
-        this.dataSetDescription = dataSetDescription;
-    }
-
-    /**
-     * If a value is specified this description will used when a DataSet is created.
      * @param dataSetVersion the version of the DataSet
      */
     public void setDataSetVersion(String dataSetVersion) {
@@ -192,8 +191,7 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
      * README.0SZD.yml
      * ---------------
      * identifier: 0SZD
-     * subject: VCF file containing genotype information for 31 wild and cultivated soybeans received from Meng Ni, Tin Hang, and Hon-Ming Lam.
-     * description: VCF file from resequencing 31 wild and cultivated chinese soybean accessions ....
+     * subject: VCF file containing genotype information...
      * genbank_accession: SRA020131
      * publication_doi: 10.1038/ng.715
      */
@@ -205,35 +203,56 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
         // <attribute name="genbank" type=="java.lang.String"/>
         // <reference name="publication" referenced-type="Publication"/>
         Readme readme = Readme.getReadme(file);
+        // check required stuff
+        if (readme.identifier==null ||
+            readme.subject==null ||
+            readme.description==null ||
+            readme.contributors==null ||
+            readme.publication_doi==null ||
+            readme.publication_title==null) {
+            throw new BuildException("ERROR: a required field is missing from "+file.getName()+". "+
+                                     "Required fields are: identifier, subject, description, contributors, publication_doi, publication_title");
+        }
+        // load required stuff
         if (study==null) {
             study = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingStudy.class);
         }
         study.setPrimaryIdentifier(readme.identifier);
         study.setSubject(readme.subject);
         study.setDescription(readme.description);
-        study.setGenbank(readme.genbank_accession);
         study.setContributors(readme.contributors);
         Publication publication = getDirectDataLoader().createObject(org.intermine.model.bio.Publication.class);
         publication.setDoi(readme.publication_doi);
         publication.setTitle(readme.publication_title);
-        study.setPublication(publication);
         getDirectDataLoader().store(publication);
+        study.setPublication(publication);
+        // optional fields
+        if (readme.genbank_accession!=null) study.setGenbank(readme.genbank_accession);
+        // dataSet.description
+        dataSource = getDataSourceObject();
+        dataSet = getDataSetObject(dataSource);
+        dataSet.setDescription(readme.description);
     }
 
     /**
-     * Process a VCF file. We assume here that only one VCF/README is encountered per directory.
+     * Process a VCF file. We assume here that all VCFs in a directory are for the same organism/strain.
      *
      * 0     1    2    3   KEY4=identifier
      * glyma.Wm82.gnm2.div.0SZD.SNPData.vcf.gz
      */
     public void processVCFFile(File file) throws ObjectStoreException {
-        // create and store the singleton objects
-        Organism organism = getOrganismObject(file.getName());
-        Strain strain = getStrainObject(file.getName(), organism);
-        DataSource dataSource = getDataSourceObject();
-        DataSet dataSet = getDataSetObject(dataSource);
+        // singleton objects
+        organism = getOrganismObject(file.getName());
+        strain = getStrainObject(file.getName(), organism);
+        dataSource = getDataSourceObject();
+        dataSet = getDataSetObject(dataSource);
+        // strings for full-yuckification of marker/ID
+        String gensp = DatastoreUtils.extractGensp(file.getName());
+        String strainName = DatastoreUtils.extractStrainIdentifier(file.getName());
         String assemblyVersion = DatastoreUtils.extractAssemblyVersion(file.getName());
         String annotationVersion = DatastoreUtils.extractAnnotationVersion(file.getName());
+        String yuckyPrefix = gensp+"."+strainName+"."+assemblyVersion;
+        if (annotationVersion!=null) yuckyPrefix += "."+annotationVersion;
         // GenotypingStudy
         if (study==null) {
             study = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingStudy.class);
@@ -241,8 +260,7 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
         study.setOrganism(organism);
         study.setStrain(strain);
         study.setDataSet(dataSet);
-        // spin through the VCF file
-        // NOTE: index must be present!
+        // spin through the tabix-indexed VCF file
         VCFFileReader vcfReader = new VCFFileReader(file);
         VCFHeader header = vcfReader.getFileHeader();
         // load samples first time
@@ -260,15 +278,18 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
             LOG.info("Loaded "+samples.size()+" samples from VCF header.");
         }
         // VCFRecords and VCFSampleRecords
-        // #CHROM  POS ID REF ALT QUAL FILTER INFO                       FORMAT  C01         C02        C08          C12          C14         ...
-        // Chr01   5   .  T   G   97   .      DP=327;VDB=1.18178e-13;... GT:PL   0/0:0,12,85 0/0:0,9,61 0/0:0,25,126 0/0:0,60,170 0/0:0,3,124 ...
+        // #CHROM  POS ID         REF ALT QUAL FILTER INFO                       FORMAT  C01         C02        C08          C12          C14         ...
+        // Chr01   5   marker123  T   G   97   .      DP=327;VDB=1.18178e-13;... GT:PL   0/0:0,12,85 0/0:0,9,61 0/0:0,25,126 0/0:0,60,170 0/0:0,3,124 ...
         for (VariantContext vc : vcfReader.iterator().toList()) {
-            String identifier = vc.getID();
             String contig = vc.getContig();
+            String identifier = vc.getID();
             Allele ref = vc.getReference();
-            // ALT - if there is more than one, store the first
+            // ALTs
             List<Allele> alts = vc.getAlternateAlleles();
-            Allele alt = alts.get(0);
+            String altString = alts.get(0).getBaseString();
+            for (int i=1; i<alts.size(); i++) {
+                altString += ","+alts.get(i).getBaseString();
+            }
             // QUAL
             double qual = vc.getPhredScaledQual();
             // FILTER
@@ -283,9 +304,16 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
             for (String key : attributes.keySet()) {
                 info += key+"="+attributes.get(key).toString()+";";
             }
-            // cook an identifier like Gm03:544:A/C
-            if (identifier==null || identifier.equals(".")) {
-                identifier = contig+":"+vc.getStart()+":"+ref.getBaseString()+"/"+alt.getBaseString();
+            // convert to full-yuck identifier if present and without dots
+            boolean hasMarker = !identifier.equals(".");
+            String secondaryIdentifier = null;
+            if (hasMarker && !identifier.contains("\\.")) {
+                // we have a non-full-yuck marker
+                secondaryIdentifier = identifier;
+                identifier = yuckyPrefix+"."+identifier;
+            } else if (!hasMarker) {
+                // create a marker with a custom identifier from the location and ref/alts
+                identifier = contig+":"+vc.getStart()+":"+ref.getBaseString()+"/"+altString;
             }
             // Chromosome
             Chromosome chromosome = chromosomes.get(vc.getContig());
@@ -298,47 +326,59 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
                 chromosomes.put(vc.getContig(), chromosome);
                 getDirectDataLoader().store(chromosome);
             }
+            // DEBUG
+            if (chromosome==null) {
+                throw new BuildException("chromosome is null for vc:"+vc.toString());
+            }
+            //
             // Location
             Location location = getDirectDataLoader().createObject(org.intermine.model.bio.Location.class);
             location.setStart(vc.getStart());
             location.setEnd(vc.getEnd());
             location.setLocatedOn(chromosome);
             location.addDataSets(dataSet);
-            // VCFRecord
-            VCFRecord vcfRecord = getDirectDataLoader().createObject(org.intermine.model.bio.VCFRecord.class);
-            vcfRecord.setPrimaryIdentifier(identifier);
-            vcfRecord.setOrganism(organism);
-            vcfRecord.setStrain(strain);
-            vcfRecord.setLength(vc.getEnd()-vc.getStart()+1);
-            vcfRecord.setAssemblyVersion(assemblyVersion);
-            vcfRecord.setAnnotationVersion(annotationVersion);
-            vcfRecord.setRef(ref.getBaseString());
-            vcfRecord.setAlt(alts.get(0).getBaseString());
-            vcfRecord.setQual(qual);
-            if (filters.length()>0) {
-                vcfRecord.setFilter(filters);
-            }
-            vcfRecord.setInfo(info);
-            vcfRecord.setGenotypingStudy(study);
-            vcfRecord.setChromosome(chromosome);
-            vcfRecord.setChromosomeLocation(location);
-            vcfRecord.addDataSets(dataSet);
-            // location.feature
-            location.setFeature(vcfRecord);
+            // GeneticMarker
+            GeneticMarker marker = getDirectDataLoader().createObject(org.intermine.model.bio.GeneticMarker.class);
+            location.setFeature(marker);
+            marker.setPrimaryIdentifier(identifier);
+            if (secondaryIdentifier!=null) marker.setSecondaryIdentifier(secondaryIdentifier);
+            marker.setAssemblyVersion(assemblyVersion);
+            marker.setAnnotationVersion(annotationVersion);
+            marker.setType("VCF");
+            marker.setAlleles(ref.getBaseString()+"/"+altString);
+            marker.setOrganism(organism);
+            marker.setStrain(strain);
+            marker.setChromosome(chromosome);
+            marker.setChromosomeLocation(location);
+            marker.addDataSets(dataSet);
+            // GenotypingRecord -- same identifier as marker
+            GenotypingRecord genotypingRecord = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingRecord.class);
+            genotypingRecord.setIdentifier(identifier);
+            genotypingRecord.setMarker(marker);
+            genotypingRecord.setRef(ref.getBaseString());
+            genotypingRecord.setAlt(altString);
+            genotypingRecord.setQual(qual);
+            genotypingRecord.setInfo(info);
+            if (filters.length()>0) genotypingRecord.setFilter(filters);
+            genotypingRecord.setStudy(study);
+            genotypingRecord.setDataSet(dataSet);
             // le storage
+            getDirectDataLoader().store(marker);
             getDirectDataLoader().store(location);
-            getDirectDataLoader().store(vcfRecord);
-            // VCFSampleRecord
+            getDirectDataLoader().store(genotypingRecord);
+            // Genotypes
             for (String sampleName : samples.keySet()) {
                 GenotypingSample sample = samples.get(sampleName);
-                String genotype = vc.getGenotype(sampleName).getGenotypeString();
-                String likelihoods = vc.getGenotype(sampleName).getLikelihoods().getAsString();
-                VCFSampleRecord vcfSampleRecord = getDirectDataLoader().createSimpleObject(org.intermine.model.bio.VCFSampleRecord.class);
-                vcfSampleRecord.setSample(sample);
-                vcfSampleRecord.setGenotype(genotype);
-                vcfSampleRecord.setLikelihoods(likelihoods);
-                vcfSampleRecord.setVcfRecord(vcfRecord);
-                getDirectDataLoader().store(vcfSampleRecord);
+                String value = vc.getGenotype(sampleName).getGenotypeString();
+                Genotype genotype = getDirectDataLoader().createSimpleObject(org.intermine.model.bio.Genotype.class);
+                genotype.setSample(sample);
+                genotype.setValue(value);
+                if (vc.getGenotype(sampleName).hasLikelihoods()) {
+                    genotype.setLikelihoods(vc.getGenotype(sampleName).getLikelihoods().getAsString());
+                }
+                genotype.setRecord(genotypingRecord);
+                // le storage
+                getDirectDataLoader().store(genotype);
             }
         }
     }
@@ -347,67 +387,55 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
      * Get/Create an Organism from a filename
      */
     Organism getOrganismObject(String filename) throws ObjectStoreException {
-        if (organism!=null) {
-            return organism;
-        } else {
+        if (organism==null) {
             organism = getDirectDataLoader().createObject(org.intermine.model.bio.Organism.class);
             String gensp = DatastoreUtils.extractGensp(filename);
             organism.setAbbreviation(gensp);
             organism.setTaxonId(datastoreUtils.getTaxonId(gensp));
             organism.setGenus(datastoreUtils.getGenus(gensp));
             organism.setSpecies(datastoreUtils.getSpecies(gensp));
-            getDirectDataLoader().store(organism);
-            return organism;
         }
+        return organism;
     }
 
     /**
      * Get/Create a Strain from a filename and Organism
      */
     Strain getStrainObject(String filename, Organism organism) throws ObjectStoreException {
-        if (strain!=null) {
-            return strain;
-        } else {
+        if (strain==null) {
             strain = getDirectDataLoader().createObject(org.intermine.model.bio.Strain.class);
-            strain.setIdentifier(DatastoreUtils.extractStrainIdentifier(filename));
+            String strainName = DatastoreUtils.extractStrainIdentifier(filename);
+            strain.setIdentifier(strainName);
             strain.setOrganism(organism);
-            getDirectDataLoader().store(strain);
-            return strain;
         }
+        return strain;
     }
 
     /**
      * Get/Create a DataSource
      */
     DataSource getDataSourceObject() throws ObjectStoreException {
-        if (dataSource!=null) {
-            return dataSource;
-        } else {
+        if (dataSource==null) {
             dataSource = getDirectDataLoader().createObject(org.intermine.model.bio.DataSource.class);
             if (dataSourceName!=null) dataSource.setName(dataSourceName);
             if (dataSourceUrl!=null) dataSource.setUrl(dataSourceUrl);
             if (dataSourceDescription!=null) dataSource.setDescription(dataSourceDescription);
-            getDirectDataLoader().store(dataSource);
-            return dataSource;
         }
+        return dataSource;
     }
 
     /**
      * Get/Create a DataSet
      */
     DataSet getDataSetObject(DataSource dataSource) throws ObjectStoreException {
-        if (dataSet!=null) {
-            return dataSet;
-        } else {
+        if (dataSet==null) {
             dataSet = getDirectDataLoader().createObject(org.intermine.model.bio.DataSet.class);
             if (dataSource!=null) dataSet.setDataSource(dataSource);
             if (dataSetName!=null) dataSet.setName(dataSetName);
             if (dataSetUrl!=null) dataSet.setUrl(dataSetUrl);
-            if (dataSetDescription!=null) dataSet.setDescription(dataSetDescription);
             if (dataSetVersion!=null) dataSet.setVersion(dataSetVersion);
             if (dataSetLicence!=null) dataSet.setLicence(dataSetLicence);
-            getDirectDataLoader().store(dataSet);
-            return dataSet;
         }
+        return dataSet;
     }
 }
