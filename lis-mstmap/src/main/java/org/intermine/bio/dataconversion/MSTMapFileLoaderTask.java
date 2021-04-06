@@ -275,7 +275,7 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
                     try {
                         getDirectDataLoader().store(genotype);
                     } catch (Exception ex) {
-                        // DEBUG
+                        // continue through exception
                         System.err.println("Error storing "+genotype.toString());
                         System.err.println(ex);
                     }

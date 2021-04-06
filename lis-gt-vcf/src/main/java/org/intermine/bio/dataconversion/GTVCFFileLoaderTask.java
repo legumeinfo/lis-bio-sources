@@ -326,11 +326,6 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
                 chromosomes.put(vc.getContig(), chromosome);
                 getDirectDataLoader().store(chromosome);
             }
-            // DEBUG
-            if (chromosome==null) {
-                throw new BuildException("chromosome is null for vc:"+vc.toString());
-            }
-            //
             // Location
             Location location = getDirectDataLoader().createObject(org.intermine.model.bio.Location.class);
             location.setStart(vc.getStart());

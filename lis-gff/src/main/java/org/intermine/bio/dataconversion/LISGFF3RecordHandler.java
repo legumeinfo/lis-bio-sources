@@ -61,6 +61,9 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
     // primary identifiers to avoid loading same feature twice
     List<String> primaryIdentifiers = new LinkedList<>();
 
+    // for detection of supercontigs, etc.
+    DatastoreUtils datastoreUtils;
+
     /**
      * Create a new LISGFF3RecordHandler object.
      * @param tgtModel the target Model
@@ -76,6 +79,8 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         refsAndCollections.put("MRNA", "gene");                   // SO: mRNA->mature_transcript->transcript->gene_member_region
 	refsAndCollections.put("RRNAPrimaryTranscript", "gene");  // SO: rRNA->ncRNA->mature_transcript->transcript->gene_member_region
 	refsAndCollections.put("TRNAPrimaryTranscript", "gene");  // SO: tRNA->ncRNA->mature_transcript->transcript->gene_member_region
+        // instantiate DatastoreUtils for supercontig detection, etc.
+        datastoreUtils = new DatastoreUtils();
     }
 
     /**
@@ -93,26 +98,29 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         String type = record.getType();
         // does this work?
         if (type.equals("protein_match") || type.equals("protein_hmm_match")) return;
-        Item feature = getFeature();
-        String className = feature.getClassName();
         String id = record.getId();
         String name = null;
         if (record.getNames()!=null) name = record.getNames().get(0);
         String seqId = record.getSequenceID();
-        String[] seqParts = seqId.split("\\.");
-        String gensp = seqParts[0];
-        String strainId = seqParts[1];
-        String assemblyVersion = seqParts[2];
+        String gensp = DatastoreUtils.extractGensp(seqId);
+        String strainIdentifier = DatastoreUtils.extractStrainIdentifier(seqId);
+        String assemblyVersion = DatastoreUtils.extractAssemblyVersion(seqId);
+        // validate
+        if (assemblyVersion==null || assemblyVersion.equals("null")) {
+            throw new RuntimeException("ERROR: assemblyVersion=null for seqId="+seqId);
+        }
         String primaryIdentifier = null;
         String annotationVersion = null;
         boolean hasAnnotation = false;
+        // our feature
+        Item feature = getFeature();
         // ID values are notoriously incorrect, so DO NOT USE THEM for primaryIdentifier if Name is present
         // HOWEVER, if id contains ann# then we'll grab annotationVersion from it since we can't get at the filename
         // ID=gensp.strain.gnm.ann.stuff-to-ignore
-        if (id!=null && id.startsWith(gensp+"."+strainId+"."+assemblyVersion)) {
+        if (id!=null && id.startsWith(gensp+"."+strainIdentifier+"."+assemblyVersion)) {
             String[] idParts = id.split("\\.");
             hasAnnotation = idParts.length>4 && idParts[3].startsWith("ann");
-            if (hasAnnotation) annotationVersion = idParts[3];
+            if (hasAnnotation) annotationVersion = DatastoreUtils.extractAnnotationVersion(id);
         }
         if (name==null) {
             // use ID when Name is not present
@@ -120,9 +128,9 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         } else {
             // build the primaryIdentifier from the sequence ID and the Name attribute.
             if (hasAnnotation) {
-                primaryIdentifier = gensp+"."+strainId+"."+assemblyVersion+"."+annotationVersion+"."+name;
+                primaryIdentifier = gensp+"."+strainIdentifier+"."+assemblyVersion+"."+annotationVersion+"."+name;
             } else {
-                primaryIdentifier = gensp+"."+strainId+"."+assemblyVersion+"."+name;
+                primaryIdentifier = gensp+"."+strainIdentifier+"."+assemblyVersion+"."+name;
             }
         }
         // catch non-existence of primaryIdentifier
@@ -137,7 +145,7 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         feature.setAttribute("primaryIdentifier", primaryIdentifier);
         feature.setAttribute("secondaryIdentifier", DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, hasAnnotation));
         feature.setAttribute("assemblyVersion", assemblyVersion);
-        if (hasAnnotation) feature.setAttribute("annotationVersion", annotationVersion);
+        if (annotationVersion!=null && !annotationVersion.equals("null")) feature.setAttribute("annotationVersion", annotationVersion);
         // add marker type = SNP if it is a marker with length 1. This will be overridden if Type attribute is present.
         if (type.equals("genetic_marker") && (record.getStart()-record.getEnd())==0) {
             feature.setAttribute("type", "SNP");

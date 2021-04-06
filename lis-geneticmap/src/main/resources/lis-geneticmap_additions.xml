@@ -1,14 +1,19 @@
 <?xml version="1.0"?>
 <classes>
 
+  <!-- gensp -->
+  <class name="Organism" is-interface="true">
+    <attribute name="abbreviation" type="java.lang.String"/>
+  </class>
+
   <!-- extends Annotatable for Publication support -->
   <class name="GeneticMap" extends="Annotatable" is-interface="true">
-    <attribute name="description" type="java.lang.String"/>
+    <attribute name="subject" type="java.lang.String"/>
+    <attribute name="mappingDescription" type="java.lang.String"/>
     <reference name="organism" referenced-type="Organism"/>
     <collection name="dataSets" referenced-type="DataSet"/>
     <collection name="mappingParents" referenced-type="Strain"/>
     <collection name="linkageGroups" referenced-type="LinkageGroup" reverse-reference="geneticMap"/>
-    <collection name="qtls" referenced-type="QTL" reverse-reference="geneticMap"/>
   </class>
 
   <class name="LinkageGroup" is-interface="true">
@@ -19,7 +24,6 @@
     <reference name="geneticMap" referenced-type="GeneticMap" reverse-reference="linkageGroups"/>
     <collection name="dataSets" referenced-type="DataSet"/>
     <collection name="markers" referenced-type="GeneticMarker"/>
-    <collection name="qtls" referenced-type="QTL" reverse-reference="linkageGroup"/>
   </class>
 
   <class name="GeneticMarker" extends="SequenceFeature" is-interface="true">
@@ -31,35 +35,5 @@
     <reference name="linkageGroup" referenced-type="LinkageGroup"/>
     <reference name="marker" referenced-type="GeneticMarker"/>
   </class>
-  
-  <class name="QTL" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645">
-    <attribute name="identifier" type="java.lang.String"/>
-    <attribute name="intervalDescription" type="java.lang.String"/>
-    <reference name="organism" referenced-type="Organism"/>
-    <reference name="geneticMap" referenced-type="GeneticMap" reverse-reference="qtls"/>
-    <reference name="phenotype" referenced-type="Phenotype" reverse-reference="qtls"/>
-    <reference name="linkageGroup" referenced-type="LinkageGroup" reverse-reference="qtls"/>
-    <attribute name="start" type="java.lang.Double"/>
-    <attribute name="end" type="java.lang.Double"/>
-    <attribute name="lod" type="java.lang.Double"/>
-    <attribute name="likelihoodRatio" type="java.lang.Double"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
-  </class>
-  
-  <!-- associate with an ontology term -->
-  <class name="Phenotype" extends="BioEntity" is-interface="true" term="http://semanticscience.org/resource/SIO_010056">
-    <collection name="qtls" referenced-type="QTL" reverse-reference="phenotype"/>
-  </class>
-
-  <!-- <!-\- phenotype measurements can be all sorts of things, and refer to a Strain -\-> -->
-  <!-- <class name="PhenotypeValue" is-interface="true"> -->
-  <!--   <!-\- future core model -\-> -->
-  <!--   <reference name="phenotype" referenced-type="Phenotype" reverse-reference="phenotypeValues"/> -->
-  <!--   <reference name="strain" referenced-type="Strain"/> -->
-  <!--   <attribute name="textValue" type="java.lang.String"/> -->
-  <!--   <attribute name="numericValue" type="java.lang.Double"/> -->
-  <!--   <attribute name="booleanValue" type="java.lang.Boolean"/> -->
-  <!-- </class> -->
-
 
 </classes>

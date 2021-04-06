@@ -19,24 +19,7 @@ import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
 /**
- * Store GWAS/phenotype/marker data from a tab-delimited file.
- * 
- * glyma.mixed.gwas1.1W14.KGK20170714-1.gwas.tsv
- * ---------------------------------------------
- * Identifier	KGK20170714.1
- * Name	Bandillo, Jarquin et al. 2015
- * Description  We did a GWAS on 38 accessions of soybean and here are the results.
- * PlatformName	SoySNP50k
- * PlatformDetails   Illumina Infinium Bead Chip
- * GenotypeDataset   LIS DS folder containing a VCF or HMP file underlying analysis
- * PhenotypeDataset  LIS DS folder containing a trait measurement file underlying analysis
- * CurationNotes     Bunch of words about stuff having to do with curation
- * PMID 123456
- * DOI	10.3835/plantgenome2015.04.0024
- * #identifier	   phenotype  marker	      pvalue
- * Seed oil 4-g14  Seed oil   ss715591641   3.16E-09
- * Seed oil 4-g15  Seed oil   ss715591642   3.16E-08
- * ...
+ * Store GWAS result/trait/marker data from a tab-delimited files.
  *
  * @author Sam Hokin
  */
@@ -45,16 +28,16 @@ public class GWASFileConverter extends DatastoreFileConverter {
     private static final Logger LOG = Logger.getLogger(GWASFileConverter.class);
 
     // local things to store
-    List<Item> gwases = new LinkedList<>();
     List<Item> gwasResults = new LinkedList<>();
-    Map<String,Item> qtls = new HashMap<>();              // keyed by identifier
-    Map<Integer,Item> publicationPMIDMap = new HashMap<>();   // keyed by PMID if supplied
-    Map<String,Item> publicationDOIMap = new HashMap<>();     // keyed by DOI if supplied and PMID isn't
-    Map<String,Item> ontologyAnnotationMap = new HashMap<>();
-    Map<String,Item> phenotypeMap = new HashMap<>();
-    Map<String,Item> markerMap = new HashMap<>();             // keyed by secondaryIdentifier
-    Map<String,Item> ontologyTermMap = new HashMap<>();
+    List<Item> ontologyAnnotations = new LinkedList<>();
+    Map<String,Item> traits = new HashMap<>();           // keyed by identifier
+    Map<String,Item> markers = new HashMap<>();          // keyed by secondaryIdentifier
+    Map<String,Item> ontologyTerms = new HashMap<>();    // keyed by identifier
 
+    // singleton Items
+    Item gwas = createItem("GWAS");
+    Item publication = createItem("Publication");
+                                  
     /**
      * Create a new GWASFileConverter
      * @param writer the ItemWriter to write out new items
@@ -70,177 +53,15 @@ public class GWASFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
-        if (!getCurrentFile().getName().endsWith(".gwas.tsv") && !getCurrentFile().getName().endsWith(".phen.tsv")) return;
-        if (getCurrentFile().getName().endsWith(".gwas.tsv")) {
-            processGWASFile(reader);
-        } else if (getCurrentFile().getName().endsWith(".phen.tsv")) {
-            processPhenFile(reader);
-        }
-    }
-
-    /**
-     * Process a GWAS file
-     */
-    void processGWASFile(Reader reader) throws IOException {
-        Item dataSet = getDataSet();
-        Item organism = getOrganism();
-        Item gwas = createItem("GWAS");
-	gwas.setReference("dataSet", dataSet);
-        gwas.setReference("organism", organism);
-        gwases.add(gwas);
-        Item publication = null;
-        BufferedReader bufferedReader = new BufferedReader(reader);
-	String line;
-        while ((line=bufferedReader.readLine())!=null) {
-            if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
-            String[] parts = line.split("\t");
-	    if (parts.length<2) continue; // entry without value
-            String key = parts[0].toLowerCase();
-            String value = parts[1];
-	    if (value.length()==0) continue; // entry without value
-            if (key.equals("identifier")) {
-                gwas.setAttribute("primaryIdentifier", value);
-	    } else if (key.equals("name")) {
-		gwas.setAttribute("name", value);
-            } else if (key.equals("description")) {
-                gwas.setAttribute("description", value);
-            } else if (key.equals("platformname")) {
-                gwas.setAttribute("platformName", value);
-            } else if (key.equals("platformdetails")) {
-                gwas.setAttribute("platformDetails", value);
-            } else if (key.equals("synopsis")) {
-                gwas.setAttribute("synopsis", value);
-            } else if (key.equals("curationnotes")) {
-                gwas.setAttribute("curationNotes", value);
-            } else if (key.equals("pmid")) {
-                int pmid = Integer.parseInt(value); // make sure it's a number
-                if (publication==null) {
-                    if (publicationPMIDMap.containsKey(pmid)) {
-                        publication = publicationPMIDMap.get(pmid);
-                    } else {
-                        publication = createItem("Publication");
-                        publication.setAttribute("pubMedId", String.valueOf(pmid));
-                        publicationPMIDMap.put(pmid, publication);
-                    }
-                    gwas.addToCollection("publications", publication);
-                } else {
-                    // update DOI pub
-                    publication.setAttribute("pubMedId", String.valueOf(pmid));
-                }                    
-            } else if (key.equals("doi")) {
-                String doi = value;
-                if (publication==null) {
-                    if (publicationDOIMap.containsKey(doi)) {
-                        publication = publicationDOIMap.get(doi);
-                    } else {
-                        publication = createItem("Publication");
-                        publication.setAttribute("doi", doi);
-                        publicationDOIMap.put(doi, publication);
-                    }
-                    gwas.addToCollection("publications", publication);
-                } else {
-                    // update PMID pub
-                    publication.setAttribute("doi", doi);
-                }
-            } else {
-                /////////////////
-                // data record //
-                /////////////////
-                GWASFileRecord rec = new GWASFileRecord(line);
-                // GeneticMarker
-                String secondaryIdentifier = rec.marker;
-                Item marker = markerMap.get(secondaryIdentifier);
-		if (marker==null) {
-                    marker = createItem("GeneticMarker");
-                    marker.setAttribute("secondaryIdentifier", secondaryIdentifier);
-                    marker.setReference("organism", organism);
-                    markerMap.put(secondaryIdentifier, marker);
-                }
-                marker.addToCollection("dataSets", dataSet);
-                if (publication!=null) {
-                    marker.addToCollection("publications", publication);
-                }
-                // Phenotype
-                Item phenotype = phenotypeMap.get(rec.phenotype);
-		if (phenotype==null) {
-                    phenotype = createItem("Phenotype");
-		    phenotype.setAttribute("primaryIdentifier", rec.phenotype);
-                    phenotype.setAttribute("secondaryIdentifier", rec.phenotype);
-                    phenotype.setReference("organism", organism);
-                    phenotypeMap.put(rec.phenotype, phenotype);
-                }
-                phenotype.addToCollection("dataSets", dataSet);
-                // QTL
-                Item qtl = qtls.get(rec.identifier);
-                if (qtl==null) {
-                    qtl = createItem("QTL");
-                    qtl.setAttribute("identifier", rec.identifier);
-                    qtl.setReference("phenotype", phenotype);
-                    qtl.setReference("gwas", gwas);
-                    qtl.setReference("organism", organism);
-                    qtls.put(rec.identifier, qtl);
-                }
-                qtl.addToCollection("dataSets", dataSet);
-                // GWASResult
-                Item gwasResult = createItem("GWASResult");
-                gwasResult.setAttribute("pValue", String.valueOf(rec.pvalue));
-                if (rec.lod!=Double.MAX_VALUE) {
-                    gwasResult.setAttribute("lod", String.valueOf(rec.lod));
-                }
-                gwasResult.setReference("phenotype", phenotype);
-                gwasResult.setReference("marker", marker);
-                gwasResult.setReference("gwas", gwas);
-                gwasResult.setReference("qtl", qtl);
-		gwasResults.add(gwasResult);
-            }
-        }
-        bufferedReader.close();
-    }
-
-    /**
-     * Process a Phenotype file
-     */
-    void processPhenFile(Reader reader) throws IOException {
-        Item dataSet = getDataSet();
-        Item organism = getOrganism();
-        BufferedReader bufferedReader = new BufferedReader(reader);
-	String line;
-        while ((line=bufferedReader.readLine())!=null) {
-            if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
-            String[] parts = line.split("\t");
-	    if (parts.length<2) continue; // entry without value
-            String trait = parts[0].trim().toLowerCase();
-            String ontologyId = parts[1];
-            // init cap trait
-            trait = trait.substring(0,1).toUpperCase() + trait.substring(1);
-            // Phenotype
-            Item phenotype = phenotypeMap.get(trait);
-            if (phenotype==null) {
-                phenotype = createItem("Phenotype");
-                phenotype.setAttribute("primaryIdentifier", trait);
-                phenotypeMap.put(trait, phenotype);
-            }
-            phenotype.setAttribute("secondaryIdentifier", trait);
-            phenotype.setReference("organism", organism);
-            phenotype.addToCollection("dataSets", dataSet);
-            // OntologyTerm
-            Item ontologyTerm = ontologyTermMap.get(ontologyId);
-            if (ontologyTerm==null) {
-                ontologyTerm = createItem("OntologyTerm");
-                ontologyTerm.setAttribute("identifier", ontologyId);
-                ontologyTermMap.put(ontologyId, ontologyTerm);
-            }
-            // OntologyAnnotation
-            String ontologyAnnotationKey = trait+"|"+ontologyId;
-            if (!ontologyAnnotationMap.containsKey(ontologyAnnotationKey)) {
-                Item ontologyAnnotation = createItem("OntologyAnnotation");
-                ontologyAnnotation.setReference("subject", phenotype);
-                ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
-                ontologyAnnotation.addToCollection("dataSets", dataSet);
-                ontologyAnnotationMap.put(ontologyAnnotationKey,ontologyAnnotation);
-            }
-        }
-        bufferedReader.close();
+        if (getCurrentFile().getName().startsWith("README")) {
+	    processReadme(reader);
+        } else if (getCurrentFile().getName().endsWith("obo.tsv")) {
+            processOboFile(reader);
+	} else if (getCurrentFile().getName().endsWith("result.tsv")) {
+            processResultFile(reader);
+	} else if (getCurrentFile().getName().endsWith("trait.tsv")) {
+            processTraitFile(reader);
+	}
     }
 
     /**
@@ -253,16 +74,182 @@ public class GWASFileConverter extends DatastoreFileConverter {
 	store(dataSets.values());
 	store(organisms.values());
         // local
-        Set<Item> publications = new HashSet<>();
-        publications.addAll(publicationPMIDMap.values());
-        publications.addAll(publicationDOIMap.values());
-	store(publications);
-	store(gwases);
+	store(publication);
+	store(gwas);
 	store(gwasResults);
-        store(qtls.values());
-        store(ontologyAnnotationMap.values());
-	store(markerMap.values());
-        store(phenotypeMap.values());
-        store(ontologyTermMap.values());
+        store(traits.values());
+        store(ontologyAnnotations);
+	store(markers.values());
+        store(ontologyTerms.values());
+    }
+
+    /**
+     * Process the README, which contains the GWAS metadata.
+     *
+     * identifier: 2020NAMFlor7
+     * subject: GangurdeSS 2020 NAM Florida-7 GWAS study of pod and seed weight
+     * taxid: 3818
+     * genotype:
+     * - Florida-07 NAM population
+     * description: "A GWAS dataset from Gangurde SS, et al., 2020 NAM Florida-7 mapping population. Nested-association mapping..."
+     * publication_doi: 10.1111/pbi.13311
+     * publication_title: "Nested-association mapping (NAM)-based genetic dissection uncovers candidate genes for seed and pod weights in peanut (Arachis hypogaea)"
+     * genotyping_platform: "Affymetrix 58K SNP Axiom_Arachis array"
+     */
+    void processReadme(Reader reader) throws IOException {
+        Readme readme = Readme.getReadme(reader);
+        // check required stuff
+        if (readme.identifier==null ||
+            readme.taxid==null ||
+            readme.subject==null ||
+            readme.description==null ||
+            readme.genotype==null ||
+            readme.publication_doi==null ||
+            readme.publication_title==null ||
+            readme.genotyping_platform==null) {
+            throw new RuntimeException("ERROR: a required field is missing from "+getCurrentFile().getName()+": "+
+                                       "Required fields are: identifier, taxid, subject, description, genotype, publication_doi, publication_title, genotyping_platform");
+        }
+        // Organism from README taxid rather than filename
+        Item organism = getOrganism(Integer.parseInt(readme.taxid));
+        // GWAS
+        gwas.setAttribute("primaryIdentifier", readme.identifier);
+        gwas.setReference("organism", organism);
+        gwas.setAttribute("subject", readme.subject);
+        gwas.setAttribute("description", readme.description);
+        gwas.setAttribute("genotypingPlatform", readme.genotyping_platform);
+        gwas.setAttribute("population", readme.genotype[0]);
+        // Publication
+        publication.setAttribute("doi", readme.publication_doi);
+        publication.setAttribute("title", readme.publication_title);
+        gwas.addToCollection("publications", publication);
+        // override DataSet.description from README
+        Item dataSet = getDataSet();
+        dataSet.setAttribute("description", readme.description);
+        dataSet.setReference("publication", publication);
+        gwas.addToCollection("dataSets", dataSet);
+    }
+
+    /**
+     * Process a trait.tsv file, creating Trait records.
+     * 0                                   1            2
+     * #trait_id                           trait_name   description
+     * 100 Seed weight from Florida-7 NAM  Seed weight  After harvest and drying to less than 10% water content, 100 seeds were picked randomly and weighed.
+     * 100 Pod weight from Florida-7 NAM   Pod weight   After harvest and drying to less than 10% water content, 100 pods were picked randomly and weighed.
+     */
+    void processTraitFile(Reader reader) throws IOException {
+        Item dataSet = getDataSet();
+        gwas.addToCollection("dataSets", dataSet);
+        BufferedReader br = new BufferedReader(reader);
+	String line;
+        while ((line=br.readLine())!=null) {
+            if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
+            String[] fields = line.split("\t");
+            String identifier = fields[0];
+            String name = fields[1];
+            String description = fields[2];
+            // Trait
+            Item trait = traits.get(identifier);
+            if (trait==null) {
+                trait = createItem("Trait");
+                trait.setAttribute("primaryIdentifier", identifier);
+                traits.put(identifier, trait);
+            }
+            trait.setAttribute("name", name);
+            trait.setAttribute("description", description);
+            trait.setReference("gwas", gwas);
+            trait.addToCollection("dataSets", dataSet);
+        }
+        br.close();
+    }
+
+    /**
+     * Process an obo.tsv file.
+     * 0                                   1
+     * #trait_id                           obo_term
+     * 100 Seed weight from Florida-7 NAM  TO:0000181
+     */
+    void processOboFile(Reader reader) throws IOException {
+        Item dataSet = getDataSet();
+        BufferedReader br = new BufferedReader(reader);
+	String line;
+        while ((line=br.readLine())!=null) {
+            if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
+            String[] fields = line.split("\t");
+	    if (fields.length<2) continue;
+            if (fields[1]==null || fields[1].trim().length()==0) continue;
+            String traitId = fields[0];
+            String ontologyId = fields[1];
+            // OntologyTerm
+            Item ontologyTerm = ontologyTerms.get(ontologyId);
+            if (ontologyTerm==null) {
+                ontologyTerm = createItem("OntologyTerm");
+                ontologyTerm.setAttribute("identifier", ontologyId);
+                ontologyTerms.put(ontologyId, ontologyTerm);
+            }
+            // Trait
+            Item trait = traits.get(traitId);
+            if (trait==null) {
+                trait = createItem("Trait");
+                trait.setAttribute("primaryIdentifier", traitId);
+                traits.put(traitId, trait);
+            }
+            trait.addToCollection("dataSets", dataSet);
+            // OntologyAnnotation
+            Item ontologyAnnotation = createItem("OntologyAnnotation");
+            ontologyAnnotation.setReference("subject", trait);
+            ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
+            ontologyAnnotation.addToCollection("dataSets", dataSet);
+            ontologyAnnotations.add(ontologyAnnotation);
+        }
+        br.close();
+    }
+
+    /**
+     * Process a GWASResult file with trait-marker associations.
+     * 0                                        1               2
+     * #trait_id				marker		pvalue
+     * 100 Seed weight from Florida-7 NAM	Affx-152042939	9.12e-9
+     * 100 Pod weight from Florida-7 NAM	Affx-152042939	9.12e-9
+     */
+    void processResultFile(Reader reader) throws IOException {
+        Item dataSet = getDataSet();
+        Item organism = getOrganism();
+        gwas.addToCollection("dataSets", dataSet);
+        BufferedReader bufferedReader = new BufferedReader(reader);
+	String line;
+        while ((line=bufferedReader.readLine())!=null) {
+            if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
+            String[] fields = line.split("\t");
+            String traitId = fields[0];
+            String markerId = fields[1];
+            double pValue = Double.parseDouble(fields[2]);
+            // Trait
+            Item trait = traits.get(traitId);
+            if (trait==null) {
+                trait = createItem("Trait");
+                trait.setAttribute("primaryIdentifier", traitId);
+                traits.put(traitId, trait);
+            }
+            trait.setReference("gwas", gwas);
+            trait.addToCollection("dataSets", dataSet);
+            // GeneticMarker
+            Item marker = markers.get(markerId);
+            if (marker==null) {
+                marker = createItem("GeneticMarker");
+                marker.setAttribute("secondaryIdentifier", markerId);
+                marker.setReference("organism", organism);
+                markers.put(markerId, marker);
+            }
+            marker.addToCollection("dataSets", dataSet);
+            // GWASResult
+            Item gwasResult = createItem("GWASResult");
+            gwasResult.setReference("gwas", gwas);
+            gwasResult.setReference("trait", trait);
+            gwasResult.setReference("marker", marker);
+            gwasResult.setAttribute("pValue", String.valueOf(pValue));
+            gwasResults.add(gwasResult);
+        }
+        bufferedReader.close();
     }
 }

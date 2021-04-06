@@ -63,8 +63,6 @@ public class AboutFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-	store(dataSource);
-	store(dataSets.values());
 	store(organisms.values());
         store(strains.values());
 	
@@ -85,15 +83,12 @@ public class AboutFileConverter extends DatastoreFileConverter {
      * organism.description:	Common bean was likely domesticated independently both in Central America and in the Andes....
      */
     void processDescriptionFile(Reader reader) throws IOException {
-	Item dataSet = getDataSet();
         // get the organism
         String[] dotparts = getCurrentFile().getName().split("\\.");
         String[] threeparts = dotparts[0].split("_");
         String genus = threeparts[1];
         String species = threeparts[2];
         Item organism = getOrganism(genus, species);
-	organism.addToCollection("dataSources", dataSource);
-	organism.addToCollection("dataSets", dataSet);
         // now load the attributes
         BufferedReader br = new BufferedReader(reader);
         String line = null;
@@ -138,7 +133,6 @@ public class AboutFileConverter extends DatastoreFileConverter {
      * strain.description:	Accession BAT93 is a Mesomarican line that has been used in numerous breeding projects and trait-mapping studies.
      */
     void processStrainsFile(Reader reader) throws IOException {
-	Item dataSet = getDataSet();
         // get the organism
         String[] dotparts = getCurrentFile().getName().split("\\.");
         String[] threeparts = dotparts[0].split("_");
@@ -157,8 +151,6 @@ public class AboutFileConverter extends DatastoreFileConverter {
                 String[] parts = line.split("\t");
 		String strainId = parts[1].trim();
 		strain = getStrain(strainId, organism);
-		strain.addToCollection("dataSources", dataSource);
-		strain.addToCollection("dataSets", dataSet);
             } else {
 		// other strain attributes
 		// strain.origin:	Shanxi Sheng, China

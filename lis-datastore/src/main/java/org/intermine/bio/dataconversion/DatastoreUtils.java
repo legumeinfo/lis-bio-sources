@@ -27,34 +27,13 @@ public class DatastoreUtils {
 
     Map<String,List<String>> supercontigStrings = new HashMap<>();
 
+    /**
+     * Constructor for methods that require loading properties files.
+     */
     public DatastoreUtils() {
-        // map taxonId to genus, species
-        // 0     1    2
-        // taxon.3702.genus=Arabidopsis
-        // taxon.3702.species=thaliana
-        // taxon.3702.uniprot=ARATH
         Properties orgProps = new Properties();
         try {
-            // DEBUG
-            // class_keys.properties
-            // datastore_config.properties
-            // genomic_keyDefs.properties
-            // genomic_precompute.properties
-            // genomic_priorities.properties
-            // keyword_search.properties
-            // objectstoresummary.config.properties
-            // organism_config.properties
-            // so_terms
-            if (getClass().getClassLoader().getResourceAsStream("so_terms")==null) {
-                System.err.println("Did not find so_terms");
-            }
-            if (getClass().getClassLoader().getResourceAsStream("class_keys.properties")==null) {
-                System.err.println("Did not find class_keys.properties");
-            }
-            if (getClass().getClassLoader().getResourceAsStream("datastore_config.properties")==null) {
-                System.err.println("Did not find datastore_config.properties");
-            }
-            //
+            // load the organism properties into maps
             InputStream orgPropsResource = getClass().getClassLoader().getResourceAsStream(ORGANISM_PROP_FILE);
             if (orgPropsResource == null) {
                 System.err.println("Did not find organism properties file:"+ORGANISM_PROP_FILE);
@@ -88,7 +67,7 @@ public class DatastoreUtils {
             genusSpeciesTaxonId.put(genusSpecies, taxonId);
         }
         
-        // get datastore properties, like supercontig-matching strings
+        // load datastore properties, like supercontig-matching strings
         Properties datastoreProps = new Properties();
         try {
             InputStream datastorePropsResource = getClass().getClassLoader().getResourceAsStream(DATASTORE_PROP_FILE);

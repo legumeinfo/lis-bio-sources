@@ -2,6 +2,7 @@ package org.intermine.bio.dataconversion;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.Reader;
 
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 
@@ -20,7 +21,7 @@ public class Readme {
     public String taxid; 
     public String bioproject; 
     public String scientific_name_abbrev; 
-    public String genotype; 
+    public String[] genotype; 
     public String description; 
     public String dataset_doi; 
     public String genbank_accession; 
@@ -37,13 +38,22 @@ public class Readme {
     public String citations;
     public String file_transformation;
     public String changes;
+    public String genotyping_platform;
 
     /**
-     * Create a Readme from a README file.
+     * Create a Readme from a file.
      */
     public static Readme getReadme(File file) throws IOException {
         YAMLMapper mapper = new YAMLMapper();
         return mapper.readValue(file, Readme.class);
+    }
+
+    /**
+     * Create a Readme from a Reader.
+     */
+    public static Readme getReadme(Reader reader) throws IOException {
+        YAMLMapper mapper = new YAMLMapper();
+        return mapper.readValue(reader, Readme.class);
     }
 }
 

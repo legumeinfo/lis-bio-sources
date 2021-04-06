@@ -1,15 +1,5 @@
 package org.intermine.bio.dataconversion;
 
-/*
- * Copyright (C) 2002-2019 FlyMine
- *
- * This code may be freely distributed and modified under the
- * terms of the GNU Lesser General Public Licence.  This should
- * be distributed with the code.  See the LICENSE file for more
- * information or http://www.gnu.org/copyleft/lesser.html.
- *
- */
-
 import org.intermine.bio.io.gff3.GFF3Record;
 import org.intermine.xml.full.Item;
 
@@ -31,14 +21,19 @@ public class LISGFF3SeqHandler extends GFF3SeqHandler {
         DatastoreUtils dsu = new DatastoreUtils();
         String taxonId = converter.getTaxonId();
         String strainIdentifier = converter.getStrainIdentifier();
+        String assemblyVersion = DatastoreUtils.extractAssemblyVersion(identifier);
         String gensp = dsu.getGensp(taxonId);
         if (dsu.isSupercontig(gensp, strainIdentifier, identifier)) {
+            if (assemblyVersion==null) throw new RuntimeException("assemblyVersion=null for identifier="+identifier);
             Item seq = converter.createItem("Supercontig");
             seq.setAttribute("primaryIdentifier", identifier);
+            seq.setAttribute("assemblyVersion", assemblyVersion);
             return seq;
         } else {
+            if (assemblyVersion==null) throw new RuntimeException("assemblyVersion=null for identifier="+identifier);
             Item seq = converter.createItem("Chromosome");
             seq.setAttribute("primaryIdentifier", identifier);
+            seq.setAttribute("assemblyVersion", assemblyVersion);
             return seq;
         }
     }
@@ -56,16 +51,20 @@ public class LISGFF3SeqHandler extends GFF3SeqHandler {
         DatastoreUtils dsu = new DatastoreUtils();
         String taxonId = converter.getTaxonId();
         String strainIdentifier = converter.getStrainIdentifier();
+        String assemblyVersion = DatastoreUtils.extractAssemblyVersion(identifier);
         String gensp = dsu.getGensp(taxonId);
         if (dsu.isSupercontig(gensp, strainIdentifier, identifier)) {
+            if (assemblyVersion==null) throw new RuntimeException("assemblyVersion=null for identifier="+identifier);
             Item seq = converter.createItem("Supercontig");
             seq.setAttribute("primaryIdentifier", identifier);
+            seq.setAttribute("assemblyVersion", assemblyVersion);
             return seq;
         } else {
+            if (assemblyVersion==null) throw new RuntimeException("assemblyVersion=null for identifier="+identifier);
             Item seq = converter.createItem("Chromosome");
             seq.setAttribute("primaryIdentifier", identifier);
+            seq.setAttribute("assemblyVersion", assemblyVersion);
             return seq;
         }
     }
-
 }
