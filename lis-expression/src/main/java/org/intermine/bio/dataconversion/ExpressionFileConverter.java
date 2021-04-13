@@ -6,7 +6,7 @@ import java.io.BufferedReader;
 import java.io.Reader;
 import java.io.IOException;
 import java.util.List;
-import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -19,10 +19,11 @@ import org.intermine.xml.full.Item;
 /**
  * DataConverter to create ExpressionSource, ExpressionSample and ExpressionValue items from a single set of datastore expression files.
  *
- * strain.gnmN.annN.expr.KEY4
- * ├── gensp.strain.gnmN.annN.expr.KEY4.samples.tsv
- * ├── gensp.strain.gnmN.annN.expr.KEY4.source.tsv
- * └── gensp.strain.gnmN.annN.expr.KEY4.values.tsv
+ * expression/G19833.gnm1.ann1.expr.4ZDQ/
+ * ├── phavu.G19833.gnm1.ann1.expr.4ZDQ.obo.tsv
+ * ├── phavu.G19833.gnm1.ann1.expr.4ZDQ.samples.tsv
+ * ├── phavu.G19833.gnm1.ann1.expr.4ZDQ.values.tsv
+ * └── README.4ZDQ.yml
  *
  * @author Sam Hokin
  */
@@ -30,13 +31,12 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     
     private static final Logger LOG = Logger.getLogger(ExpressionFileConverter.class);
 
-    Item organism;
-    Item strain;
-    Item expressionSource;
+    Item expressionSource = createItem("ExpressionSource");
     Item bioProject;
     Item publication;
-    String unit;
-    List<Item> expressionValues = new ArrayList<>();
+    String expressionUnit = "TPM";
+    List<Item> expressionValues = new LinkedList<>();
+    List<Item> ontologyAnnotations = new LinkedList<>();
     Map<String,Item> ontologyTerms = new HashMap<>();
     Map<String,Item> samples = new HashMap<>();
     Map<String,Item> genes = new HashMap<>();
@@ -50,11 +50,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      */
     public ExpressionFileConverter(ItemWriter writer, Model model) throws ObjectStoreException {
         super(writer, model);
-        expressionSource = createItem("ExpressionSource");
-        bioProject = createItem("BioProject");
-        publication = createItem("Publication");
-        expressionSource.setReference("publication", publication);
-        expressionSource.setReference("bioProject", bioProject);
     }
 
     /**
@@ -63,14 +58,14 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     public void process(Reader reader) throws IOException {
-	if (getCurrentFile().getName().endsWith("source.tsv")) {
-            processSource(reader);
+	if (getCurrentFile().getName().startsWith("README")) {
+            processReadme(reader);
         } else if (getCurrentFile().getName().endsWith("samples.tsv")) {
 	    processSamples(reader);
         } else if (getCurrentFile().getName().endsWith("values.tsv")) {
             processExpression(reader);
-        } else if (getCurrentFile().getName().endsWith("ontology.tsv")) {
-            processOntology(reader);
+        } else if (getCurrentFile().getName().endsWith("obo.tsv")) {
+            processOboFile(reader);
         }
     }
 
@@ -79,102 +74,86 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
+        // update ExpressionValue.unit
+        for (Item expressionValue : expressionValues) {
+            expressionValue.setAttribute("unit", expressionUnit);
+        }
         // DatastoreFileConverter items
-        store(dataSource);
-        store(dataSets.values());
         store(organisms.values());
         store(strains.values());
+        store(dataSource);
+        store(dataSets.values());
         // local items
         store(expressionSource);
 	store(publication);
-        store(bioProject);
+        if (bioProject!=null) store(bioProject);
 	store(genes.values());
         store(samples.values());
         store(ontologyTerms.values());
+        store(ontologyAnnotations);
 	store(expressionValues);
     }
 
     /**
-     * Process the datasource meta data file and put the info into a DataSet.
+     * Process the README, which contains the expression source metadata.
      *
-     * cajca.ICPL87119.gnm1.ann1.expr.KEY4.source.tsv
-     *
-     * NAME	Gene expression atlas of pigeonpea Asha(ICPL87119)
-     * SHORTNAME	Pigeonpea gene expression atlas
-     * ORIGIN	SRA
-     * DESCRIPTION	To be able to link the genome sequence information to the phenotype, especially...
-     * UNIT     TPM
-     * BIOPROJ_ACC	PRJNA354681
-     * BIOPROJ_TITLE	Gene expression atlas of pigeonpea
-     * BIOPROJ_DESCRIPTION	Pigeonpea (Cajanus cajan) is an important grain legume of the semi-arid tropics, mainly used...
-     * BIOPROJ_PUBLICATION	Pazhamala, L. T., Purohit, S., Saxena, R. K., Garg, V., Krishnamurthy, L., Verdier, J., & Varshney, R. K. (2017). Gene expression...
-     * SRA_PROJ_ACC	SRP097728
-     * GEO_SERIES	
-     * PUB_PMID 123456
-     * PUB_LINK	https://www.ncbi.nlm.nih.gov/pmc/articles/PMC5429002/
-     * PUB_FULLLINK	https://academic.oup.com/jxb/article/68/8/2037/3051749/Gene-expression-atlas-of-pigeonpea-and-its
+     * identifier: 4ZDQ
+     * scientific_name: Phaseolus vulgaris
+     * taxid: 3885
+     * bioproject: PRJNA210619
+     * scientific_name_abbrev: phavu
+     * genotype:
+     * - G19833
+     * description: "Phaseolus vulgaris cv. Negro jamapa expression profiles in the P. vulgaris reference genome (G 19833) for 24 unique samples..."
+     * publication_doi: 10.1186/1471-2164-15-866
+     * publication_title:  "An RNA-Seq based gene expression atlas of the common bean"
+     * contributors: "O'Rourke, Jamie A; Iniguez, Luis P; Fu, Fengli; ..."
+     * expression_unit: TPM
+     * sraproject: SRP046307
+     * geoseries: GSEnnnnn
      */
-    void processSource(Reader reader) throws IOException {
-        organism = getOrganism();
-        strain = getStrain(organism);
-        Item dataSet = getDataSet();
-        expressionSource.setReference("dataSet", dataSet);
-        unit = "TPM"; // default
-	BufferedReader br = new BufferedReader(reader);
-        String line = null;
-        while ((line=br.readLine())!=null) {
-            if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
-            String[] parts = line.split("\t");
-            if (parts.length==2) {
-                switch(parts[0]) {
-                case "NAME" :
-                    expressionSource.setAttribute("identifier", parts[1]);
-                    break;
-                case "SHORTNAME" :
-                    expressionSource.setAttribute("shortName", parts[1]);
-                    break;
-                case "ORIGIN" :
-                    expressionSource.setAttribute("origin", parts[1]);
-                    break;
-                case "DESCRIPTION" :
-                    expressionSource.setAttribute("description", parts[1]);
-                    break;
-                case "UNIT" :
-                    unit = parts[1];
-                case "GEO_SERIES" :
-                    expressionSource.setAttribute("geoSeries", parts[1]);
-                    break;
-                case "SRA_PROJ_ACC" :
-                    expressionSource.setAttribute("sra", parts[1]);
-                    break;
-		case "PUB_PMID" :
-                    publication.setAttribute("pubMedId", parts[1]);
-		    break;
-                case "PUB_LINK" :
-                    publication.setAttribute("url", parts[1]);
-                    break;
-                case "PUB_FULLLINK" :
-                    publication.setAttribute("url", parts[1]);
-                    break;
-                case "BIOPROJ_ACC" :
-                    bioProject.setAttribute("accession", parts[1]);
-                    break;
-                case "BIOPROJ_TITLE" :
-                    bioProject.setAttribute("title", parts[1]);
-                    break;
-                case "BIOPROJ_DESCRIPTION" :
-                    bioProject.setAttribute("description", parts[1]);
-                    break;
-                case "BIOPROJ_PUBLICATION" :
-                    // do nothing
-                    break;
-                default :
-                    // log existence of unknown field
-                    LOG.info(getCurrentFile().getName()+" contains unknown field:"+line);
-                }
-            }
+    void processReadme(Reader reader) throws IOException {
+        Readme readme = Readme.getReadme(reader);
+        // check required stuff
+        if (readme.identifier==null ||
+            readme.taxid==null ||
+            readme.synopsis==null ||
+            readme.description==null ||
+            readme.genotype==null ||
+            readme.publication_doi==null ||
+            readme.publication_title==null ||
+            readme.expression_unit==null) {
+            throw new RuntimeException("ERROR: a required field is missing from "+getCurrentFile().getName()+": "+
+                                       "Required fields are: identifier, taxid, synopsis, description, genotype, publication_doi, publication_title, expression_unit");
         }
-	br.close();
+        // Organism from README taxid rather than filename
+        Item organism = getOrganism(Integer.parseInt(readme.taxid));
+        Item strain = getStrain(readme.genotype[0], organism);
+        // ExpressionSource
+        expressionSource.setAttribute("identifier", readme.identifier);
+        expressionSource.setAttribute("synopsis", readme.synopsis);
+        expressionSource.setAttribute("description", readme.description);
+        expressionSource.setReference("organism", organism);
+        expressionSource.setReference("strain", strain);
+        expressionUnit = readme.expression_unit; // applied to ExpressionValue.unit in close()
+        if (readme.geoseries!=null) expressionSource.setAttribute("geoSeries", readme.geoseries);
+        if (readme.sraproject!=null) expressionSource.setAttribute("sra", readme.sraproject);
+        // BioProject
+        if (readme.bioproject!=null) {
+            bioProject = createItem("BioProject");
+            bioProject.setAttribute("accession", readme.bioproject);
+            expressionSource.setReference("bioProject", bioProject);
+        }
+        // Publication
+        publication = createItem("Publication");
+        publication.setAttribute("doi", readme.publication_doi);
+        publication.setAttribute("title", readme.publication_title);
+        expressionSource.setReference("publication", publication);
+        // override DataSet.description from README
+        Item dataSet = getDataSet();
+        dataSet.setAttribute("description", readme.description);
+        dataSet.setReference("publication", publication);
+        expressionSource.setReference("dataSet", dataSet);
     }
 
     /**
@@ -189,8 +168,8 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * Reproductive stage          Cajanus cajan ICPL87119    Asha(ICPL87119)       SRR5199304 SAMN06264156        SRS1937936    PRJNA354681          SRP097728
      */
     void processSamples(Reader reader) throws IOException {
-        organism = getOrganism();
-        strain = getStrain(organism);
+        Item organism = getOrganism();
+        Item strain = getStrain(organism);
         Item dataSet = getDataSet();
         String[] colnames = null;
         int num = 0;
@@ -280,10 +259,10 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * cajca.ICPL87119.gnm1.ann1.C.cajan_00002	0	0	0	0	...
      */
     void processExpression(Reader reader) throws IOException {
-        organism = getOrganism();
-        strain = getStrain(organism);
+        Item organism = getOrganism();
+        Item strain = getStrain(organism);
         Item dataSet = getDataSet();
-        List<Item> sampleList = new ArrayList<>();
+        List<Item> sampleList = new LinkedList<>();
 	BufferedReader br = new BufferedReader(reader);
         String line = null;
         while ((line=br.readLine())!=null) {
@@ -322,7 +301,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                     Item sample = sampleList.get(i-1);
                     Item expressionValue = createItem("ExpressionValue");
                     expressionValue.setAttribute("value", String.valueOf(value));
-                    expressionValue.setAttribute("unit", unit);
                     expressionValue.setReference("feature", gene);
                     expressionValue.setReference("sample", sample);
 		    expressionValues.add(expressionValue);
@@ -335,7 +313,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     /**
      * Process a file relating samples to ontology terms.
      */
-    void processOntology(Reader reader) throws IOException {
+    void processOboFile(Reader reader) throws IOException {
 	BufferedReader br = new BufferedReader(reader);
         String line = null;
         while ((line=br.readLine())!=null) {
@@ -358,11 +336,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             Item ontologyAnnotation = createItem("OntologyAnnotation");
             ontologyAnnotation.setReference("subject", sample);
             ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
-            try {
-                store(ontologyAnnotation);
-            } catch (ObjectStoreException e) {
-                throw new RuntimeException(e);
-            }
+            ontologyAnnotations.add(ontologyAnnotation);
         }
     }
 }

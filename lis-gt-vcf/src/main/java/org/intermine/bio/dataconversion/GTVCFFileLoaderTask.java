@@ -191,34 +191,34 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
      * README.0SZD.yml
      * ---------------
      * identifier: 0SZD
-     * subject: VCF file containing genotype information...
+     * synopsis: VCF file containing genotype information...
      * genbank_accession: SRA020131
      * publication_doi: 10.1038/ng.715
      */
     void processREADME(File file) throws IOException, ObjectStoreException {
         // GenotypingStudy:
         // <attribute name="identifier" type="java.lang.String"/>
-        // <attribute name="subject" type="java.lang.String"/>
+        // <attribute name="synopsis" type="java.lang.String"/>
         // <attribute name="description" type="java.lang.String"/>
         // <attribute name="genbank" type=="java.lang.String"/>
         // <reference name="publication" referenced-type="Publication"/>
         Readme readme = Readme.getReadme(file);
         // check required stuff
         if (readme.identifier==null ||
-            readme.subject==null ||
+            readme.synopsis==null ||
             readme.description==null ||
             readme.contributors==null ||
             readme.publication_doi==null ||
             readme.publication_title==null) {
             throw new BuildException("ERROR: a required field is missing from "+file.getName()+". "+
-                                     "Required fields are: identifier, subject, description, contributors, publication_doi, publication_title");
+                                     "Required fields are: identifier, synopsis, description, contributors, publication_doi, publication_title");
         }
         // load required stuff
         if (study==null) {
             study = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingStudy.class);
         }
         study.setPrimaryIdentifier(readme.identifier);
-        study.setSubject(readme.subject);
+        study.setSynopsis(readme.synopsis);
         study.setDescription(readme.description);
         study.setContributors(readme.contributors);
         Publication publication = getDirectDataLoader().createObject(org.intermine.model.bio.Publication.class);

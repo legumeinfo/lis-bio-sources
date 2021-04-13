@@ -14,12 +14,13 @@
 
   <class name="ExpressionSource" is-interface="true">
     <attribute name="identifier" type="java.lang.String"/>
+    <attribute name="synopsis" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
     <reference name="dataSet" referenced-type="DataSet"/>
-    <attribute name="shortName" type="java.lang.String"/>
-    <attribute name="origin" type="java.lang.String"/>
     <attribute name="geoSeries" type="java.lang.String"/>
     <attribute name="sra" type="java.lang.String"/>
+    <reference name="organism" referenced-type="Organism"/>
+    <reference name="strain" referenced-type="Strain"/>
     <reference name="bioProject" referenced-type="BioProject"/>
     <reference name="publication" referenced-type="Publication"/>
     <collection name="samples" referenced-type="ExpressionSample" reverse-reference="source"/>

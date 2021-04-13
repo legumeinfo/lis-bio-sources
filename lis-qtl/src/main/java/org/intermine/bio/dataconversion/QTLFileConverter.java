@@ -103,7 +103,7 @@ public class QTLFileConverter extends DatastoreFileConverter {
      * README.TT_Tifrunner_x_GT-C20_c.yml
      * ----------------------------------
      * identifier: TT_Tifrunner_x_GT-C20_c
-     * subject: "Genetic map of Tifrunner x GT-C20 for the study of early and late leaf spots (ELS and LLS) and tomato spotted wilt virus (TSWV)."
+     * synopsis: "Genetic map of Tifrunner x GT-C20 for the study of early and late leaf spots (ELS and LLS) and tomato spotted wilt virus (TSWV)."
      * taxid: 3818
      * genotype:
      * - Tifrunner
@@ -117,20 +117,20 @@ public class QTLFileConverter extends DatastoreFileConverter {
         // check required stuff
         if (readme.identifier==null ||
             readme.taxid==null ||
-            readme.subject==null ||
+            readme.synopsis==null ||
             readme.description==null ||
             readme.genotype==null ||
             readme.publication_doi==null ||
             readme.publication_title==null) {
             throw new RuntimeException("ERROR: a required field is missing from "+getCurrentFile().getName()+": "+
-                                       "Required fields are: identifier, taxid, subject, description, genotype, publication_doi, publication_title");
+                                       "Required fields are: identifier, taxid, synopsis, description, genotype, publication_doi, publication_title");
         }
         // Organism from README taxid rather than filename
         Item organism = getOrganism(Integer.parseInt(readme.taxid));
         // GeneticMap
         geneticMap.setReference("organism", organism);
         geneticMap.setAttribute("primaryIdentifier", readme.identifier);
-        geneticMap.setAttribute("subject", readme.subject);
+        geneticMap.setAttribute("synopsis", readme.synopsis);
         geneticMap.setAttribute("experimentDescription", readme.description);
         // Strain = mapping parents
         for (String mappingParent : readme.genotype) {

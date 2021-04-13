@@ -87,7 +87,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
      * Process the README, which contains the GWAS metadata.
      *
      * identifier: 2020NAMFlor7
-     * subject: GangurdeSS 2020 NAM Florida-7 GWAS study of pod and seed weight
+     * synopsis: GangurdeSS 2020 NAM Florida-7 GWAS study of pod and seed weight
      * taxid: 3818
      * genotype:
      * - Florida-07 NAM population
@@ -95,29 +95,31 @@ public class GWASFileConverter extends DatastoreFileConverter {
      * publication_doi: 10.1111/pbi.13311
      * publication_title: "Nested-association mapping (NAM)-based genetic dissection uncovers candidate genes for seed and pod weights in peanut (Arachis hypogaea)"
      * genotyping_platform: "Affymetrix 58K SNP Axiom_Arachis array"
+     * genotyping_method: "Blah di blah di blah"
      */
     void processReadme(Reader reader) throws IOException {
         Readme readme = Readme.getReadme(reader);
         // check required stuff
         if (readme.identifier==null ||
             readme.taxid==null ||
-            readme.subject==null ||
+            readme.synopsis==null ||
             readme.description==null ||
             readme.genotype==null ||
             readme.publication_doi==null ||
             readme.publication_title==null ||
             readme.genotyping_platform==null) {
             throw new RuntimeException("ERROR: a required field is missing from "+getCurrentFile().getName()+": "+
-                                       "Required fields are: identifier, taxid, subject, description, genotype, publication_doi, publication_title, genotyping_platform");
+                                       "Required fields are: identifier, taxid, synopsis, description, genotype, publication_doi, publication_title, genotyping_platform");
         }
         // Organism from README taxid rather than filename
         Item organism = getOrganism(Integer.parseInt(readme.taxid));
         // GWAS
         gwas.setAttribute("primaryIdentifier", readme.identifier);
         gwas.setReference("organism", organism);
-        gwas.setAttribute("subject", readme.subject);
+        gwas.setAttribute("synopsis", readme.synopsis);
         gwas.setAttribute("description", readme.description);
         gwas.setAttribute("genotypingPlatform", readme.genotyping_platform);
+        if (readme.genotyping_method!=null) gwas.setAttribute("genotypingMethod", readme.genotyping_method);
         gwas.setAttribute("population", readme.genotype[0]);
         // Publication
         publication.setAttribute("doi", readme.publication_doi);
@@ -132,7 +134,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
 
     /**
      * Process a trait.tsv file, creating Trait records.
-     * 0                                   1            2
+     * 0                                   1            2optional
      * #trait_id                           trait_name   description
      * 100 Seed weight from Florida-7 NAM  Seed weight  After harvest and drying to less than 10% water content, 100 seeds were picked randomly and weighed.
      * 100 Pod weight from Florida-7 NAM   Pod weight   After harvest and drying to less than 10% water content, 100 pods were picked randomly and weighed.
@@ -145,9 +147,12 @@ public class GWASFileConverter extends DatastoreFileConverter {
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
             String[] fields = line.split("\t");
+            // required
             String identifier = fields[0];
             String name = fields[1];
-            String description = fields[2];
+            // optional
+            String description = null;
+            if (fields.length>2) description = fields[2];
             // Trait
             Item trait = traits.get(identifier);
             if (trait==null) {
@@ -156,7 +161,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
                 traits.put(identifier, trait);
             }
             trait.setAttribute("name", name);
-            trait.setAttribute("description", description);
+            if (description!=null) trait.setAttribute("description", description);
             trait.setReference("gwas", gwas);
             trait.addToCollection("dataSets", dataSet);
         }

@@ -9,7 +9,7 @@
 
   <!-- Annotatable: primaryIdentifier, ontologyAnnotations, publications -->
   <class name="GenotypingStudy" extends="Annotatable" is-interface="true">
-    <attribute name="subject" type="java.lang.String"/>
+    <attribute name="synopsis" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
     <attribute name="genbank" type="java.lang.String"/>
     <attribute name="contributors" type="java.lang.String"/>

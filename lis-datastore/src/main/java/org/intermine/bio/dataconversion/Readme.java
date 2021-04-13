@@ -12,17 +12,18 @@ import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
  * @author Sam Hokin
  */
 public class Readme {
+    // general attributes
     public String identifier; 
     public String provenance; 
     public String source; 
-    public String subject; 
+    public String synopsis; 
     public String related_to; 
     public String scientific_name; 
     public String taxid; 
-    public String bioproject; 
     public String scientific_name_abbrev; 
     public String[] genotype; 
     public String description; 
+    public String bioproject;
     public String dataset_doi; 
     public String genbank_accession; 
     public String original_file_creation_date; 
@@ -38,7 +39,12 @@ public class Readme {
     public String citations;
     public String file_transformation;
     public String changes;
+    // source-specific attributes
     public String genotyping_platform;
+    public String genotyping_method;
+    public String expression_unit;
+    public String sraproject;
+    public String geoseries;
 
     /**
      * Create a Readme from a file.

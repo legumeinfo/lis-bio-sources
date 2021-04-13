@@ -180,7 +180,7 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
      * README.0SZD.yml
      * ---------------
      * identifier: 0SZD
-     * subject: MSTMap file containing genotype information for 31 wild and cultivated soybeans received from Meng Ni, Tin Hang, and Hon-Ming Lam.
+     * synopsis: MSTMap file containing genotype information for 31 wild and cultivated soybeans received from Meng Ni, Tin Hang, and Hon-Ming Lam.
      * description: MSTMap file from resequencing 31 wild and cultivated chinese soybean accessions ....
      * genbank_accession: SRA020131
      * publication_doi: 10.1038/ng.715
@@ -188,7 +188,7 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
     void processREADME(File file) throws IOException, ObjectStoreException {
         // GenotypingStudy:
         // <attribute name="identifier" type="java.lang.String"/>
-        // <attribute name="subject" type="java.lang.String"/>
+        // <attribute name="synopsis" type="java.lang.String"/>
         // <attribute name="description" type="java.lang.String"/>
         // <attribute name="genbank" type=="java.lang.String"/>
         // <reference name="publication" referenced-type="Publication"/>
@@ -197,7 +197,7 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
             study = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingStudy.class);
         }
         study.setPrimaryIdentifier(readme.identifier);
-        study.setSubject(readme.subject);
+        study.setSynopsis(readme.synopsis);
         study.setDescription(readme.description);
         study.setGenbank(readme.genbank_accession);
         study.setContributors(readme.contributors);

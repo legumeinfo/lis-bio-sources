@@ -5,9 +5,10 @@
   <class name="GWAS" extends="Annotatable" is-interface="true">
     <reference name="organism" referenced-type="Organism"/>
     <attribute name="population" type="java.lang.String"/>
-    <attribute name="subject" type="java.lang.String"/>
+    <attribute name="synopsis" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
     <attribute name="genotypingPlatform" type="java.lang.String"/>
+    <attribute name="genotypingMethod" type="java.lang.String"/>
     <collection name="traits" referenced-type="Trait" reverse-reference="gwas"/>
     <collection name="results" referenced-type="GWASResult" reverse-reference="gwas"/>
     <collection name="dataSets" referenced-type="DataSet"/>
