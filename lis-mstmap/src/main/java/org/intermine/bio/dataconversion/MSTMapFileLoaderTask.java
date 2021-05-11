@@ -15,7 +15,9 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 
+import java.util.List;
 import java.util.LinkedList;
+import java.util.Set;
 import java.util.HashSet;
 
 import org.intermine.dataconversion.ItemWriter;
@@ -34,6 +36,7 @@ import org.intermine.model.bio.Genotype;
 import org.intermine.model.bio.GenotypingStudy;
 import org.intermine.model.bio.GenotypingSample;
 import org.intermine.model.bio.GenotypingRecord;
+import org.intermine.model.bio.Population;
 
 import org.apache.log4j.Logger;
 import org.apache.tools.ant.BuildException;
@@ -46,38 +49,52 @@ import org.apache.tools.ant.BuildException;
 public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
     private static final Logger LOG = Logger.getLogger(MSTMapFileLoaderTask.class);
 
-    // used to get species, etc. from filename
-    DatastoreUtils datastoreUtils;
-
-    // ordered list of samples
-    LinkedList<GenotypingSample> samples = new LinkedList<>();
-
-    // up here since it's touched by both processREADME and processVCF
-    GenotypingStudy study;
-
-    // other objects common to any loader
+    // globals
     Organism organism;
     DataSource dataSource;
     DataSet dataSet;
+    Publication publication;
+    GenotypingStudy study;
 
-    // attributes hopefully set by setters
-    String dataSourceName, dataSourceUrl, dataSourceDescription;
-    String dataSetName, dataSetUrl, dataSetVersion, dataSetLicence;
+    String dataSetUrl, dataSetVersion;
 
     /**
-     * Process and load all of the fasta files.
+     * Process the files. super.process() calls processFile for each one.
      */
     @Override
-    public void process() {
-        datastoreUtils = new DatastoreUtils();
+    public void process() throws BuildException {
+        DatastoreUtils datastoreUtils = new DatastoreUtils();
+        try {
+            // Organism - note no Strains loaded here
+            organism = getDirectDataLoader().createObject(org.intermine.model.bio.Organism.class);
+            // DataSource
+            dataSource = getDirectDataLoader().createObject(org.intermine.model.bio.DataSource.class);
+            dataSource.setName(DatastoreFileConverter.DEFAULT_DATASOURCE_NAME);
+            dataSource.setUrl(DatastoreFileConverter.DEFAULT_DATASOURCE_URL);
+            dataSource.setDescription(DatastoreFileConverter.DEFAULT_DATASOURCE_DESCRIPTION);
+            // DataSet - most set from README
+            dataSet = getDirectDataLoader().createObject(org.intermine.model.bio.DataSet.class);
+            dataSet.setDataSource(dataSource);
+            dataSet.setLicence(DatastoreFileConverter.DEFAULT_DATASET_LICENCE);
+            if (dataSetUrl!=null) dataSet.setUrl(dataSetUrl);
+            if (dataSetVersion!=null) dataSet.setVersion(dataSetVersion);
+            // Publication - set from README
+            publication = getDirectDataLoader().createObject(org.intermine.model.bio.Publication.class);
+            // Genotyping Study
+            study = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingStudy.class);
+        } catch (ObjectStoreException ex) {
+            throw new BuildException(ex);
+        }
+        // process the files
         super.process();
+        // wrap up
         try {
             // store global objects
             getDirectDataLoader().store(study);
             getDirectDataLoader().store(organism);
             getDirectDataLoader().store(dataSource);
             getDirectDataLoader().store(dataSet);
-            // wrap up
+            getDirectDataLoader().store(publication);
             getIntegrationWriter().commitTransaction();
             getIntegrationWriter().beginTransaction();
         } catch (ObjectStoreException e) {
@@ -108,14 +125,14 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
     }
 
     /**
-     * Process a VCF file or a README.
+     * Process an MSTmap file or a README.
      *
      * @param file the File to process.
      * @throws BuildException if the is a problem
      */
     @Override
     public void processFile(File file) {
-        if (file.getName().endsWith("MSTmap.txt")) {
+        if (file.getName().endsWith("MSTmap.tsv")) {
             try {
                 System.err.println("Processing "+file.getName());
                 processMSTMapFile(file);
@@ -132,30 +149,6 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
         } else {
             System.err.println("Skipping "+file.getName());
         }
-    }
-
-    /**
-     * DataSource.name for any bioentities created
-     * @param dataSourceName name of datasource for items created
-     */
-    public void setDataSourceName(String dataSourceName) {
-        this.dataSourceName = dataSourceName;
-    }
-
-    /**
-     * DataSource.url for any bioentities created
-     * @param dataSourceUrl url of datasource for items created
-     */
-    public void setDataSourceUrl(String dataSourceUrl) {
-        this.dataSourceUrl = dataSourceUrl;
-    }
-
-    /**
-     * DataSource.description for any bioentities created
-     * @param dataSourceDescription description of datasource for items created
-     */
-    public void setDataSourceDescription(String dataSourceDescription) {
-        this.dataSourceDescription = dataSourceDescription;
     }
 
     /**
@@ -186,58 +179,49 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
      * publication_doi: 10.1038/ng.715
      */
     void processREADME(File file) throws IOException, ObjectStoreException {
-        // GenotypingStudy:
-        // <attribute name="identifier" type="java.lang.String"/>
-        // <attribute name="synopsis" type="java.lang.String"/>
-        // <attribute name="description" type="java.lang.String"/>
-        // <attribute name="genbank" type=="java.lang.String"/>
-        // <reference name="publication" referenced-type="Publication"/>
         Readme readme = Readme.getReadme(file);
-        if (study==null) {
-            study = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingStudy.class);
+        // Organism
+        organism.setTaxonId(readme.taxid);
+        // DataSet
+        dataSet.setName(readme.identifier);
+        dataSet.setDescription(readme.description);
+        // Publication
+        publication.setDoi(readme.publication_doi);
+        publication.setTitle(readme.publication_title);
+        // Populations (from README.genotype)
+        Set<Population> populations = new HashSet<>();
+        for (String genotype : readme.genotype) {
+            Population population = getDirectDataLoader().createObject(org.intermine.model.bio.Population.class);
+            population.setIdentifier(genotype);
+            getDirectDataLoader().store(population);
+            populations.add(population);
         }
+        // GenotypingStudy
         study.setPrimaryIdentifier(readme.identifier);
         study.setSynopsis(readme.synopsis);
         study.setDescription(readme.description);
-        study.setGenbank(readme.genbank_accession);
-        study.setContributors(readme.contributors);
-        Publication publication = getDirectDataLoader().createObject(org.intermine.model.bio.Publication.class);
-        publication.setDoi(readme.publication_doi);
-        publication.setTitle(readme.publication_title);
-        getDirectDataLoader().store(publication);
-        study.setPublication(publication);
-        // set DataSet.description from README
-        dataSource = getDataSourceObject();
-        dataSet = getDataSetObject(dataSource);
-        dataSet.setDescription(readme.description);
+        if (readme.genotyping_platform!=null) study.setGenotypingPlatform(readme.genotyping_platform);
+        if (readme.genotyping_method!=null) study.setGenotypingMethod(readme.genotyping_method);
+        if (readme.genbank_accession!=null) study.setGenbank(readme.genbank_accession);
+        // references
+        study.setOrganism(organism);
+        study.setDataSet(dataSet);
+        study.setPopulations(populations);
+        study.addPublications(publication);
     }
 
     /**
      * Process a MSTMap file. We assume here that all MSTMaps in a directory are for the same organism
-     *
-     * 0     1    2    3   KEY4=identifier
-     * glyma.Wm82.gnm2.div.0SZD.SNPData.vcf.gz
      */
     public void processMSTMapFile(File file) throws ObjectStoreException, IOException, FileNotFoundException {
-        // create and store the singleton objects
-        organism = getOrganismObject(file.getName());
-        dataSource = getDataSourceObject();
-        dataSet = getDataSetObject(dataSource);
-        // GenotypingStudy
-        if (study==null) {
-            study = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingStudy.class);
-        }
-        study.setOrganism(organism);
-        study.setDataSet(dataSet);
-        study.setParents(extractParents(file.getName()));
+        List<GenotypingSample> samples = new LinkedList<>(); // has to support get(i)
         // spin through the MSTMap file
-        boolean haveReadSamples = false;
         String line = null;
         BufferedReader reader = new BufferedReader(new FileReader(file));
         while ((line=reader.readLine())!=null) {
             if (line.length()==0 || line.startsWith("#")) continue;
             String[] fields = line.split("\t");
-            if (!haveReadSamples) {
+            if (samples.size()==0) {
                 // first field is something like "locus_name"
                 for (int i=1; i<fields.length; i++) {
                     String sampleName = fields[i];
@@ -245,11 +229,10 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
                     sample.setPrimaryIdentifier(sampleName);
                     sample.setOrganism(organism);
                     sample.setStudy(study);
-                    samples.add(sample);
                     getDirectDataLoader().store(sample);
+                    samples.add(sample);
                 }
-                study.setSamples(new HashSet(samples));
-                haveReadSamples = true;
+                study.setSamples(Set.copyOf(samples));
                 LOG.info("Loaded "+samples.size()+" samples from MSTMap genotyping file.");
             } else {
                 // GeneticMarker
@@ -260,79 +243,22 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
                 marker.addDataSets(dataSet);
                 getDirectDataLoader().store(marker);
                 // GenotypingRecord
-                GenotypingRecord genotypingRecord = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingRecord.class);
-                genotypingRecord.setIdentifier(markerSecondaryIdentifier);
-                genotypingRecord.setStudy(study);
-                genotypingRecord.setMarker(marker);
-                getDirectDataLoader().store(genotypingRecord);
+                GenotypingRecord record = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingRecord.class);
+                record.setIdentifier(markerSecondaryIdentifier);
+                record.setStudy(study);
+                record.setMarker(marker);
+                record.setDataSet(dataSet);
+                getDirectDataLoader().store(record);
                 // Genotype
                 for (int i=1; i<fields.length; i++) {
                     GenotypingSample sample = samples.get(i-1);
                     Genotype genotype = getDirectDataLoader().createSimpleObject(org.intermine.model.bio.Genotype.class);
                     genotype.setValue(fields[i]);
                     genotype.setSample(sample);
-                    genotype.setRecord(genotypingRecord);
-                    try {
-                        getDirectDataLoader().store(genotype);
-                    } catch (Exception ex) {
-                        // continue through exception
-                        System.err.println("Error storing "+genotype.toString());
-                        System.err.println(ex);
-                    }
+                    genotype.setRecord(record);
+                    getDirectDataLoader().store(genotype);
                 }
             }
         }
-    }
-    
-    /**
-     * Get/Create an Organism from a filename
-     */
-    Organism getOrganismObject(String filename) throws ObjectStoreException {
-        if (organism==null) {
-            organism = getDirectDataLoader().createObject(org.intermine.model.bio.Organism.class);
-            String gensp = DatastoreUtils.extractGensp(filename);
-            organism.setAbbreviation(gensp);
-            organism.setTaxonId(datastoreUtils.getTaxonId(gensp));
-            organism.setGenus(datastoreUtils.getGenus(gensp));
-            organism.setSpecies(datastoreUtils.getSpecies(gensp));
-        }
-        return organism;
-    }
-
-    /**
-     * Get/Create a DataSource
-     */
-    DataSource getDataSourceObject() throws ObjectStoreException {
-        if (dataSource==null) {
-            dataSource = getDirectDataLoader().createObject(org.intermine.model.bio.DataSource.class);
-            if (dataSourceName!=null) dataSource.setName(dataSourceName);
-            if (dataSourceUrl!=null) dataSource.setUrl(dataSourceUrl);
-            if (dataSourceDescription!=null) dataSource.setDescription(dataSourceDescription);
-        }
-        return dataSource;
-    }
-
-    /**
-     * Get/Create a DataSet
-     */
-    DataSet getDataSetObject(DataSource dataSource) throws ObjectStoreException {
-        if (dataSet==null) {
-            dataSet = getDirectDataLoader().createObject(org.intermine.model.bio.DataSet.class);
-            if (dataSource!=null) dataSet.setDataSource(dataSource);
-            if (dataSetName!=null) dataSet.setName(dataSetName);
-            if (dataSetUrl!=null) dataSet.setUrl(dataSetUrl);
-            if (dataSetVersion!=null) dataSet.setVersion(dataSetVersion);
-            if (dataSetLicence!=null) dataSet.setLicence(dataSetLicence);
-        }
-        return dataSet;
-    }
-
-    /**
-     * Extract the parents from the given filename
-     * ex. vigun.CB27_x_IT82E-18.gt.KEY4.MSTmap.txt
-     */
-    static String extractParents(String filename) {
-        String[] fields = filename.split("\\.");
-        return fields[1];
     }
 }

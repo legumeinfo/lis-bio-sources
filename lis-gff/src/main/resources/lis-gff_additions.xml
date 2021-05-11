@@ -7,7 +7,12 @@
 
 <classes>
 
-  <!-- LIS has assembly and annotation versioning throughout -->
+  <!-- abbreviation=gensp -->
+  <class name="Organism" is-interface="true">
+    <attribute name="abbreviation" type="java.lang.String"/>
+  </class>
+
+  <!-- assemblyVersion=gnm1 annotationVersion=ann1 -->
   <class name="SequenceFeature" is-interface="true">
     <attribute name="assemblyVersion" type="java.lang.String"/>
     <attribute name="annotationVersion" type="java.lang.String"/>

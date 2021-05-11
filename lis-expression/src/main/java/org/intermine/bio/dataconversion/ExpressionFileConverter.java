@@ -23,7 +23,7 @@ import org.intermine.xml.full.Item;
  * ├── phavu.G19833.gnm1.ann1.expr.4ZDQ.obo.tsv
  * ├── phavu.G19833.gnm1.ann1.expr.4ZDQ.samples.tsv
  * ├── phavu.G19833.gnm1.ann1.expr.4ZDQ.values.tsv
- * └── README.4ZDQ.yml
+ * └── README.G19833.gnm1.ann1.expr.4ZDQ.yml
  *
  * @author Sam Hokin
  */
@@ -31,13 +31,18 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     
     private static final Logger LOG = Logger.getLogger(ExpressionFileConverter.class);
 
+    // singletons
     Item expressionSource = createItem("ExpressionSource");
     Item bioProject;
     Item publication;
     String expressionUnit = "TPM";
+
+    // Lists
     List<Item> expressionValues = new LinkedList<>();
-    List<Item> ontologyAnnotations = new LinkedList<>();
-    Map<String,Item> ontologyTerms = new HashMap<>();
+    List<Item> annotations = new LinkedList<>();
+
+    // Maps
+    Map<String,Item> terms = new HashMap<>();
     Map<String,Item> samples = new HashMap<>();
     Map<String,Item> genes = new HashMap<>();
 
@@ -74,10 +79,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-        // update ExpressionValue.unit
-        for (Item expressionValue : expressionValues) {
-            expressionValue.setAttribute("unit", expressionUnit);
-        }
         // DatastoreFileConverter items
         store(organisms.values());
         store(strains.values());
@@ -89,8 +90,8 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
         if (bioProject!=null) store(bioProject);
 	store(genes.values());
         store(samples.values());
-        store(ontologyTerms.values());
-        store(ontologyAnnotations);
+        store(terms.values());
+        store(annotations);
 	store(expressionValues);
     }
 
@@ -130,7 +131,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
         Item organism = getOrganism(Integer.parseInt(readme.taxid));
         Item strain = getStrain(readme.genotype[0], organism);
         // ExpressionSource
-        expressionSource.setAttribute("identifier", readme.identifier);
+        expressionSource.setAttribute("primaryIdentifier", readme.identifier);
         expressionSource.setAttribute("synopsis", readme.synopsis);
         expressionSource.setAttribute("description", readme.description);
         expressionSource.setReference("organism", organism);
@@ -148,7 +149,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
         publication = createItem("Publication");
         publication.setAttribute("doi", readme.publication_doi);
         publication.setAttribute("title", readme.publication_title);
-        expressionSource.setReference("publication", publication);
+        expressionSource.addToCollection("publications", publication);
         // override DataSet.description from README
         Item dataSet = getDataSet();
         dataSet.setAttribute("description", readme.description);
@@ -192,12 +193,12 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                 if (sample==null) {
                     sample = createItem("ExpressionSample");
                     sample.setAttribute("primaryIdentifier", id);
+                    samples.put(id, sample);
                 }
 		// common references
 		sample.setReference("organism", organism);
 		sample.setReference("strain", strain);
 		sample.setReference("source", expressionSource);
-		sample.addToCollection("dataSets", dataSet);
                 sample.addToCollection("publications", publication);
 		// sample-specific attributes
                 num++;
@@ -272,19 +273,13 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                 // header line gives samples in order so add to list
                 for (int i=1; i<parts.length; i++) {
                     String sampleId = parts[i];
-                    if (samples.containsKey(sampleId)) {
-                        sampleList.add(samples.get(sampleId));
-                    } else {
-                        Item sample = createItem("ExpressionSample");
-			// common references
-			sample.setReference("source", expressionSource);
-			sample.setReference("dataSet", dataSet);
-			sample.setReference("organism", organism);
-			sample.setReference("strain", strain);
-                        sample.setAttribute("identifier", sampleId);
+                    Item sample = samples.get(sampleId);
+                    if (sample==null) {
+                        sample = createItem("ExpressionSample");
+                        sample.setAttribute("primaryIdentifier", sampleId);
                         samples.put(sampleId, sample);
-                        sampleList.add(sample);
                     }
+                    sampleList.add(sample);
                 }
             } else {
                 // a gene line
@@ -300,6 +295,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                     double value = Double.parseDouble(parts[i]);
                     Item sample = sampleList.get(i-1);
                     Item expressionValue = createItem("ExpressionValue");
+                    expressionValue.setAttribute("unit", expressionUnit);
                     expressionValue.setAttribute("value", String.valueOf(value));
                     expressionValue.setReference("feature", gene);
                     expressionValue.setReference("sample", sample);
@@ -320,23 +316,23 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
             String[] parts = line.split("\t");
             String sampleId = parts[0];
-            String ontologyTermId = parts[1];
+            String termId = parts[1];
             Item sample = samples.get(sampleId);
             if (sample==null) {
                 sample = createItem("ExpressionSample");
                 sample.setAttribute("primaryIdentifier", sampleId);
                 samples.put(sampleId, sample);
             }
-            Item ontologyTerm = ontologyTerms.get(ontologyTermId);
-            if (ontologyTerm==null) {
-                ontologyTerm = createItem("OntologyTerm");
-                ontologyTerm.setAttribute("identifier", ontologyTermId);
-                ontologyTerms.put(ontologyTermId, ontologyTerm);
+            Item term = terms.get(termId);
+            if (term==null) {
+                term = createItem("OntologyTerm");
+                term.setAttribute("identifier", termId);
+                terms.put(termId, term);
             }
-            Item ontologyAnnotation = createItem("OntologyAnnotation");
-            ontologyAnnotation.setReference("subject", sample);
-            ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
-            ontologyAnnotations.add(ontologyAnnotation);
+            Item annotation = createItem("OntologyAnnotation");
+            annotation.setReference("subject", sample);
+            annotation.setReference("ontologyTerm", term);
+            annotations.add(annotation);
         }
     }
 }

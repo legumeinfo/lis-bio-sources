@@ -29,7 +29,7 @@ public class DatastoreFileConverter extends FileConverter {
 
     // defaults for LIS datasource
     public static final String DEFAULT_DATASOURCE_NAME = "LIS Datastore";
-    public static final String DEFAULT_DATASOURCE_URL = "https://legumeinfo.org/data/public/";
+    public static final String DEFAULT_DATASOURCE_URL = "https://legumeinfo.org/data/v2/";
     public static final String DEFAULT_DATASOURCE_DESCRIPTION =
         "A collaborative, community resource to facilitate crop improvement by integrating genetic, genomic, and trait data across legume species.";
     public static final String DEFAULT_DATASET_LICENCE = "ODC Public Domain Dedication and Licence (PDDL)";
@@ -128,10 +128,10 @@ public class DatastoreFileConverter extends FileConverter {
     }
 
     /**
-     * Get/add a DataSet Item from the current filename.
+     * Get/add a DataSet Item from the current file's containing directory.
      */
     public Item getDataSet() {
-        return getDataSet(getCurrentFile().getName());
+        return getDataSet(getCurrentFile().getParentFile().getName());
     }
 
     /**

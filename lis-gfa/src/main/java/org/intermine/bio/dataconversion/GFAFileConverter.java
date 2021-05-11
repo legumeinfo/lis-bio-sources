@@ -39,6 +39,8 @@ public class GFAFileConverter extends DatastoreFileConverter {
     Map<String,Item> genes = new HashMap<>();
     Map<String,Item> proteins = new HashMap<>();
 
+    Item publication;
+
     /**
      * Create a new GFAFileConverter
      * @param writer the ItemWriter to write out new items
@@ -53,9 +55,42 @@ public class GFAFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
-        if (getCurrentFile().getName().endsWith(".gfa.tsv")) {
+        if (getCurrentFile().getName().startsWith("README")) {
+            processReadme(reader);
+        } else if (getCurrentFile().getName().endsWith(".gfa.tsv")) {
             processGFAFile(reader);
 	}
+    }
+
+    /**
+     * Process the README, which contains metadata.
+     */
+    void processReadme(Reader reader) throws IOException {
+        Readme readme = Readme.getReadme(reader);
+        // check required stuff
+        if (readme.identifier==null ||
+            readme.taxid==null ||
+            readme.synopsis==null ||
+            readme.description==null
+            ) {
+            throw new RuntimeException("ERROR: a required field is missing from README. "+
+                                       "Required fields are: identifier, taxid, synopsis, description");
+        }
+        // Organism
+        Item organism = getOrganism(Integer.parseInt(readme.taxid));
+        // DataSet
+        Item dataSet = getDataSet();
+        dataSet.setAttribute("name", readme.identifier);
+        dataSet.setAttribute("description", readme.description);
+        // Publication
+        if (readme.publication_doi!=null) {
+            publication = createItem("Publication");
+            publication.setAttribute("doi", readme.publication_doi);
+            if (readme.publication_title!=null) {
+                publication.setAttribute("title", readme.publication_title);
+            }
+            dataSet.setReference("publication", publication);
+        }
     }
 
     /**
@@ -187,6 +222,7 @@ public class GFAFileConverter extends DatastoreFileConverter {
 	store(dataSets.values());
         store(organisms.values());
         store(strains.values());
+        if (publication!=null) store(publication);
         store(geneFamilies.values());
         store(genes.values());
         store(proteins.values());

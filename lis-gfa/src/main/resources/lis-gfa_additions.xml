@@ -1,6 +1,17 @@
 <?xml version="1.0"?>
 <classes>
 
+  <!-- abbreviation=gensp -->
+  <class name="Organism" is-interface="true">
+    <attribute name="abbreviation" type="java.lang.String"/>
+  </class>
+
+  <!-- assemblyVersion=gnm1 annotationVersion=ann1 -->
+  <class name="SequenceFeature" is-interface="true">
+    <attribute name="assemblyVersion" type="java.lang.String"/>
+    <attribute name="annotationVersion" type="java.lang.String"/>
+  </class>
+
   <class name="GeneFamily" is-interface="true">
     <attribute name="identifier" type="java.lang.String"/>
     <attribute name="version" type="java.lang.String"/>

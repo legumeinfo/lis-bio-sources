@@ -1,9 +1,16 @@
 <?xml version="1.0"?>
 <classes>
 
-  <!-- glysp.mixed.pan2.SoyPan000001   glyma.Lee.gnm1.ann1.GlymaLee.16G153800.1 -->
-  <!-- glysp.mixed.pan2.SoyPan000001   glyma.Wm82.gnm1.ann1.Glyma16g31020.2 -->
-  <!-- glysp.mixed.pan2.SoyPan000001   glyma.Lee.gnm1.ann1.GlymaLee.16G154600.1 -->
+  <!-- abbreviation=gensp -->
+  <class name="Organism" is-interface="true">
+    <attribute name="abbreviation" type="java.lang.String"/>
+  </class>
+
+  <!-- assemblyVersion=gnm1 annotationVersion=ann1 -->
+  <class name="SequenceFeature" is-interface="true">
+    <attribute name="assemblyVersion" type="java.lang.String"/>
+    <attribute name="annotationVersion" type="java.lang.String"/>
+  </class>
 
   <class name="PanGeneSet" is-interface="true">
     <attribute name="identifier" type="java.lang.String"/>

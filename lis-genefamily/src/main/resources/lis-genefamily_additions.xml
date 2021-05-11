@@ -1,17 +1,17 @@
 <?xml version="1.0"?>
 <classes>
 
-  <!-- LIS has assembly and annotation versioning throughout -->
-  <class name="SequenceFeature" is-interface="true">
-    <attribute name="assemblyVersion" type="java.lang.String"/>
-    <attribute name="annotationVersion" type="java.lang.String"/>
-  </class>
-  
   <!-- abbreviation=gensp -->
   <class name="Organism" is-interface="true">
     <attribute name="abbreviation" type="java.lang.String"/>
   </class>
 
+  <!-- assemblyVersion=gnm1 annotationVersion=ann1 -->
+  <class name="SequenceFeature" is-interface="true">
+    <attribute name="assemblyVersion" type="java.lang.String"/>
+    <attribute name="annotationVersion" type="java.lang.String"/>
+  </class>
+  
   <!-- include version since it's in each gene family record, e.g. "lis_v1_0" -->
   <class name="GeneFamily" is-interface="true">
     <attribute name="identifier" type="java.lang.String"/>

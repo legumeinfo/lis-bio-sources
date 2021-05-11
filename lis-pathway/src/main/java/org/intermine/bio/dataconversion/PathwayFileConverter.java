@@ -32,6 +32,8 @@ public class PathwayFileConverter extends DatastoreFileConverter {
     
     private Map<String,Item> pathways = new HashMap<>();      // keyed by Pathway.identifier
     private Map<String,Item> genes = new HashMap<>();         // keyed by Gene.name
+
+    Item publication;
     
     /**
      * Constructor
@@ -47,12 +49,51 @@ public class PathwayFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     public void process(Reader reader) throws IOException {
-        if (!getCurrentFile().getName().endsWith("pathway.tsv")) return;
+        if (getCurrentFile().getName().startsWith("README")) {
+            processReadme(reader);
+        } else if (getCurrentFile().getName().endsWith("pathway.tsv")) {
+            processPathwayFile(reader);
+        }
+    }
 
+    /**
+     * Process the README, which contains metadata.
+     */
+    void processReadme(Reader reader) throws IOException {
+        Readme readme = Readme.getReadme(reader);
+        // check required stuff
+        if (readme.identifier==null ||
+            readme.taxid==null ||
+            readme.synopsis==null ||
+            readme.description==null
+            ) {
+            throw new RuntimeException("ERROR: a required field is missing from README. "+
+                                       "Required fields are: identifier, taxid, synopsis, description");
+        }
+        // Organism
+        Item organism = getOrganism(Integer.parseInt(readme.taxid));
+        // DataSet
+        Item dataSet = getDataSet();
+        dataSet.setAttribute("name", readme.identifier);
+        dataSet.setAttribute("description", readme.description);
+        // Publication
+        if (readme.publication_doi!=null) {
+            publication = createItem("Publication");
+            publication.setAttribute("doi", readme.publication_doi);
+            if (readme.publication_title!=null) {
+                publication.setAttribute("title", readme.publication_title);
+            }
+            dataSet.setReference("publication", publication);
+        }
+    }
+
+    /**
+     * Process the pathway.tsv file
+     */
+    void processPathwayFile(Reader reader) throws IOException {
         Item dataSet = getDataSet();
         Item organism = getOrganism();
         Item strain = getStrain(organism);
-
         // spin through the file
         BufferedReader br = new BufferedReader(reader);
         String line = null;
@@ -98,6 +139,7 @@ public class PathwayFileConverter extends DatastoreFileConverter {
             store(organisms.values());
             store(strains.values());
             // local
+            if (publication!=null) store(publication);
             store(genes.values());
             store(pathways.values());
         }
