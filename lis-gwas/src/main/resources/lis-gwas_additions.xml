@@ -14,31 +14,28 @@
 
   <!-- Annotatable for Publication support -->
   <class name="GWAS" extends="Annotatable" is-interface="true">
-    <reference name="organism" referenced-type="Organism"/>
     <attribute name="population" type="java.lang.String"/>
     <attribute name="synopsis" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
     <attribute name="genotypingPlatform" type="java.lang.String"/>
     <attribute name="genotypingMethod" type="java.lang.String"/>
-    <collection name="traits" referenced-type="Trait" reverse-reference="gwas"/>
+    <reference name="organism" referenced-type="Organism"/>
     <collection name="results" referenced-type="GWASResult" reverse-reference="gwas"/>
     <collection name="dataSets" referenced-type="DataSet"/>
   </class>
 
   <!-- GWASResult connects a marker to a measured trait with a p-value -->
   <class name="GWASResult" is-interface="true">
+    <attribute name="pValue" type="java.lang.Double"/>
     <reference name="gwas" referenced-type="GWAS" reverse-reference="results"/>
     <reference name="marker" referenced-type="GeneticMarker" reverse-reference="gwasResults"/>
     <reference name="trait" referenced-type="Trait" reverse-reference="gwasResults"/>
-    <attribute name="pValue" type="java.lang.Double"/>
     <collection name="dataSets" referenced-type="DataSet"/>
   </class>
 
   <!-- A Trait is a measured phenotype for a GWASResult -->
   <class name="Trait" extends="Annotatable" is-interface="true">
-    <attribute name="name" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
-    <reference name="gwas" referenced-type="GWAS" reverse-reference="traits"/>
     <collection name="gwasResults" referenced-type="GWASResult" reverse-reference="trait"/>
     <collection name="dataSets" referenced-type="DataSet"/>
   </class>

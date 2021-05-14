@@ -26,6 +26,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
     private static final Logger LOG = Logger.getLogger(GeneticFileConverter.class);
 
     // local things to store in close()
+    Item organism = createItem("Organism");
+    Item dataSet = createItem("DataSet");
     Item geneticMap = createItem("GeneticMap");
     Item publication = createItem("Publication");
 
@@ -86,9 +88,9 @@ public class GeneticFileConverter extends DatastoreFileConverter {
     public void close() throws ObjectStoreException {
         // DatastoreFileConverter
         store(dataSource);
-        store(dataSets.values());
-        store(organisms.values());
-        store(strains.values());
+        // local singletons
+        store(organism);
+        store(dataSet);
         // local Lists
         store(geneticMap);
         store(publication);
@@ -132,7 +134,7 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                                        "Required fields are: identifier, taxid, synopsis, description, genotype, publication_doi, publication_title");
         }
         // Organism
-        Item organism = getOrganism(Integer.parseInt(readme.taxid));
+        organism = getOrganism(Integer.parseInt(readme.taxid));
         // GeneticMap
         geneticMap.setReference("organism", organism);
         geneticMap.setAttribute("primaryIdentifier", readme.identifier);
@@ -152,7 +154,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
         publication.setAttribute("title", readme.publication_title);
         geneticMap.addToCollection("publications", publication);
         // DataSet
-        Item dataSet = getDataSet();
+        dataSet.setReference("dataSource", dataSource);
+        dataSet.setAttribute("url", dataSetUrl);
         dataSet.setAttribute("name", readme.identifier);
         dataSet.setAttribute("description", readme.description);
         dataSet.setReference("publication", publication);
@@ -168,8 +171,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      */
     void processLgFile(Reader reader) throws IOException {
         BufferedReader br = new BufferedReader(reader);
-	Item dataSet = getDataSet();
-        Item organism = getOrganism();
         int number = 0; // convenience numbering of LGs
         String line = null;
         while ((line=br.readLine())!=null) {
@@ -193,15 +194,13 @@ public class GeneticFileConverter extends DatastoreFileConverter {
     /**
      * Process a mrk.tsv file
      * 0                1       2
-     * #marker          mappos  lg
-     * A01_859822	0	TT_Tifrunner_x_GT-C20_c-A01
-     * B01_15102376	0.75	TT_Tifrunner_x_GT-C20_c-A01
-     * A01_304818	2.18	TT_Tifrunner_x_GT-C20_c-A01
+     * #marker          lg      position
+     * A01_859822	A01     0.0
+     * B01_15102376     A01     0.75
+     * A01_304818	A01     2.18
      */
     void processMrkFile(Reader reader) throws IOException {
         BufferedReader br = new BufferedReader(reader);
-        Item dataSet = getDataSet();
-        Item organism = getOrganism();
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue;
@@ -210,8 +209,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                 throw new RuntimeException("File "+getCurrentFile().getName()+" data line does not contain three required fields: marker, linkagegroup, position:"+line);
             }
             String markerId = fields[0].trim();
-            Double position = Double.parseDouble(fields[1]);
-            String lgId = fields[2].trim();
+            String lgId = fields[1].trim();
+            Double position = Double.parseDouble(fields[2]);
             // linkage group
             Item linkageGroup = linkageGroups.get(lgId);
             if (linkageGroup==null) {
@@ -249,8 +248,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      *
      */
     void processQTLMrkFile(Reader reader) throws IOException {
-	Item dataSet = getDataSet();
-	Item organism = getOrganism();
         BufferedReader br = new BufferedReader(reader);
 	String line;
         while ((line=br.readLine())!=null) {
@@ -297,8 +294,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * Early leaf spot 1-1  Early leaf spot   TT_Tifrunner_x_GT-C20_c-A08  100.7     102.9      102                                3.02 12.42             0.56                             
      */
     void processQTLFile(Reader reader) throws IOException {
-        Item dataSet = getDataSet();
-        Item organism = getOrganism();
         BufferedReader br = new BufferedReader(reader);
 	String line;
         while ((line=br.readLine())!=null) {
@@ -368,6 +363,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                 linkageGroup.setReference("geneticMap", geneticMap);
                 qtl.setReference("linkageGroup", linkageGroup);
             }
+            // GeneticMap
+            qtl.setReference("geneticMap", geneticMap);
         }
         br.close();
     }
@@ -379,7 +376,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * Early leaf spot resistance  Leafs were photographed and spots were counted...
      */
     void processTraitFile(Reader reader) throws IOException {
-        Item dataSet = getDataSet();
         geneticMap.addToCollection("dataSets", dataSet);
         BufferedReader br = new BufferedReader(reader);
 	String line;
@@ -409,7 +405,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * Seed weight  TO:0000181
      */
     void processOboFile(Reader reader) throws IOException {
-        Item dataSet = getDataSet();
         BufferedReader br = new BufferedReader(reader);
 	String line;
         while ((line=br.readLine())!=null) {
