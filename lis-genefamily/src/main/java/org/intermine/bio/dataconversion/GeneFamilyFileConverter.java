@@ -63,8 +63,9 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
     public void process(Reader reader) throws IOException {
         if (getCurrentFile().getName().endsWith(".info_annot_ahrd.tsv")) {
 	    // legume.genefam.fam1.M65K.info_annot_ahrd.tsv
-            String fastaDirname = getCurrentFile().getParent()+"/"+getCurrentFile().getName().replace("info_annot_ahrd.tsv", "family_fasta");
-            printInfoBlurb(fastaDirname);
+            // DON'T LOAD GENES FROM FASTAs!
+            // String fastaDirname = getCurrentFile().getParent()+"/"+getCurrentFile().getName().replace("info_annot_ahrd.tsv", "family_fasta");
+            // printInfoBlurb(fastaDirname);
             processInfoAnnotAhrdFile(reader);
 	}
     }
@@ -216,33 +217,34 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
                 proteinDomain.setAttribute("description", description);
                 proteinDomain.addToCollection("geneFamilies", geneFamily);
             }
+            // DISABLED, USE GFA FILES INSTEAD
             // load the gene family FASTA if present to link proteins
-            String fastaFilename = fastaDirname+"/"+record.identifier;
-            File fastaFile = new File(fastaFilename);
-            if (fastaFile.exists()) {
-                BufferedReader fbr = new BufferedReader(new FileReader(fastaFile));
-                String fline = null;
-                while ((fline=fbr.readLine())!=null) {
-                    if (fline.startsWith(">")) {
-                        String name = fline.substring(1);
-                        String[] parts = name.split("\\.");
-                        String gensp = parts[0];
-                        if (desiredOrganisms.contains(gensp)) {
-                            Item organism = getOrganism(gensp);
-                            Item protein = getProtein(name);
-                            String geneIdentifier = DatastoreUtils.extractGeneIdentifierFromProteinIdentifier(name);
-                            Item gene = getGene(geneIdentifier);
-                            protein.setReference("geneFamily", geneFamily);
-                            protein.addToCollection("genes", gene);
-                            protein.addToCollection("dataSets", dataSet);
-                            gene.setReference("geneFamily", geneFamily);
-                            gene.addToCollection("proteins", protein);
-                            gene.addToCollection("dataSets", dataSet);
-                        }
-                    }
-                }
-                fbr.close();
-            }
+            // String fastaFilename = fastaDirname+"/"+record.identifier;
+            // File fastaFile = new File(fastaFilename);
+            // if (fastaFile.exists()) {
+            //     BufferedReader fbr = new BufferedReader(new FileReader(fastaFile));
+            //     String fline = null;
+            //     while ((fline=fbr.readLine())!=null) {
+            //         if (fline.startsWith(">")) {
+            //             String name = fline.substring(1);
+            //             String[] parts = name.split("\\.");
+            //             String gensp = parts[0];
+            //             if (desiredOrganisms.contains(gensp)) {
+            //                 Item organism = getOrganism(gensp);
+            //                 Item protein = getProtein(name);
+            //                 String geneIdentifier = DatastoreUtils.extractGeneIdentifierFromProteinIdentifier(name);
+            //                 Item gene = getGene(geneIdentifier);
+            //                 protein.setReference("geneFamily", geneFamily);
+            //                 protein.addToCollection("genes", gene);
+            //                 protein.addToCollection("dataSets", dataSet);
+            //                 gene.setReference("geneFamily", geneFamily);
+            //                 gene.addToCollection("proteins", protein);
+            //                 gene.addToCollection("dataSets", dataSet);
+            //             }
+            //         }
+            //     }
+            //     fbr.close();
+            // }
         }
         br.close();
     }

@@ -63,13 +63,14 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 
     String sequenceType = "dna"; // default, or "protein"
 
-    String gensp;             // extracted from filename
-    String strainIdentifier;  // extracted from filename
-    String assemblyVersion;   // extracted from filename
-    String annotationVersion; // extracted from filename
-    String className;         // set in project.xml
+    String taxonId;
+    String gensp;
+    String strainIdentifier;
+    String assemblyVersion;
+    String annotationVersion;
+    String className;
 
-    String dataSetUrl, dataSetVersion;
+    String dataSetTitle, dataSetUrl, dataSetVersion;
 
     // global objects to be stored at end
     Organism organism;
@@ -95,6 +96,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         try {
             // Organism
             organism = getDirectDataLoader().createObject(org.intermine.model.bio.Organism.class);
+            organism.setTaxonId(taxonId);
             // Strain
             strain = getDirectDataLoader().createObject(org.intermine.model.bio.Strain.class);
             strain.setIdentifier(strainIdentifier);
@@ -107,6 +109,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             dataSet = getDirectDataLoader().createObject(org.intermine.model.bio.DataSet.class);
             dataSet.setDataSource(dataSource);
             dataSet.setLicence(DatastoreFileConverter.DEFAULT_DATASET_LICENCE);
+            if (dataSetTitle!=null) dataSet.setName(dataSetTitle); // useful if no README present
             if (dataSetUrl!=null) dataSet.setUrl(dataSetUrl);
             if (dataSetVersion!=null) dataSet.setVersion(dataSetVersion);
             // Publication - set from README
@@ -493,10 +496,17 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     }
 
     /**
-     * If a value is specified this url will used when a DataSet is created.
-     * @param dataSetUrl the title of the DataSet of any new features
+     * Set the dataset title.
      */
-    public void setDataSetUrl(String value) throws ObjectStoreException {
+    public void setDataSetTitle(String value) {
+        this.dataSetTitle = value;
+    }
+
+    /**
+     * If a value is specified this url will used when a DataSet is created.
+     * @param dataSetUrl the url of the DataSet of any new features
+     */
+    public void setDataSetUrl(String value) {
         this.dataSetUrl = value;
     }
 
@@ -504,16 +514,23 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
      * If a value is specified this description will used when a DataSet is created.
      * @param dataSetVersion the version of the DataSet
      */
-    public void setDataSetVersion(String value) throws ObjectStoreException {
+    public void setDataSetVersion(String value) {
         this.dataSetVersion = value;
     }
 
     /**
      * Set the strain identifier.
      */
-    public void setStrainIdentifier(String value) throws ObjectStoreException {
+    public void setStrainIdentifier(String value) {
         this.strainIdentifier = value;
     }
+
+    /**
+     * Set the taxon id.
+     */
+    public void setTaxonId(String value) {
+        this.taxonId = value;
+    }       
 
     /**
      * Attribute with an identifier that is stored as the name, typically

@@ -39,6 +39,9 @@ public class GFAFileConverter extends DatastoreFileConverter {
     Map<String,Item> genes = new HashMap<>();
     Map<String,Item> proteins = new HashMap<>();
 
+    Item dataSet;
+    Item organism;
+    Item strain;
     Item publication;
 
     /**
@@ -58,6 +61,10 @@ public class GFAFileConverter extends DatastoreFileConverter {
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
         } else if (getCurrentFile().getName().endsWith(".gfa.tsv")) {
+            // populate these here if README does not exist
+            if (dataSet==null) dataSet = getDataSet();
+            if (organism==null) organism = getOrganism();
+            strain = getStrain(organism);
             processGFAFile(reader);
 	}
     }
@@ -77,9 +84,9 @@ public class GFAFileConverter extends DatastoreFileConverter {
                                        "Required fields are: identifier, taxid, synopsis, description");
         }
         // Organism
-        Item organism = getOrganism(Integer.parseInt(readme.taxid));
+        organism = getOrganism(Integer.parseInt(readme.taxid));
         // DataSet
-        Item dataSet = getDataSet();
+        dataSet = createItem("DataSet");
         dataSet.setAttribute("name", readme.identifier);
         dataSet.setAttribute("description", readme.description);
         // Publication
@@ -110,9 +117,6 @@ public class GFAFileConverter extends DatastoreFileConverter {
             throw new RuntimeException("GFA file does not have the required 9 dot-separated parts: "+getCurrentFile().getName());
         }
         String version = fileParts[5];
-	Item dataSet = getDataSet();
-        Item organism = getOrganism();
-        Item strain = getStrain(organism);
         String scoreMeaning = null;
         // spin through the file
         BufferedReader br = new BufferedReader(reader);
@@ -219,9 +223,9 @@ public class GFAFileConverter extends DatastoreFileConverter {
     @Override
     public void close() throws ObjectStoreException {
 	store(dataSource);
-	store(dataSets.values());
-        store(organisms.values());
-        store(strains.values());
+	store(dataSet);
+        store(organism);
+        store(strain);
         if (publication!=null) store(publication);
         store(geneFamilies.values());
         store(genes.values());

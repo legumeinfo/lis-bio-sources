@@ -33,6 +33,9 @@ public class PathwayFileConverter extends DatastoreFileConverter {
     private Map<String,Item> pathways = new HashMap<>();      // keyed by Pathway.identifier
     private Map<String,Item> genes = new HashMap<>();         // keyed by Gene.name
 
+    Item dataSet;
+    Item organism;
+    Item strain;
     Item publication;
     
     /**
@@ -52,6 +55,10 @@ public class PathwayFileConverter extends DatastoreFileConverter {
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
         } else if (getCurrentFile().getName().endsWith("pathway.tsv")) {
+            // populated here if README missing
+            if (dataSet==null) dataSet = getDataSet();
+            if (organism==null) organism = getOrganism();
+            strain = getStrain(organism);
             processPathwayFile(reader);
         }
     }
@@ -70,10 +77,10 @@ public class PathwayFileConverter extends DatastoreFileConverter {
             throw new RuntimeException("ERROR: a required field is missing from README. "+
                                        "Required fields are: identifier, taxid, synopsis, description");
         }
-        // Organism
-        Item organism = getOrganism(Integer.parseInt(readme.taxid));
-        // DataSet
-        Item dataSet = getDataSet();
+        // Organism (override)
+        organism = getOrganism(Integer.parseInt(readme.taxid));
+        // DataSet (override)
+        dataSet = createItem("DataSet");
         dataSet.setAttribute("name", readme.identifier);
         dataSet.setAttribute("description", readme.description);
         // Publication
@@ -91,9 +98,6 @@ public class PathwayFileConverter extends DatastoreFileConverter {
      * Process the pathway.tsv file
      */
     void processPathwayFile(Reader reader) throws IOException {
-        Item dataSet = getDataSet();
-        Item organism = getOrganism();
-        Item strain = getStrain(organism);
         // spin through the file
         BufferedReader br = new BufferedReader(reader);
         String line = null;
@@ -133,12 +137,10 @@ public class PathwayFileConverter extends DatastoreFileConverter {
      */
     public void close() throws ObjectStoreException {
         if (pathways.size()>0) {
-            // DatastoreFileConverter
             store(dataSource);
-            store(dataSets.values());
-            store(organisms.values());
-            store(strains.values());
-            // local
+            store(dataSet);
+            store(organism);
+            store(strain);
             if (publication!=null) store(publication);
             store(genes.values());
             store(pathways.values());

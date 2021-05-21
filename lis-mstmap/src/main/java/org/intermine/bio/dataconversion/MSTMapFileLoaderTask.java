@@ -132,7 +132,7 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
      */
     @Override
     public void processFile(File file) {
-        if (file.getName().endsWith("MSTmap.tsv")) {
+        if (file.getName().endsWith("mstmap.tsv")) {
             try {
                 System.err.println("Processing "+file.getName());
                 processMSTMapFile(file);
