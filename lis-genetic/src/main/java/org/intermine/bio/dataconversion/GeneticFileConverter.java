@@ -392,7 +392,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                 traits.put(identifier, trait);
             }
             trait.setAttribute("description", description);
-            trait.setReference("geneticMap", geneticMap);
             trait.addToCollection("dataSets", dataSet);
         }
         br.close();
