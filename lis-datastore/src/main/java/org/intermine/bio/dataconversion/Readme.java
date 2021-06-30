@@ -37,8 +37,6 @@ public class Readme {
     public String license;
     public String keywords; 
     public String citations;
-    public String[] file_transformation;
-    public String[] changes;
     // source-specific attributes
     public String genotyping_platform;
     public String genotyping_method;

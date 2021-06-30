@@ -12,9 +12,11 @@
     <attribute name="annotationVersion" type="java.lang.String"/>
   </class>
 
+  <!-- size is populated by a post-processor -->
   <class name="GeneFamily" is-interface="true">
     <attribute name="identifier" type="java.lang.String"/>
     <attribute name="version" type="java.lang.String"/>
+    <attribute name="size" type="java.lang.Integer"/>
     <collection name="genes" referenced-type="Gene" reverse-reference="geneFamily"/>
     <collection name="proteins" referenced-type="Protein" reverse-reference="geneFamily"/>
   </class>

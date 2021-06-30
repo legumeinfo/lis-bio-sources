@@ -64,6 +64,7 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
     Publication publication;
     GenotypingStudy study;
 
+    String taxonId;
     String dataSetUrl, dataSetVersion;
 
     /**
@@ -75,6 +76,7 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
         try {
             // Organism
             organism = getDirectDataLoader().createObject(org.intermine.model.bio.Organism.class);
+            organism.setTaxonId(taxonId);
             // Strain
             strain = getDirectDataLoader().createObject(org.intermine.model.bio.Strain.class);
             // DataSource
@@ -178,11 +180,19 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
     }
 
     /**
+     * Set the Taxon ID to be used for the organism.
+     * @param taxonId the NCBI taxonomy ID
+     */
+    public void setTaxonId(String value) {
+        this.taxonId = value;
+    }
+
+    /**
      * Process the README, which contains the GenotypingStudy attributes.
      */
     void processREADME(File file) throws IOException, ObjectStoreException {
         Readme readme = Readme.getReadme(file);
-        // Organism
+        // Organism -- override taxonId that may have been set in project.xml
         organism.setTaxonId(readme.taxid);
         // DataSet
         dataSet.setName(readme.identifier);
@@ -216,7 +226,6 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
         Map<String,Chromosome> chromosomes = new HashMap<>();
         List<GenotypingSample> samples = new LinkedList<>(); // has to support get(i)
         // Strain is for chromosomes and markers only
-        Strain strain = getDirectDataLoader().createObject(org.intermine.model.bio.Strain.class);
         strain.setIdentifier(DatastoreUtils.extractStrainIdentifier(file.getName()));
         strain.setOrganism(organism);
         getDirectDataLoader().store(strain);

@@ -52,6 +52,8 @@ import org.intermine.xml.full.ItemHelper;
  */
 public class LISGFF3RecordHandler extends GFF3RecordHandler {
 
+    static String DEFAULT_ASSEMBLY_VERSION = "gnmX";
+
     // Item maps
     Map<String,Item> proteinDomainMap = new HashMap<>();
 
@@ -101,17 +103,19 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         String id = record.getId();
         String name = null;
         if (record.getNames()!=null) name = record.getNames().get(0);
+        String symbol = null;
+        if (record.getSymbols()!=null) symbol = record.getSymbols().get(0);
         String seqId = record.getSequenceID();
         String gensp = DatastoreUtils.extractGensp(seqId);
         String strainIdentifier = DatastoreUtils.extractStrainIdentifier(seqId);
         String assemblyVersion = DatastoreUtils.extractAssemblyVersion(seqId);
-        // validate
-        if (assemblyVersion==null || assemblyVersion.equals("null")) {
-            throw new RuntimeException("ERROR: assemblyVersion=null for seqId="+seqId);
-        }
         String primaryIdentifier = null;
         String annotationVersion = null;
         boolean hasAnnotation = false;
+        // fake assembly version
+        if (assemblyVersion==null) {
+            assemblyVersion = DEFAULT_ASSEMBLY_VERSION;
+        }
         // our feature
         Item feature = getFeature();
         // ID values are notoriously incorrect, so DO NOT USE THEM for primaryIdentifier if Name is present
@@ -143,9 +147,11 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         }
         // set standard attributes
         feature.setAttribute("primaryIdentifier", primaryIdentifier);
-        feature.setAttribute("secondaryIdentifier", DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, hasAnnotation));
-        feature.setAttribute("assemblyVersion", assemblyVersion);
+        String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, hasAnnotation);
+        if (secondaryIdentifier!=null) feature.setAttribute("secondaryIdentifier", secondaryIdentifier);
+        if (!assemblyVersion.equals(DEFAULT_ASSEMBLY_VERSION)) feature.setAttribute("assemblyVersion", assemblyVersion);
         if (annotationVersion!=null && !annotationVersion.equals("null")) feature.setAttribute("annotationVersion", annotationVersion);
+        if (symbol!=null) feature.setAttribute("symbol", symbol);
         // add marker type = SNP if it is a marker with length 1. This will be overridden if Type attribute is present.
         if (type.equals("genetic_marker") && (record.getStart()-record.getEnd())==0) {
             feature.setAttribute("type", "SNP");

@@ -22,18 +22,16 @@ public class LISGFF3SeqHandler extends GFF3SeqHandler {
         String taxonId = converter.getTaxonId();
         String strainIdentifier = converter.getStrainIdentifier();
         String assemblyVersion = DatastoreUtils.extractAssemblyVersion(identifier);
-        String gensp = dsu.getGensp(taxonId);
+        String gensp = dsu.getGensp(taxonId); 
         if (dsu.isSupercontig(gensp, strainIdentifier, identifier)) {
-            if (assemblyVersion==null) throw new RuntimeException("assemblyVersion=null for identifier="+identifier);
             Item seq = converter.createItem("Supercontig");
             seq.setAttribute("primaryIdentifier", identifier);
-            seq.setAttribute("assemblyVersion", assemblyVersion);
+            if (assemblyVersion!=null) seq.setAttribute("assemblyVersion", assemblyVersion);
             return seq;
         } else {
-            if (assemblyVersion==null) throw new RuntimeException("assemblyVersion=null for identifier="+identifier);
             Item seq = converter.createItem("Chromosome");
             seq.setAttribute("primaryIdentifier", identifier);
-            seq.setAttribute("assemblyVersion", assemblyVersion);
+            if (assemblyVersion!=null) seq.setAttribute("assemblyVersion", assemblyVersion);
             return seq;
         }
     }
@@ -54,16 +52,14 @@ public class LISGFF3SeqHandler extends GFF3SeqHandler {
         String assemblyVersion = DatastoreUtils.extractAssemblyVersion(identifier);
         String gensp = dsu.getGensp(taxonId);
         if (dsu.isSupercontig(gensp, strainIdentifier, identifier)) {
-            if (assemblyVersion==null) throw new RuntimeException("assemblyVersion=null for identifier="+identifier);
             Item seq = converter.createItem("Supercontig");
             seq.setAttribute("primaryIdentifier", identifier);
-            seq.setAttribute("assemblyVersion", assemblyVersion);
+            if (assemblyVersion!=null) seq.setAttribute("assemblyVersion", assemblyVersion);
             return seq;
         } else {
-            if (assemblyVersion==null) throw new RuntimeException("assemblyVersion=null for identifier="+identifier);
             Item seq = converter.createItem("Chromosome");
             seq.setAttribute("primaryIdentifier", identifier);
-            seq.setAttribute("assemblyVersion", assemblyVersion);
+            if (assemblyVersion!=null) seq.setAttribute("assemblyVersion", assemblyVersion);
             return seq;
         }
     }

@@ -34,6 +34,8 @@ public class GFAFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(GFAFileConverter.class);
 
+    static final String DEFAULT_VERSION = "legfed_v1_0";
+
     // local things to store
     Map<String,Item> geneFamilies = new HashMap<>();
     Map<String,Item> genes = new HashMap<>();
@@ -114,14 +116,17 @@ public class GFAFileConverter extends DatastoreFileConverter {
     void processGFAFile(Reader reader) throws IOException {
         String[] fileParts = getCurrentFile().getName().split("\\.");
         if (fileParts.length!=9) {
-            throw new RuntimeException("GFA file does not have the required 9 dot-separated parts: "+getCurrentFile().getName());
+            System.err.println("WARNING: GFA file does not have the required 9 dot-separated parts: "+getCurrentFile().getName());
         }
-        String version = fileParts[5];
+        String version = DEFAULT_VERSION;
+        if (fileParts.length>5) version = fileParts[5];
         String scoreMeaning = null;
         // spin through the file
         BufferedReader br = new BufferedReader(reader);
         String line = null;
+        int linenumber = 0;
         while ((line=br.readLine())!=null) {
+            linenumber++;
             if (line.startsWith("#")) continue;
             String[] fields = line.split("\t");
             if (fields.length==2) {
@@ -136,6 +141,13 @@ public class GFAFileConverter extends DatastoreFileConverter {
                 if (fields.length>3) {
                     hasScore = true;
                     score = Double.parseDouble(fields[3]);
+                }
+                // validation
+                if (geneIdentifier==null || geneIdentifier.trim().length()==0) {
+                    throw new RuntimeException("ERROR: Gene.primaryIdentifier="+geneIdentifier+" at line "+linenumber);
+                }
+                if (proteinIdentifier==null || proteinIdentifier.trim().length()==0) {
+                    throw new RuntimeException("ERROR: Protein.primaryIdentifier="+proteinIdentifier+" at line "+linenumber);
                 }
                 // Gene Family
                 Item geneFamily = getGeneFamily(geneFamilyIdentifier);
@@ -175,7 +187,6 @@ public class GFAFileConverter extends DatastoreFileConverter {
         if (genes.containsKey(primaryIdentifier)) {
             gene = genes.get(primaryIdentifier);
         } else {
-            // phavu.Phvul.002G040500
             gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", primaryIdentifier);
 	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);

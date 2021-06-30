@@ -76,7 +76,9 @@ public class DatastoreFileConverter extends FileConverter {
     }
 
     // Set DataSet fields in project.xml
-    // NOTE: leave dataSetName to be set from file name, NOT project.xml!
+    public void setDataSetName(String name) {
+        this.dataSetName = name;
+    }
     public void setDataSetUrl(String url) {
         this.dataSetUrl = url;
     }
@@ -128,10 +130,14 @@ public class DatastoreFileConverter extends FileConverter {
     }
 
     /**
-     * Get/add a DataSet Item from the current file's containing directory.
+     * Get/add a DataSet Item from the current file's containing directory, if not set.
      */
     public Item getDataSet() {
-        return getDataSet(getCurrentFile().getParentFile().getName());
+        if (dataSetName!=null) {
+            return getDataSet(dataSetName);
+        } else {
+            return getDataSet(getCurrentFile().getParentFile().getName());
+        }
     }
 
     /**
