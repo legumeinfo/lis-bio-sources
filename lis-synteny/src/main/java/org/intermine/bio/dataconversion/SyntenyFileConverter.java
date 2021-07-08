@@ -84,52 +84,33 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
     /**
      * {@inheritDoc}
      * Process each GFF file by creating SyntenyBlock and SyntenicRegion items.
-     * 0     1    2    3 4     5      6    7
-     * glyma.Wm82.gnm2.x.aradu.V14167.gnm1.gff
-     * 0     1         2    3    4 5     6    7    8    9
-     * cajca.ICPL87119.gnm1.ann1.x.lotja.MG20.gnm3.ann1.gff
+     * 0     1           2    3    4 5     6    7    8    (9)  (10)
+     * cicar.CDCFrontier.gnm1.ann1.x.lotja.MG20.gnm3.ann1.7Bqh.gff3
      */
     @Override
     public void process(Reader reader) throws IOException {
 	if (!getCurrentFile().getName().endsWith("gff") && !getCurrentFile().getName().endsWith("gff3")) return;
         String[] fileNameParts = getCurrentFile().getName().split("\\.");
-        if (fileNameParts.length!=8 && fileNameParts.length!=10) {
-	    System.out.println(getCurrentFile().getName()+" does not have 8 or 10 dot-separated parts.");
+        if (fileNameParts.length<9) {
+	    System.err.println(getCurrentFile().getName()+" does not have at least 9 dot-separated parts.");
+            System.err.println("Example: cicar.CDCFrontier.gnm1.ann1.x.lotja.MG20.gnm3.ann1.7Bqh.gff3");
 	    return;
 	}
 	Item dataSet = getDataSet();
 
         // get the identifiers from the file name
-	int sourceGenspIndex = 0;
-	int sourceStrainIndex = 1;
-	int sourceAssyIndex = 2;
-	int sourceAnnotIndex = -1; // not present
-	int targetGenspIndex = 4;
-	int targetStrainIndex = 5;
-	int targetAssyIndex = 6;
-	int targetAnnotIndex = -1; // not present
-	if (fileNameParts.length==10) {
-	    // make room for annotation versions
-	    sourceGenspIndex = 0;
-	    sourceStrainIndex = 1;
-	    sourceAssyIndex = 2;
-	    sourceAnnotIndex = 3;
-	    targetGenspIndex = 5;
-	    targetStrainIndex = 6;
-	    targetAssyIndex = 7;
-	    targetAnnotIndex = 8;
-	}
-        String sourceGensp = fileNameParts[sourceGenspIndex];
-        String sourceStrainId = fileNameParts[sourceStrainIndex];
-	String sourceAssy = fileNameParts[sourceAssyIndex];
-	String sourceAnnot = null; if (sourceAnnotIndex>0) sourceAnnot = fileNameParts[sourceAnnotIndex];
-	String sourceTaxonId = dsu.getTaxonId(sourceGensp);
-        String targetGensp = fileNameParts[targetGenspIndex];
-        String targetStrainId = fileNameParts[targetStrainIndex];
-	String targetAssy = fileNameParts[targetAssyIndex];
-	String targetAnnot = null; if (targetAnnotIndex>0) targetAnnot = fileNameParts[targetAnnotIndex];
+        String sourceGensp = fileNameParts[0];
+        String sourceStrainId = fileNameParts[1];
+	String sourceAssy = fileNameParts[2];
+	String sourceAnnot = fileNameParts[3];
+        String targetGensp = fileNameParts[5];
+        String targetStrainId = fileNameParts[6];
+	String targetAssy = fileNameParts[7];
+	String targetAnnot = fileNameParts[8];
+        // taxonomy IDs
+        String sourceTaxonId = dsu.getTaxonId(sourceGensp);
 	String targetTaxonId = dsu.getTaxonId(targetGensp);
-	
+
         // get the organisms and strains
         Item sourceOrganism = getOrganism(sourceGensp);
         Item sourceStrain = getStrain(sourceStrainId, sourceOrganism);

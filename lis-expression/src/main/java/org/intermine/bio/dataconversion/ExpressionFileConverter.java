@@ -162,7 +162,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      *
      * cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv
      * 
-     * sample_name                        key        sample_uniquename                  description                                    treatment             tissue
+     * 0sample_name                       1key       sample_uniquename                  description                                    treatment             tissue
      * Mature seed at reprod (SRR5199304) SRR5199304 Mature seed at reprod (SRR5199304) Mature seed at Reproductive stage (SRR5199304) Mature seed at reprod Mature seed 
      *
      * dev_stage          age      organism      infraspecies cultivar        other sra_run    biosample_accession sra_accession bioproject_accession sra_study
@@ -182,12 +182,12 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             // header contains colnames
             if (line.startsWith("sample_name")) {
                 colnames = parts;
-            } else if (colnames!=null) {
-                if (parts.length!=colnames.length) {
-                    System.err.println(line);
-                    throw new RuntimeException("ERROR: colnames.length="+colnames.length+" but line has "+parts.length+" fields!");
-                }
-                // get/create the sample with primaryIdentifier in column 2
+            } else {
+                // increment sample number
+                num++;
+                // 0sample_name = Sample.name
+                // 1key = Sample.primaryIdentifier
+                String name = parts[0];
                 String id = parts[1];
                 Item sample = samples.get(id);
                 if (sample==null) {
@@ -195,31 +195,33 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                     sample.setAttribute("primaryIdentifier", id);
                     samples.put(id, sample);
                 }
+                sample.setAttribute("name", name);
+                sample.setAttribute("num", String.valueOf(num));
 		// common references
 		sample.setReference("organism", organism);
 		sample.setReference("strain", strain);
 		sample.setReference("source", expressionSource);
                 sample.addToCollection("publications", publication);
 		// sample-specific attributes
-                num++;
-                sample.setAttribute("num", String.valueOf(num));
                 for (int i=0; i<colnames.length; i++) {
                     switch(colnames[i]) {
-                    case "sample_name" :
-                        sample.setAttribute("name", parts[i]);
-                        break;
                     case "sample_uniquename" :
+                        // ignored
                         break;
                     case "description" :
                         sample.setAttribute("description", parts[i]);
                         break;
                     case "treatment" :
+                        // ignored
                         break;
                     case "tissue" :
+                        // ignored
                         break;
                     case "dev_stage" :
+                        // ignored
                         break;
                     case "age" :
+                        // ignored
                         break;
                     case "organism" :
                         // we use the filename for organism
@@ -231,18 +233,23 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                         // we use the filename for strain
                         break;
                     case "other" :
+                        // ignored
                         break;
                     case "sra_run" :
+                        // ignored
                         break;
                     case "biosample_accession" :
                         // bioSample accession is all we need, everything else is on NCBI
                         sample.setAttribute("bioSample", parts[i]);
                         break;
                     case "sra_accession" :
+                        // ignored
                         break;
                     case "bioproject_accession" :
+                        // ignored
                         break;
                     case "sra_study" :
+                        // ignored
                         break;
                     }
                 }
