@@ -233,13 +233,17 @@ public class GFAFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-	store(dataSource);
-	store(dataSet);
-        store(organism);
-        store(strain);
-        if (publication!=null) store(publication);
-        store(geneFamilies.values());
-        store(genes.values());
-        store(proteins.values());
+        if (geneFamilies.size()==0) {
+            throw new RuntimeException("No GFA file found. Aborting.");
+        } else {
+            store(dataSource);
+            store(dataSet);
+            store(organism);
+            store(strain);
+            if (publication!=null) store(publication);
+            store(geneFamilies.values());
+            store(genes.values());
+            store(proteins.values());
+        }
     }
 }

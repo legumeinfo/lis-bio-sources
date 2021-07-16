@@ -136,7 +136,9 @@ public class PathwayFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     public void close() throws ObjectStoreException {
-        if (pathways.size()>0) {
+        if (pathways.size()==0) {
+            throw new RuntimeException("No pathway file found. Aborting.");
+        } else {
             store(dataSource);
             store(dataSet);
             store(organism);
