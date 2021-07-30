@@ -150,6 +150,13 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
         publication.setAttribute("doi", readme.publication_doi);
         publication.setAttribute("title", readme.publication_title);
         expressionSource.addToCollection("publications", publication);
+        // add to samples if we've already read the samples file
+        if (samples.size()>0) {
+            for (Item sample : samples.values()) {
+                sample.addToCollection("publications", publication);
+            }
+        }
+        
         // override DataSet.description from README
         Item dataSet = getDataSet();
         dataSet.setAttribute("description", readme.description);
@@ -201,7 +208,8 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
 		sample.setReference("organism", organism);
 		sample.setReference("strain", strain);
 		sample.setReference("source", expressionSource);
-                sample.addToCollection("publications", publication);
+                // add publication if we've already read the README
+                if (publication!=null) sample.addToCollection("publications", publication);
 		// sample-specific attributes
                 for (int i=0; i<colnames.length; i++) {
                     switch(colnames[i]) {
