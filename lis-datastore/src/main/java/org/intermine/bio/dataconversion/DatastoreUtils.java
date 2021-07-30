@@ -97,7 +97,7 @@ public class DatastoreUtils {
     public String getTaxonId(String gensp) {
         String taxonId = genspTaxonId.get(gensp);
         if (taxonId==null) {
-            throw new RuntimeException("Taxon ID not available for "+gensp);
+            throw new RuntimeException("Taxon ID not available for gensp="+gensp);
         }
         return taxonId;
     }
