@@ -31,6 +31,9 @@ import org.intermine.xml.full.Item;
 /**
  * Loads data from LIS datastore files about organisms and strains.
  *
+ * NOTE: although these files are YAML, the use of dots in the keys makes the Jackson YAML parser not work (as far as I can tell).
+ * So, I'm parsing them the hard way, looking for the first colon.
+ *
  * @author Sam Hokin
  */
 public class AboutFileConverter extends DatastoreFileConverter {
@@ -95,18 +98,19 @@ public class AboutFileConverter extends DatastoreFileConverter {
         while ((line=br.readLine())!=null) {
             if (line.startsWith("%")) continue;
             if (line.startsWith("#")) continue;
-            String[] parts = line.split("\t");
+            String[] parts = line.split(":");
             if (parts.length>1) {
-                String attributeName = parts[0].replace("organism.","").replace(":","");
+                String attributeName = parts[0].replace("organism.","");
                 String attributeValue = parts[1].trim();
-		if (attributeValue.length()>0) {
-		    if (attributeName.equals("taxid")) {
-			// do nothing, we get taxonId in getOrganism()
-		    } else if (attributeName.equals("abbrev")) {
-			organism.setAttribute("abbreviation", attributeValue);
-		    } else {
-			organism.setAttribute(attributeName, attributeValue);
-		    }
+                for (int i=2; i<parts.length; i++) {
+                    attributeValue += ":"+parts[i];
+                }
+                if (attributeName.equals("taxid")) {
+                    // do nothing, we get taxonId in getOrganism()
+                } else if (attributeName.equals("abbrev")) {
+                    organism.setAttribute("abbreviation", attributeValue);
+                } else if (attributeValue.length()>0) {
+                    organism.setAttribute(attributeName, attributeValue);
                 }
             }
         }
@@ -147,18 +151,23 @@ public class AboutFileConverter extends DatastoreFileConverter {
             if (line.startsWith("%") || line.startsWith("#")) continue;
 	    if (line.startsWith("strain.identifier")) {
 		// top of new strain section
-		// strain.identifier:	W05
-                String[] parts = line.split("\t");
+		// strain.identifier: W05
+                String[] parts = line.split(":");
 		String strainId = parts[1].trim();
 		strain = getStrain(strainId, organism);
             } else {
 		// other strain attributes
-		// strain.origin:	Shanxi Sheng, China
-                String[] parts = line.split("\t");
+		// strain.origin: Shanxi Sheng, China
+                String[] parts = line.split(":");
                 if (parts.length>1) {
-                    String attributeName = parts[0].replace("strain.","").replace(":","");
+                    String attributeName = parts[0].replace("strain.","");
                     String attributeValue = parts[1].trim();
-		    strain.setAttribute(attributeName, attributeValue);
+                    for (int i=2; i<parts.length; i++) {
+                        attributeValue += ":"+parts[i];
+                    }
+                    if (attributeValue.length()>0) {
+                        strain.setAttribute(attributeName, attributeValue);
+                    }
                 }
             }
         }

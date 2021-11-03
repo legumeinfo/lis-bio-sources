@@ -72,6 +72,8 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 
     String dataSetTitle, dataSetUrl, dataSetVersion;
 
+    boolean loadHeaderDescriptions = false;
+
     // global objects to be stored at end
     Organism organism;
     Strain strain;
@@ -367,6 +369,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
             // annotationVersion
             if (annotationVersion!=null) feature.setAnnotationVersion(annotationVersion);
+            // store with the sequence
             storeSequenceFeature(feature, bioSequence);
         } else if (className.equals("org.intermine.model.bio.Protein")) {
             // lupal.Amiga.gnm1.ann0.mRNA:Lalb_Chr00c01g0403611.1 locus_tag=Lalb_Chr00c01g0403611 gn=Lalb_Chr00c01g0403611 len=96 chr=Lalb_Chr00c01 strand=1 sp=Unknown
@@ -384,7 +387,10 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
                 if (name!=null) feature.setName(name);
             }
             // description
-            if (descriptionAttribute!=null) {
+            if (loadHeaderDescriptions) {
+                String description = getDescription(bioJavaSequence);
+                if (description!=null) feature.setDescription(description);
+            } else if (descriptionAttribute!=null) {
                 String description = getAttribute(bioJavaSequence, descriptionAttribute);
                 if (description!=null) feature.setDescription(description);
             }
@@ -392,6 +398,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
             // annotationVersion
             if (annotationVersion!=null) feature.setAnnotationVersion(annotationVersion);
+            // store with the sequence
             storeProtein(feature, bioSequence);
         } else {
             throw new RuntimeException("Loading of "+className+" from FASTA isn't currently supported.");
@@ -445,6 +452,22 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         return identifier;
     }
 
+    /**
+     * For the given BioJava Sequence object, return the description, defined as everything that follows the first space in the header.
+     * @param bioJavaSequence the Sequence
+     * @return a description
+     */
+    protected String getDescription(AbstractSequence bioJavaSequence) {
+        String description = null;
+        String header = bioJavaSequence.getAccession().getID();
+        String[] bits = header.split(" ");
+        if (bits.length>1) {
+            description = bits[1];
+            for (int i=2; i<bits.length; i++) description += " "+bits[i];
+        }
+        return description;
+    }
+    
     /**
      * Return the attribute with the given field name; else null.
      * 0                                                                      1a               1b                 1c                     1d
@@ -562,5 +585,12 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
      */
     public void setDescriptionAttribute(String s) {
         descriptionAttribute = s;
+    }
+    /**
+     * Boolean attribute instructs us to load descriptions from FASTA headers in the following format:
+     * >ID description here with spaces
+     */
+    public void setLoadHeaderDescriptions(String s) {
+        loadHeaderDescriptions = s.equals("true");
     }
 }
