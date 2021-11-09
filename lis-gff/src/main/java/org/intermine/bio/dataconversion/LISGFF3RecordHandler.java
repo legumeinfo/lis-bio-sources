@@ -110,8 +110,10 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         String strainIdentifier = DatastoreUtils.extractStrainIdentifier(seqId);
         String assemblyVersion = DatastoreUtils.extractAssemblyVersion(seqId);
         String primaryIdentifier = null;
+        String secondaryIdentifier = null;
         String annotationVersion = null;
         boolean hasAnnotation = false;
+        boolean idIsFullYuck = false;
         // fake assembly version
         if (assemblyVersion==null) {
             assemblyVersion = DEFAULT_ASSEMBLY_VERSION;
@@ -125,16 +127,22 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
             String[] idParts = id.split("\\.");
             hasAnnotation = idParts.length>4 && idParts[3].startsWith("ann");
             if (hasAnnotation) annotationVersion = DatastoreUtils.extractAnnotationVersion(id);
+            idIsFullYuck = true;
         }
         if (name==null) {
-            // use ID when Name is not present
+            // use ID when Name is not present, skip secondaryIdentifier
             primaryIdentifier = id;
+        } else if (idIsFullYuck) {
+            // ID has full-yuck prefix so let's use it for primaryIdentifier, given Name for secondaryIdentifier
+            primaryIdentifier = id;
+            secondaryIdentifier = name;
         } else {
-            // build the primaryIdentifier from the sequence ID and the Name attribute.
+            // ID is something random, build it from Name = secondaryIdentifier
+            secondaryIdentifier = name;
             if (hasAnnotation) {
-                primaryIdentifier = gensp+"."+strainIdentifier+"."+assemblyVersion+"."+annotationVersion+"."+name;
+                primaryIdentifier = gensp+"."+strainIdentifier+"."+assemblyVersion+"."+annotationVersion+"."+secondaryIdentifier;
             } else {
-                primaryIdentifier = gensp+"."+strainIdentifier+"."+assemblyVersion+"."+name;
+                primaryIdentifier = gensp+"."+strainIdentifier+"."+assemblyVersion+"."+secondaryIdentifier;
             }
         }
         // catch non-existence of primaryIdentifier
@@ -147,7 +155,6 @@ public class LISGFF3RecordHandler extends GFF3RecordHandler {
         }
         // set standard attributes
         feature.setAttribute("primaryIdentifier", primaryIdentifier);
-        String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, hasAnnotation);
         if (secondaryIdentifier!=null) feature.setAttribute("secondaryIdentifier", secondaryIdentifier);
         if (!assemblyVersion.equals(DEFAULT_ASSEMBLY_VERSION)) feature.setAttribute("assemblyVersion", assemblyVersion);
         if (annotationVersion!=null && !annotationVersion.equals("null")) feature.setAttribute("annotationVersion", annotationVersion);
