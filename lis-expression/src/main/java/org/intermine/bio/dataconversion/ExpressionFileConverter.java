@@ -33,8 +33,12 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
 
     // singletons
     Item expressionSource = createItem("ExpressionSource");
+    Item organism = createItem("Organism");
+    Item strain = createItem("Strain");
     Item bioProject;
     Item publication;
+    Item dataSet;
+
     String expressionUnit = "TPM";
 
     // Lists
@@ -63,6 +67,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     public void process(Reader reader) throws IOException {
+        dataSet = getDataSet();
 	if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
         } else if (getCurrentFile().getName().endsWith("samples.tsv")) {
@@ -80,8 +85,8 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     @Override
     public void close() throws ObjectStoreException {
         // DatastoreFileConverter items
-        store(organisms.values());
-        store(strains.values());
+        store(organism);
+        store(strain);
         store(dataSource);
         store(dataSets.values());
         // local items
@@ -127,9 +132,10 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             throw new RuntimeException("ERROR: a required field is missing from "+getCurrentFile().getName()+": "+
                                        "Required fields are: identifier, taxid, synopsis, description, genotype, publication_doi, publication_title, expression_unit");
         }
-        // Organism from README taxid rather than filename
-        Item organism = getOrganism(Integer.parseInt(readme.taxid));
-        Item strain = getStrain(readme.genotype[0], organism);
+        // update organism, strain using filename, not genotype, for strain
+        organism.setAttribute("taxonId", readme.taxid);
+        strain.setAttribute("identifier", DatastoreUtils.extractStrainIdentifier(getCurrentFile().getName()));
+        strain.setReference("organism", organism);
         // ExpressionSource
         expressionSource.setAttribute("primaryIdentifier", readme.identifier);
         expressionSource.setAttribute("synopsis", readme.synopsis);
@@ -176,9 +182,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * Reproductive stage          Cajanus cajan ICPL87119    Asha(ICPL87119)       SRR5199304 SAMN06264156        SRS1937936    PRJNA354681          SRP097728
      */
     void processSamples(Reader reader) throws IOException {
-        Item organism = getOrganism();
-        Item strain = getStrain(organism);
-        Item dataSet = getDataSet();
         String[] colnames = null;
         int num = 0;
 	BufferedReader br = new BufferedReader(reader);
@@ -275,9 +278,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * cajca.ICPL87119.gnm1.ann1.C.cajan_00002	0	0	0	0	...
      */
     void processExpression(Reader reader) throws IOException {
-        Item organism = getOrganism();
-        Item strain = getStrain(organism);
-        Item dataSet = getDataSet();
         List<Item> sampleList = new LinkedList<>();
 	BufferedReader br = new BufferedReader(reader);
         String line = null;

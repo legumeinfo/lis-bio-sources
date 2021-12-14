@@ -189,8 +189,6 @@ public class GFAFileConverter extends DatastoreFileConverter {
         } else {
             gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
-	    if (secondaryIdentifier!=null) gene.setAttribute("secondaryIdentifier", secondaryIdentifier);
             genes.put(primaryIdentifier, gene);
         }
         return gene;
@@ -206,8 +204,6 @@ public class GFAFileConverter extends DatastoreFileConverter {
         } else {
             protein = createItem("Protein");
             protein.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
-	    if (secondaryIdentifier!=null) protein.setAttribute("secondaryIdentifier", secondaryIdentifier);
             proteins.put(primaryIdentifier, protein);
         }
         return protein;

@@ -14,6 +14,7 @@ import java.io.IOException;
 
 import java.util.Map;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.LinkedList;
 import java.util.Set;
@@ -255,7 +256,9 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
         // VCFRecords and VCFSampleRecords
         // #CHROM  POS ID         REF ALT QUAL FILTER INFO                       FORMAT  C01         C02        C08          C12          C14         ...
         // Chr01   5   marker123  T   G   97   .      DP=327;VDB=1.18178e-13;... GT:PL   0/0:0,12,85 0/0:0,9,61 0/0:0,25,126 0/0:0,60,170 0/0:0,3,124 ...
-        for (VariantContext vc : vcfReader.iterator().toList()) {
+        Iterator<VariantContext> it = vcfReader.iterator();
+        while (it.hasNext()) {
+            VariantContext vc = it.next();
             String contig = vc.getContig();
             String identifier = vc.getID();
             Allele ref = vc.getReference();

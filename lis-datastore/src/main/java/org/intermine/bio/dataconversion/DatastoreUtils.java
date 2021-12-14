@@ -168,7 +168,8 @@ public class DatastoreUtils {
 
     /**
      * Extract the Strain identifier from the given filename.
-     * gensp.strain.assy.anno.key4.content.ext
+     * gensp.strain.assy.anno.KEY4.content.ext
+     * README.strain.assy.anno.KEY4.yml
      */
     public static String extractStrainIdentifier(String filename) {
 	String[] fields = filename.split("\\.");
