@@ -14,6 +14,7 @@ import java.util.HashMap;
 
 import org.apache.log4j.Logger;
 
+import org.intermine.dataconversion.FileConverter;
 import org.intermine.dataconversion.ItemWriter;
 import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
@@ -22,22 +23,21 @@ import org.intermine.xml.full.Item;
 /**
  * Load gene family data from LIS datastore files.
  *
+ * There is no README, so we use project.xml properties to define the DataSet.
+ *
  * @author Sam Hokin
  */
 public class GeneFamilyFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(GeneFamilyFileConverter.class);
 
-    // Items to store
+    // local Items to store
     List<Item> ontologyAnnotations = new LinkedList<>();
     Map<String,Item> ontologyTerms = new HashMap<>();
     Map<String,Item> proteins = new HashMap<>();
     Map<String,Item> genes = new HashMap<>();
     Map<String,Item> proteinDomains = new HashMap<>();
     Map<String,Item> geneFamilies = new HashMap<>();
-
-    // organisms we wish to store membership
-    List<String> desiredOrganisms = new LinkedList<>();
 
     /**
      * Create a new GeneFamilyFileConverter
@@ -49,23 +49,27 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Create the list of desired organisms, listed by space-delimited gensp.
-     */
-    public void setDesiredOrganisms(String genspString) {
-        String[] gensps = genspString.split(" ");
-        desiredOrganisms = Arrays.asList(gensps);
-    }
-
-    /**
      * {@inheritDoc}
      */
     @Override
     public void process(Reader reader) throws IOException {
+        // there is no README (yet)
+        // DataSet
+        if (dataSetName==null || dataSetUrl==null || dataSetDescription==null) {
+            throw new RuntimeException("ERROR: dataSetName, dataSetUrl, and dataSetDescription must be set in project.xml.");
+        }
+        dataSet = createItem("DataSet");
+        dataSet.setAttribute("name", dataSetName);
+        dataSet.setAttribute("url", dataSetUrl);
+        dataSet.setAttribute("description", dataSetDescription);
+        if (dataSetLicence!=null) {
+            dataSet.setAttribute("licence", dataSetLicence);
+        } else {
+            dataSet.setAttribute("licence", DatastoreFileConverter.DEFAULT_DATASET_LICENCE);
+        }
+        dataSet.setReference("dataSource", dataSource);
+        // process files
         if (getCurrentFile().getName().endsWith(".info_annot_ahrd.tsv")) {
-	    // legume.genefam.fam1.M65K.info_annot_ahrd.tsv
-            // DON'T LOAD GENES FROM FASTAs!
-            // String fastaDirname = getCurrentFile().getParent()+"/"+getCurrentFile().getName().replace("info_annot_ahrd.tsv", "family_fasta");
-            // printInfoBlurb(fastaDirname);
             processInfoAnnotAhrdFile(reader);
 	}
     }
@@ -75,9 +79,6 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws Exception {
-	store(dataSource);
-	store(dataSets.values());
-	store(organisms.values());
 	store(geneFamilies.values());
 	store(ontologyTerms.values());
 	store(ontologyAnnotations);
@@ -90,79 +91,74 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
      * Get/add a GeneFamily Item.
      */
     public Item getGeneFamily(String identifier) {
-        Item geneFamily;
         if (geneFamilies.containsKey(identifier)) {
-            geneFamily = geneFamilies.get(identifier);
+            return geneFamilies.get(identifier);
         } else {
-            geneFamily = createItem("GeneFamily");
+            Item geneFamily = createItem("GeneFamily");
             geneFamily.setAttribute("identifier", identifier);
             geneFamilies.put(identifier, geneFamily);
+            return geneFamily;
         }
-        return geneFamily;
     }
 
     /**
      * Get/add an OntologyTerm Item, keyed by identifier
      */
     public Item getOntologyTerm(String identifier) {
-        Item ontologyTerm;
         if (ontologyTerms.containsKey(identifier)) {
-            ontologyTerm = ontologyTerms.get(identifier);
+            return ontologyTerms.get(identifier);
         } else {
-            ontologyTerm = createItem("OntologyTerm");
+            Item ontologyTerm = createItem("OntologyTerm");
             ontologyTerm.setAttribute("identifier", identifier);
             ontologyTerms.put(identifier, ontologyTerm);
+            return ontologyTerm;
         }
-        return ontologyTerm;
     }
 
     /**
      * Get/add a Protein Item, keyed by primaryIdentifier
      */
     public Item getProtein(String primaryIdentifier) {
-        Item protein;
         if (proteins.containsKey(primaryIdentifier)) {
-            protein = proteins.get(primaryIdentifier);
+            return proteins.get(primaryIdentifier);
         } else {
-            protein = createItem("Protein");
+            Item protein = createItem("Protein");
             protein.setAttribute("primaryIdentifier", primaryIdentifier);
 	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
 	    if (secondaryIdentifier!=null) protein.setAttribute("secondaryIdentifier", secondaryIdentifier);
             proteins.put(primaryIdentifier, protein);
+            return protein;
         }
-        return protein;
     }
 
     /**
      * Get/add a Gene Item, keyed by primaryIdentifier
      */
     public Item getGene(String primaryIdentifier) {
-        Item gene;
         if (genes.containsKey(primaryIdentifier)) {
-            gene = genes.get(primaryIdentifier);
+            return genes.get(primaryIdentifier);
         } else {
-            gene = createItem("Gene");
+            Item gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", primaryIdentifier);
 	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
 	    if (secondaryIdentifier!=null) gene.setAttribute("secondaryIdentifier", secondaryIdentifier);
             genes.put(primaryIdentifier, gene);
+            return gene;
         }
-        return gene;
     }
 
     /**
      * Get/add a ProteinDomain Item.
      */
     public Item getProteinDomain(String identifier) {
-        Item proteinDomain;
         if (proteinDomains.containsKey(identifier)) {
-            proteinDomain = proteinDomains.get(identifier);
+            return proteinDomains.get(identifier);
         } else {
-            proteinDomain = createItem("ProteinDomain");
+            Item proteinDomain = createItem("ProteinDomain");
             proteinDomain.setAttribute("primaryIdentifier", identifier);
 	    proteinDomains.put(identifier, proteinDomain);
+            return proteinDomain;
         }
-        return proteinDomain;
     }
 
     /**
@@ -185,9 +181,6 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
      * ...
      */
     void processInfoAnnotAhrdFile(Reader reader) throws IOException {
-	Item dataSet = getDataSet();
-	// get the FASTA directory
-        String fastaDirname = getCurrentFile().getParent()+"/"+getCurrentFile().getName().replace("info_annot_ahrd.tsv", "family_fasta");
         // spin through the AHRD file lines
         BufferedReader br = new BufferedReader(reader);
         String line = null;
@@ -198,7 +191,6 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
             Item geneFamily = getGeneFamily(record.identifier);
             geneFamily.setAttribute("version", record.version);
             geneFamily.setAttribute("description", record.description);
-            geneFamily.setReference("dataSet", dataSet);
             // GO terms
             for (String identifier : record.go.keySet()) {
                 String description = record.go.get(identifier);
@@ -207,7 +199,6 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
                 Item goAnnotation = createItem("OntologyAnnotation");
                 goAnnotation.setReference("subject", geneFamily);
                 goAnnotation.setReference("ontologyTerm", goTerm);
-                goAnnotation.addToCollection("dataSets", dataSet);
 		ontologyAnnotations.add(goAnnotation);
             }
             // interpro protein domains
@@ -217,34 +208,6 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
                 proteinDomain.setAttribute("description", description);
                 proteinDomain.addToCollection("geneFamilies", geneFamily);
             }
-            // DISABLED, USE GFA FILES INSTEAD
-            // load the gene family FASTA if present to link proteins
-            // String fastaFilename = fastaDirname+"/"+record.identifier;
-            // File fastaFile = new File(fastaFilename);
-            // if (fastaFile.exists()) {
-            //     BufferedReader fbr = new BufferedReader(new FileReader(fastaFile));
-            //     String fline = null;
-            //     while ((fline=fbr.readLine())!=null) {
-            //         if (fline.startsWith(">")) {
-            //             String name = fline.substring(1);
-            //             String[] parts = name.split("\\.");
-            //             String gensp = parts[0];
-            //             if (desiredOrganisms.contains(gensp)) {
-            //                 Item organism = getOrganism(gensp);
-            //                 Item protein = getProtein(name);
-            //                 String geneIdentifier = DatastoreUtils.extractGeneIdentifierFromProteinIdentifier(name);
-            //                 Item gene = getGene(geneIdentifier);
-            //                 protein.setReference("geneFamily", geneFamily);
-            //                 protein.addToCollection("genes", gene);
-            //                 protein.addToCollection("dataSets", dataSet);
-            //                 gene.setReference("geneFamily", geneFamily);
-            //                 gene.addToCollection("proteins", protein);
-            //                 gene.addToCollection("dataSets", dataSet);
-            //             }
-            //         }
-            //     }
-            //     fbr.close();
-            // }
         }
         br.close();
     }

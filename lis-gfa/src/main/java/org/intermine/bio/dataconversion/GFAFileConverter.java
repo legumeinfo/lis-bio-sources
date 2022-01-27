@@ -25,6 +25,8 @@ import org.intermine.metadata.StringUtil;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
+import org.ncgr.datastore.Readme;
+
 /**
  * Loads data from an LIS datastore gfa.tsv file, e.g. phalu.G27455.gnm1.ann1.JD7C.legfed_v1_0.M65K.gfa.tsv.
  *
@@ -32,19 +34,14 @@ import org.intermine.xml.full.Item;
  */
 public class GFAFileConverter extends DatastoreFileConverter {
 	
-    private static final Logger LOG = Logger.getLogger(GFAFileConverter.class);
-
     static final String DEFAULT_VERSION = "legfed_v1_0";
 
-    // local things to store
+    private static final Logger LOG = Logger.getLogger(GFAFileConverter.class);
+
+    // local items
     Map<String,Item> geneFamilies = new HashMap<>();
     Map<String,Item> genes = new HashMap<>();
     Map<String,Item> proteins = new HashMap<>();
-
-    Item dataSet;
-    Item organism;
-    Item strain;
-    Item publication;
 
     /**
      * Create a new GFAFileConverter
@@ -62,44 +59,35 @@ public class GFAFileConverter extends DatastoreFileConverter {
     public void process(Reader reader) throws IOException {
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
+            setStrain();
         } else if (getCurrentFile().getName().endsWith(".gfa.tsv")) {
-            // populate these here if README does not exist
-            if (dataSet==null) dataSet = getDataSet();
-            if (organism==null) organism = getOrganism();
-            strain = getStrain(organism);
             processGFAFile(reader);
 	}
     }
 
+
     /**
-     * Process the README, which contains metadata.
+     * {@inheritDoc}
      */
-    void processReadme(Reader reader) throws IOException {
-        Readme readme = Readme.getReadme(reader);
-        // check required stuff
-        if (readme.identifier==null ||
-            readme.taxid==null ||
-            readme.synopsis==null ||
-            readme.description==null
-            ) {
-            throw new RuntimeException("ERROR: a required field is missing from README. "+
-                                       "Required fields are: identifier, taxid, synopsis, description");
+    @Override
+    public void close() throws ObjectStoreException {
+        if (geneFamilies.size()==0) {
+            throw new RuntimeException("No GFA file found. Aborting.");
         }
-        // Organism
-        organism = getOrganism(Integer.parseInt(readme.taxid));
-        // DataSet
-        dataSet = createItem("DataSet");
-        dataSet.setAttribute("name", readme.identifier);
-        dataSet.setAttribute("description", readme.description);
-        // Publication
-        if (readme.publication_doi!=null) {
-            publication = createItem("Publication");
-            publication.setAttribute("doi", readme.publication_doi);
-            if (readme.publication_title!=null) {
-                publication.setAttribute("title", readme.publication_title);
-            }
-            dataSet.setReference("publication", publication);
+        // set collection references
+        for (Item gene : genes.values()) {
+            gene.setReference("organism", organism);
+            gene.setReference("strain", strain);
         }
+        for (Item protein : proteins.values()) {
+            protein.setReference("organism", organism);
+            protein.setReference("strain", strain);
+        }
+        // store
+        storeCollectionItems();
+        store(geneFamilies.values());
+        store(genes.values());
+        store(proteins.values());
     }
 
     /**
@@ -114,6 +102,7 @@ public class GFAFileConverter extends DatastoreFileConverter {
      * phalu.G27455.gnm1.ann1.tig000546640010 legfed_v1_0.L_00CL8T phalu.G27455.gnm1.ann1.tig000546640010.1 2.4e-68
      */
     void processGFAFile(Reader reader) throws IOException {
+        System.out.println("Processing "+getCurrentFile().getName());
         String[] fileParts = getCurrentFile().getName().split("\\.");
         if (fileParts.length!=9) {
             System.err.println("WARNING: GFA file does not have the required 9 dot-separated parts: "+getCurrentFile().getName());
@@ -154,20 +143,14 @@ public class GFAFileConverter extends DatastoreFileConverter {
                 geneFamily.setAttribute("version", version);
                 // Gene
                 Item gene = getGene(geneIdentifier);
-                gene.setReference("organism", organism);
-                gene.setReference("strain", strain);
                 gene.setReference("geneFamily", geneFamily);
-                gene.addToCollection("dataSets", dataSet);
                 if (hasScore) {
                     if (scoreMeaning!=null) gene.setAttribute("geneFamilyScoreMeaning", scoreMeaning);
                     gene.setAttribute("geneFamilyScore", String.valueOf(score));
                 }
                 // Protein
                 Item protein = getProtein(proteinIdentifier);
-                protein.setReference("organism", organism);
-                protein.setReference("strain", strain);
                 protein.setReference("geneFamily", geneFamily);
-                protein.addToCollection("dataSets", dataSet);
                 if (hasScore) {
                     if (scoreMeaning!=null) protein.setAttribute("geneFamilyScoreMeaning", scoreMeaning);
                     protein.setAttribute("geneFamilyScore", String.valueOf(score));
@@ -183,63 +166,41 @@ public class GFAFileConverter extends DatastoreFileConverter {
      * Get/add a Gene Item, keyed by primaryIdentifier
      */
     public Item getGene(String primaryIdentifier) {
-        Item gene;
         if (genes.containsKey(primaryIdentifier)) {
-            gene = genes.get(primaryIdentifier);
+            return genes.get(primaryIdentifier);
         } else {
-            gene = createItem("Gene");
+            Item gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", primaryIdentifier);
             genes.put(primaryIdentifier, gene);
+            return gene;
         }
-        return gene;
     }
 
     /**
      * Get/add a Protein Item, keyed by primaryIdentifier
      */
     public Item getProtein(String primaryIdentifier) {
-        Item protein;
         if (proteins.containsKey(primaryIdentifier)) {
-            protein = proteins.get(primaryIdentifier);
+            return proteins.get(primaryIdentifier);
         } else {
-            protein = createItem("Protein");
+            Item protein = createItem("Protein");
             protein.setAttribute("primaryIdentifier", primaryIdentifier);
             proteins.put(primaryIdentifier, protein);
+            return protein;
         }
-        return protein;
     }
 
     /**
      * Get/add a GeneFamily, keyed by identifier
      */
     public Item getGeneFamily(String identifier) {
-        Item geneFamily;
         if (geneFamilies.containsKey(identifier)) {
-            geneFamily = geneFamilies.get(identifier);
+            return geneFamilies.get(identifier);
         } else {
-            geneFamily = createItem("GeneFamily");
+            Item geneFamily = createItem("GeneFamily");
             geneFamily.setAttribute("identifier", identifier);
             geneFamilies.put(identifier, geneFamily);
-        }
-        return geneFamily;
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public void close() throws ObjectStoreException {
-        if (geneFamilies.size()==0) {
-            throw new RuntimeException("No GFA file found. Aborting.");
-        } else {
-            store(dataSource);
-            store(dataSet);
-            store(organism);
-            store(strain);
-            if (publication!=null) store(publication);
-            store(geneFamilies.values());
-            store(genes.values());
-            store(proteins.values());
+            return geneFamily;
         }
     }
 }

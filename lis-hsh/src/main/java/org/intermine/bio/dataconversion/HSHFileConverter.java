@@ -57,7 +57,9 @@ public class HSHFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
-        if (getCurrentFile().getName().endsWith(".hsh.tsv")) {
+        if (getCurrentFile().getName().startsWith("README")) {
+            processReadme(reader);
+        } else if (getCurrentFile().getName().endsWith(".hsh.tsv")) {
             processHSHFile(reader);
 	}
     }
@@ -67,8 +69,9 @@ public class HSHFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-	store(dataSource);
-	store(dataSets.values());
+        // standard collection items
+        storeCollectionItems();
+        // local items
         store(panGeneSets.values());
         store(genes.values());
         store(proteins.values());
@@ -84,12 +87,12 @@ public class HSHFileConverter extends DatastoreFileConverter {
      * glysp.mixed.pan2.SoyPan000001   glyma.Lee.gnm1.ann1.GlymaLee.16G153800.1
      */
     void processHSHFile(Reader reader) throws IOException {
+        System.out.println("Processing "+getCurrentFile().getName());
         String[] fileParts = getCurrentFile().getName().split("\\.");
         if (fileParts.length!=6) {
             throw new RuntimeException("HSH file does not have the required 6 dot-separated parts: "+getCurrentFile().getName());
         }
         String version = fileParts[2];
-	Item dataSet = getDataSet();
         // spin through the file
         String line = null;
         BufferedReader br = new BufferedReader(reader);
@@ -107,15 +110,12 @@ public class HSHFileConverter extends DatastoreFileConverter {
             // PanGeneSet
             Item panGeneSet = getPanGeneSet(panGeneSetIdentifier);
             panGeneSet.setAttribute("version", version);
-            panGeneSet.setReference("dataSet", dataSet);
             // Protein
             Item protein = getProtein(proteinIdentifier);
             protein.setReference("panGeneSet", panGeneSet);
-            protein.addToCollection("dataSets", dataSet);
             // Gene
             Item gene = getGene(geneIdentifier);
             gene.setReference("panGeneSet", panGeneSet);
-            gene.addToCollection("dataSets", dataSet);
             gene.addToCollection("proteins", protein);
         }
         br.close();
@@ -125,49 +125,46 @@ public class HSHFileConverter extends DatastoreFileConverter {
      * Get/add a Gene Item, keyed by primaryIdentifier
      */
     public Item getGene(String primaryIdentifier) {
-        Item gene;
         if (genes.containsKey(primaryIdentifier)) {
-            gene = genes.get(primaryIdentifier);
+            return genes.get(primaryIdentifier);
         } else {
             // phavu.Phvul.002G040500
-            gene = createItem("Gene");
+            Item gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", primaryIdentifier);
 	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
 	    if (secondaryIdentifier!=null) gene.setAttribute("secondaryIdentifier", secondaryIdentifier);
             genes.put(primaryIdentifier, gene);
+            return gene;
         }
-        return gene;
     }
 
     /**
      * Get/add a Protein Item, keyed by primaryIdentifier
      */
     public Item getProtein(String primaryIdentifier) {
-        Item protein;
         if (proteins.containsKey(primaryIdentifier)) {
-            protein = proteins.get(primaryIdentifier);
+            return proteins.get(primaryIdentifier);
         } else {
-            protein = createItem("Protein");
+            Item protein = createItem("Protein");
             protein.setAttribute("primaryIdentifier", primaryIdentifier);
 	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
 	    if (secondaryIdentifier!=null) protein.setAttribute("secondaryIdentifier", secondaryIdentifier);
             proteins.put(primaryIdentifier, protein);
+            return protein;
         }
-        return protein;
     }
 
     /**
      * Get/add a PanGeneSet, keyed by identifier
      */
     public Item getPanGeneSet(String identifier) {
-        Item panGeneSet;
         if (panGeneSets.containsKey(identifier)) {
-            panGeneSet = panGeneSets.get(identifier);
+            return panGeneSets.get(identifier);
         } else {
-            panGeneSet = createItem("PanGeneSet");
+            Item panGeneSet = createItem("PanGeneSet");
             panGeneSet.setAttribute("identifier", identifier);
             panGeneSets.put(identifier, panGeneSet);
+            return panGeneSet;
         }
-        return panGeneSet;
     }
 }

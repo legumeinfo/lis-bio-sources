@@ -33,11 +33,6 @@ public class PathwayFileConverter extends DatastoreFileConverter {
     private Map<String,Item> pathways = new HashMap<>();      // keyed by Pathway.identifier
     private Map<String,Item> genes = new HashMap<>();         // keyed by Gene.name
 
-    Item dataSet;
-    Item organism;
-    Item strain;
-    Item publication;
-    
     /**
      * Constructor
      *
@@ -54,43 +49,9 @@ public class PathwayFileConverter extends DatastoreFileConverter {
     public void process(Reader reader) throws IOException {
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
+            setStrain();
         } else if (getCurrentFile().getName().endsWith("pathway.tsv")) {
-            // populated here if README missing
-            if (dataSet==null) dataSet = getDataSet();
-            if (organism==null) organism = getOrganism();
-            strain = getStrain(organism);
             processPathwayFile(reader);
-        }
-    }
-
-    /**
-     * Process the README, which contains metadata.
-     */
-    void processReadme(Reader reader) throws IOException {
-        Readme readme = Readme.getReadme(reader);
-        // check required stuff
-        if (readme.identifier==null ||
-            readme.taxid==null ||
-            readme.synopsis==null ||
-            readme.description==null
-            ) {
-            throw new RuntimeException("ERROR: a required field is missing from README. "+
-                                       "Required fields are: identifier, taxid, synopsis, description");
-        }
-        // Organism (override)
-        organism = getOrganism(Integer.parseInt(readme.taxid));
-        // DataSet (override)
-        dataSet = createItem("DataSet");
-        dataSet.setAttribute("name", readme.identifier);
-        dataSet.setAttribute("description", readme.description);
-        // Publication
-        if (readme.publication_doi!=null) {
-            publication = createItem("Publication");
-            publication.setAttribute("doi", readme.publication_doi);
-            if (readme.publication_title!=null) {
-                publication.setAttribute("title", readme.publication_title);
-            }
-            dataSet.setReference("publication", publication);
         }
     }
 
@@ -98,6 +59,7 @@ public class PathwayFileConverter extends DatastoreFileConverter {
      * Process the pathway.tsv file
      */
     void processPathwayFile(Reader reader) throws IOException {
+        System.out.println("Processing "+getCurrentFile().getName());
         // spin through the file
         BufferedReader br = new BufferedReader(reader);
         String line = null;
@@ -114,9 +76,6 @@ public class PathwayFileConverter extends DatastoreFileConverter {
                 if (gene==null) {
                     gene = createItem("Gene");
                     gene.setAttribute("primaryIdentifier", geneIdentifier);
-                    gene.setReference("organism", organism);
-                    gene.setReference("strain", strain);
-                    gene.addToCollection("dataSets", dataSet);
                     genes.put(geneIdentifier, gene);
                 }
                 Item pathway = pathways.get(pathwayIdentifier);
@@ -124,7 +83,6 @@ public class PathwayFileConverter extends DatastoreFileConverter {
                     pathway = createItem("Pathway");
                     pathway.setAttribute("identifier", pathwayIdentifier);
                     pathway.setAttribute("name", pathwayName);
-                    pathway.addToCollection("dataSets", dataSet);
                     pathways.put(pathwayIdentifier, pathway);
                 }
                 gene.addToCollection("pathways", pathway);
@@ -138,14 +96,14 @@ public class PathwayFileConverter extends DatastoreFileConverter {
     public void close() throws ObjectStoreException {
         if (pathways.size()==0) {
             throw new RuntimeException("No pathway file found. Aborting.");
-        } else {
-            store(dataSource);
-            store(dataSet);
-            store(organism);
-            store(strain);
-            if (publication!=null) store(publication);
-            store(genes.values());
-            store(pathways.values());
         }
+        // augment our Items with README stuff
+        for (Item gene : genes.values()) {
+            gene.setReference("organism", organism);
+            gene.setReference("strain", strain);
+        }
+        storeCollectionItems();
+        store(genes.values());
+        store(pathways.values());
     }
 }

@@ -41,6 +41,8 @@ import org.intermine.model.bio.Population;
 import org.apache.log4j.Logger;
 import org.apache.tools.ant.BuildException;
 
+import org.ncgr.datastore.Readme;
+
 /**
  * Load genotyping study data from an MSTmap file (UC-Riverside).
  *
@@ -179,9 +181,9 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
      * publication_doi: 10.1038/ng.715
      */
     void processREADME(File file) throws IOException, ObjectStoreException {
-        Readme readme = Readme.getReadme(file);
+        Readme readme = Readme.parse(file);
         // Organism
-        organism.setTaxonId(readme.taxid);
+        organism.setTaxonId(String.valueOf(readme.taxid));
         // DataSet
         dataSet.setName(readme.identifier);
         dataSet.setDescription(readme.description);

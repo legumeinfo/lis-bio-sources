@@ -1,26 +1,3 @@
 <?xml version="1.0"?>
 <classes>
-
-  <!-- abbreviation=gensp -->
-  <class name="Organism" is-interface="true">
-    <attribute name="abbreviation" type="java.lang.String"/>
-  </class>
-
-  <!-- assemblyVersion=gnm1 annotationVersion=ann1 -->
-  <class name="SequenceFeature" is-interface="true">
-    <attribute name="assemblyVersion" type="java.lang.String"/>
-    <attribute name="annotationVersion" type="java.lang.String"/>
-  </class>
-  
-  <class name="Strain" is-interface="true">
-    <attribute name="origin" type="java.lang.String"/>
-  </class>
-
-  <class name="Protein" is-interface="true">
-    <attribute name="assemblyVersion" type="java.lang.String"/>
-    <attribute name="annotationVersion" type="java.lang.String"/>
-  </class>
-
-  <class name="MRNA" extends="Transcript" is-interface="true"/>
-
 </classes>

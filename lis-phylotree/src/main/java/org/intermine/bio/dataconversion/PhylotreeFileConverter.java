@@ -42,16 +42,13 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(PhylotreeFileConverter.class);
 
-    // Items to store
+    // local Items to store
     Map<String,Item> proteins = new HashMap<>();       // keyed by primaryIdentifier
     Map<String,Item> phylonodes = new HashMap<>();     // key=(Phylotree.identifier).(Node.id)
     Map<String,Integer> childCounts = new HashMap<>(); // key=(Phylotree.identifier).(Node.id)
     List<Item> geneFamilies = new LinkedList<>();      // unique per file
     List<Item> phylotrees = new LinkedList<>();        // unique per file
     List<Item> newicks = new LinkedList<>();           // unique per file
-
-    Item dataSource = null;
-    Item dataSet = null;                            // set to be the folder, not individual files
 
     /**
      * Create a new PhylotreeFileConverter
@@ -68,12 +65,12 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
     @Override
     public void process(Reader reader) {
         if (dataSet==null) {
-            dataSource = getDataSource();
-            String dirname = getCurrentFile().getParent();
+            // in lieu of a README, which we should have
+            String collection = getCurrentFile().getParent();
             dataSet = createItem("DataSet");
-            dataSet.setAttribute("name", dirname);
+            dataSet.setAttribute("name", collection);
             dataSet.setAttribute("description", "LIS gene family phylogenetic tree files");
-            dataSet.setAttribute("licence", "ODC Public Domain Dedication and Licence (PDDL)");
+            dataSet.setAttribute("licence", DEFAULT_DATASET_LICENCE);
             dataSet.setReference("dataSource", dataSource);
         }
         try {
@@ -88,30 +85,13 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws Exception {
-	store(dataSource);
+        store(dataSource);
 	store(dataSet);
 	store(geneFamilies);
         store(phylotrees);
         store(phylonodes.values());
 	store(proteins.values());
         store(newicks);
-    }
-
-    /**
-     * Get/add a Protein Item, keyed by primaryIdentifier
-     */
-    Item getProtein(String primaryIdentifier) {
-        Item protein;
-        if (proteins.containsKey(primaryIdentifier)) {
-            protein = proteins.get(primaryIdentifier);
-        } else {
-            protein = createItem("Protein");
-            proteins.put(primaryIdentifier, protein);
-            protein.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
-	    if (secondaryIdentifier!=null) protein.setAttribute("secondaryIdentifier", secondaryIdentifier);
-        }
-        return protein;
     }
 
     /**
@@ -201,7 +181,6 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         String identifier = getCurrentFile().getName();
         Item phylotree = createItem("Phylotree");
         phylotrees.add(phylotree);
-        phylotree.setReference("dataSet", dataSet);
         phylotree.setAttribute("identifier", identifier);
         Item geneFamily = createItem("GeneFamily");
         geneFamilies.add(geneFamily);
@@ -275,5 +254,21 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         }
         br.close();
         newick.setAttribute("contents", contents);
+    }
+
+    /**
+     * Get/add a Protein Item, keyed by primaryIdentifier
+     */
+    Item getProtein(String primaryIdentifier) {
+        if (proteins.containsKey(primaryIdentifier)) {
+            return proteins.get(primaryIdentifier);
+        } else {
+            Item protein = createItem("Protein");
+            proteins.put(primaryIdentifier, protein);
+            protein.setAttribute("primaryIdentifier", primaryIdentifier);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
+	    if (secondaryIdentifier!=null) protein.setAttribute("secondaryIdentifier", secondaryIdentifier);
+            return protein;
+        }
     }
 }

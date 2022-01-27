@@ -1,7 +1,7 @@
 rootProject.name = 'bio-source-lis'
 
 include ':bio-source-lis-datastore',
-	':bio-source-lis-about',
+	':bio-source-lis-description',
 	':bio-source-lis-info-annot',
 	':bio-source-lis-gff',
 	':bio-source-lis-gwas',
@@ -19,7 +19,7 @@ include ':bio-source-lis-datastore',
 	':bio-source-lis-mstmap'
 
 project(':bio-source-lis-datastore').projectDir = new File(settingsDir, 'lis-datastore')
-project(':bio-source-lis-about').projectDir = new File(settingsDir, 'lis-about')
+project(':bio-source-lis-description').projectDir = new File(settingsDir, 'lis-description')
 project(':bio-source-lis-info-annot').projectDir = new File(settingsDir, 'lis-info-annot')
 project(':bio-source-lis-gff').projectDir = new File(settingsDir, 'lis-gff')
 project(':bio-source-lis-gwas').projectDir = new File(settingsDir, 'lis-gwas')

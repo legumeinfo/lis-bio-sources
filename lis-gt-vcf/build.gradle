@@ -22,8 +22,8 @@ dependencies {
     implementation group: 'org.intermine', name: 'intermine-integrate', version: imVersion
     // https://mvnrepository.com/artifact/com.github.samtools/htsjdk
     implementation group: 'com.github.samtools', name: 'htsjdk', version: '2.23.0'
-    implementation fileTree(dir: 'libs', include: '*.jar')
     bioModel group: 'org.intermine', name: 'bio-model', version: bioVersion, transitive: false
+    compile fileTree(dir: 'libs', include: '*.jar')
 }
 
 processResources {

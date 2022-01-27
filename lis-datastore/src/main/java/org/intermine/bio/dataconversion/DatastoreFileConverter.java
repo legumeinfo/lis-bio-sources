@@ -7,25 +7,30 @@ import java.io.Reader;
 import java.util.Map;
 import java.util.HashMap;
 
+import org.intermine.bio.util.BioConverterUtil;
 import org.intermine.dataconversion.FileConverter;
 import org.intermine.dataconversion.ItemWriter;
 import org.intermine.metadata.Model;
+import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
+import org.ncgr.datastore.Readme;
+
 /**
- * Class providing standard methods for Datastore file converters. Extend for your specific converter.
+ * Class providing standard objects and methods for Datastore file converters. Extend for your specific converter.
  *
- * NOTE: Items are NOT stored in these methods, just created. Your extending class should include the
- * following in the close() method:
+ * A DatastoreFileConverter operates a single Datastore collection, which is a DataSet.
+ * There is one organism, as indicated in the README taxid.
+ * There is one strain, indicated (if so) by the first piece of the collection identifier.
  *
- * store(dataSource);
- * store(dataSets.values());
- * store(organisms.values());
- * store(strains.values());
+ * NOTE 1: collection Items created here are stored by calling storeCollectionItems() in the extending class.
+ *
+ * NOTE 2: Extending classes need not set a dataSet reference or add to the dataSets collection.
+ * That is automatically done during store() by the BioStoreHook when the README is parsed.
  *
  * @author Sam Hokin
  */
-public class DatastoreFileConverter extends FileConverter {
+public abstract class DatastoreFileConverter extends FileConverter {
 
     // defaults for LIS datasource
     public static final String DEFAULT_DATASOURCE_NAME = "LIS Datastore";
@@ -34,225 +39,238 @@ public class DatastoreFileConverter extends FileConverter {
         "A collaborative, community resource to facilitate crop improvement by integrating genetic, genomic, and trait data across legume species.";
     public static final String DEFAULT_DATASET_LICENCE = "ODC Public Domain Dedication and Licence (PDDL)";
 	
-    // Items to be stored by extending classes
+    // the README file content
+    Readme readme;
+    
+    // Items common to collections; these are stored with storeCollectionItems()
     Item dataSource;
-    Map<String,Item> organisms = new HashMap<>();  // keyed by TaxonID
-    Map<String,Item> strains = new HashMap<>();    // keyed by identifier
-    Map<String,Item> dataSets = new HashMap<>();   // keyed by name = filename
+    Item dataSet;
+    Item organism;
+    Item strain;
+    Item publication;
 
-    // there is only one dataSource, set in project.xml
-    String dataSourceName;         // optional
-    String dataSourceUrl;          // required if Name given
-    String dataSourceDescription;  // required if Name given
+    // There is only one DataSource, set in project.xml, or default
+    String dataSourceName;         // required
+    String dataSourceUrl;          // required
+    String dataSourceDescription;  // required
 
-    // Set some DataSet attributes in project.xml
+    // These can be set in project.xml
     String dataSetName;            // optional
+    String dataSetDescription;     // optional
+    String dataSetUrl;             // required in project.xml
     String dataSetLicence;         // optional
-    String dataSetUrl;             // required
-    String dataSetDescription;     // required
 
-    DatastoreUtils dsu;
+    // other attributes we may need for Items
+    int taxonId;
+    String gensp;
+    String strainIdentifier;
+    String assemblyVersion;
+    String annotationVersion;
 
     /**
      * Create a new DatastoreFileConverter
+     * Call with null,null arguments for use in classes that do not extend DatastoreFileConverter
+     *
      * @param writer the ItemWriter to write out new items
      * @param model the data model
      */
     public DatastoreFileConverter(ItemWriter writer, Model model) {
-	super(writer, model);
-        dsu = new DatastoreUtils();
-        dataSource = getDataSource();
+        super(writer, model);
+        setDataSource();
     }
 
-    // Set DataSource fields in project.xml
+    /**
+     * dataSourceName can be set in project.xml but is usually the default
+     */
     public void setDataSourceName(String name) {
         this.dataSourceName = name;
     }
+    /**
+     * dataSourceUrl can be set in project.xml but is usually the default
+     */
     public void setDataSourceUrl(String url) {
         this.dataSourceUrl = url;
     }
+    /**
+     * dataSourceDescription can be set in project.xml but is usually the default
+     */
     public void setDataSourceDescription(String description) {
         this.dataSourceDescription = description;
     }
 
-    // Set DataSet fields in project.xml
+    /**
+     * dataSetName is usually README.identifier
+     */
     public void setDataSetName(String name) {
         this.dataSetName = name;
     }
+
+    /**
+     * dataSetUrl must be set in project.xml
+     */
     public void setDataSetUrl(String url) {
         this.dataSetUrl = url;
     }
+
+    /**
+     * dataSetDescription is usually README.description
+     */
     public void setDataSetDescription(String description) {
         this.dataSetDescription = description;
     }
+    
+    /**
+     * dataSetLicence can be set in project.xml but is usually the default
+     */
     public void setDataSetLicence(String licence) {
 	this.dataSetLicence = licence;
     }
 
     /**
-     * {@inheritDoc}
+     * Process the README file for the common collection Items stored in this class.
+     * This also sets the BioStoreHook which automatically associates dataSet with stored Items.
+     * Note: we get strain from the collection identifier in setStrain(), not from the README.
      */
-    @Override
-    public void process(Reader reader) throws IOException {
-        // do nothing here
-    }
-
-    /**
-     * Print out info about the current file or directory being processed.
-     */
-    static void printInfoBlurb(String blurb) {
-	String outBlurb = "Processing "+blurb;
-	String hashes = "";
-	for (int i=0; i<outBlurb.length(); i++) hashes += "#";
-        System.out.println(hashes);
-        System.out.println(outBlurb);
-        System.out.println(hashes);
-    }
-
-    /**
-     * Get/add the DataSource Item.
-     */
-    public Item getDataSource() {
-        if (dataSource==null) {
-            // set defaults for LIS if not given
-            if (dataSourceName==null) {
-		dataSourceName = DEFAULT_DATASOURCE_NAME;
-                dataSourceUrl = DEFAULT_DATASOURCE_URL;
-                dataSourceDescription = DEFAULT_DATASOURCE_DESCRIPTION;
-            }
-            // create the DataSource once
-            dataSource = createItem("DataSource");
-            dataSource.setAttribute("name", dataSourceName);
-            if (dataSourceUrl!=null) dataSource.setAttribute("url", dataSourceUrl);
-            if (dataSourceDescription!=null) dataSource.setAttribute("description", dataSourceDescription);
+    void processReadme(Reader reader) throws IOException {
+        System.out.println("Processing "+getCurrentFile().getName());
+        readme = Readme.parse(reader);
+        // check required stuff
+        if (readme.identifier==null ||
+            readme.taxid==0 ||
+            readme.scientific_name_abbrev==null ||
+            readme.synopsis==null ||
+            readme.description==null
+            ) {
+            throw new RuntimeException("ERROR in README: a required field is missing. "+
+                                       "Required fields are: identifier, taxid, scientific_name_abbrev, synopsis, description");
         }
-	return dataSource;
-    }
-
-    /**
-     * Get/add a DataSet Item from the current file's containing directory, if not set.
-     */
-    public Item getDataSet() {
-        if (dataSetName!=null) {
-            return getDataSet(dataSetName);
+        if (dataSetUrl==null) {
+            throw new RuntimeException("ERROR: dataSetUrl must be set in project.xml.");
+        }
+        // local vars
+        taxonId = readme.taxid;
+        gensp = readme.scientific_name_abbrev;
+        dataSetName = readme.identifier;
+        dataSetDescription = readme.description;
+        assemblyVersion = DatastoreUtils.extractAssemblyVersionFromCollection(dataSetName);
+        annotationVersion = DatastoreUtils.extractAnnotationVersionFromCollection(dataSetName);
+        // DataSet
+        dataSet = createItem("DataSet");
+        dataSet.setReference("dataSource", dataSource);
+        dataSet.setAttribute("name", dataSetName);
+        dataSet.setAttribute("description", dataSetDescription);
+        dataSet.setAttribute("synopsis", readme.synopsis);
+        if (assemblyVersion!=null && annotationVersion!=null) {
+            dataSet.setAttribute("version", assemblyVersion+"."+annotationVersion);
+        } else if (assemblyVersion!=null) {
+            dataSet.setAttribute("version", assemblyVersion);
+        }
+        if (dataSetLicence!=null) {
+            dataSet.setAttribute("licence", dataSetLicence);
         } else {
-            return getDataSet(getCurrentFile().getParentFile().getName());
+            dataSet.setAttribute("licence", DEFAULT_DATASET_LICENCE);
         }
-    }
-
-    /**
-     * Get/add a DataSet Item from the given filename.
-     */
-    public Item getDataSet(String name) {
-	if (dataSets.containsKey(name)) return dataSets.get(name);
-        if (dataSource==null) {
-	    throw new RuntimeException("DataSource is not initialized.");
-	}
-	if (dataSetUrl==null || dataSetDescription==null) {
-	    throw new RuntimeException("You must set dataSetUrl and dataSetDescription in project.xml.");
-	}
-	// extract attributes
-	String assemblyVersion = DatastoreUtils.extractAssemblyVersion(name);
-	String annotationVersion = DatastoreUtils.extractAnnotationVersion(name);
-	String dataSetVersion = null;
-	if (assemblyVersion!=null && annotationVersion!=null) {
-	    dataSetVersion = assemblyVersion+"."+annotationVersion;
-	} else if (assemblyVersion!=null) {
-	    dataSetVersion = assemblyVersion;
-	}
-	if (dataSetLicence==null) dataSetLicence = DEFAULT_DATASET_LICENCE;
-	// create and return a new DataSet
-	Item dataSet = createItem("DataSet");
-	dataSet.setReference("dataSource", dataSource);
-	dataSet.setAttribute("name", name);
         dataSet.setAttribute("url", dataSetUrl);
-	dataSet.setAttribute("description", dataSetDescription);
-	dataSet.setAttribute("licence", dataSetLicence);
-	if (dataSetVersion!=null) dataSet.setAttribute("version", dataSetVersion);
-	dataSets.put(name, dataSet);
-	return dataSet;
-    }
-
-    /**
-     * Get/add the organism Item by extracting gensp value from the current filename.
-     */
-    Item getOrganism() {
-        return getOrganism(getGensp());
-    }
-
-    /**
-     * Get the gensp string for the current filename.
-     */
-    String getGensp() {
-        return DatastoreUtils.extractGensp(getCurrentFile().getName());
-    }
-
-    /**
-     * Get/add the organism Item by referencing its taxonId value, as an integer to 
-     * distinguish this method from the gensp method. (TaxonIDs are always integers.)
-     */
-    Item getOrganism(int intTaxonId) {
-	String taxonId = String.valueOf(intTaxonId);
-	if (organisms.containsKey(taxonId)) {
-	    return organisms.get(taxonId);
-	} else {
-	    Item organism = createItem("Organism");
-	    organism.setAttribute("taxonId", taxonId);
-	    organisms.put(taxonId, organism);
-	    return organism;
-	}
-    }
-    
-    /**
-     * Get/add the organism Item associated with the given gensp value (e.g. "phavu").
-     * Returns null if the gensp isn't resolvable to a taxonId.
-     */
-    Item getOrganism(String gensp) {
-	String taxonId = dsu.getTaxonId(gensp);
-	if (taxonId==null) {
-	    return null;
-	} else {
-	    Item organism = getOrganism(Integer.parseInt(taxonId));
-	    String genus = dsu.getGenus(gensp);
-	    String species = dsu.getSpecies(gensp);
-            organism.setAttribute("abbreviation", gensp);
-            organism.setAttribute("genus", genus);
-            organism.setAttribute("species", species);
-            organism.setAttribute("name", genus+" "+species);
-	    organism.setAttribute("shortName", genus.substring(0,1)+". "+species);
-	    return organism;
+        // Organism
+        organism = createItem("Organism");
+        organism.setAttribute("taxonId", String.valueOf(taxonId));
+        // Publication
+        if (readme.publication_doi!=null) {
+            publication = createItem("Publication");
+            publication.setAttribute("doi", readme.publication_doi);
+            if (readme.publication_title!=null) publication.setAttribute("title", readme.publication_title);
+            dataSet.setReference("publication", publication);
         }
+        // set BioStoreHook
+        setStoreHook(new BioStoreHook(getModel(), dataSet.getIdentifier(), dataSource.getIdentifier(), BioConverterUtil.getOntology(this)));
     }
 
     /**
-     * Get the organism Item for a genus and species.
+     * Set the instance DataSource from project.xml properties or defaults.
      */
-    Item getOrganism(String genus, String species) {
-        String gensp = genus.toLowerCase().substring(0,3) + species.toLowerCase().substring(0,2);
-        return getOrganism(gensp);
+    void setDataSource() {
+        if (dataSource!=null) return;
+        // set defaults for LIS if not given in project.xml
+        if (dataSourceName==null) dataSourceName = DEFAULT_DATASOURCE_NAME;
+        if (dataSourceUrl==null) dataSourceUrl = DEFAULT_DATASOURCE_URL;
+        if (dataSourceDescription==null) dataSourceDescription = DEFAULT_DATASOURCE_DESCRIPTION;
+        // create the DataSource once
+        dataSource = createItem("DataSource");
+        dataSource.setAttribute("name", dataSourceName);
+        dataSource.setAttribute("url", dataSourceUrl);
+        dataSource.setAttribute("description", dataSourceDescription);
     }
 
     /**
-     * Get/add the strainItem associated with the current filename and organism.
+     * Set the instance Strain Item from readme.identifier.
+     * NOTE: processReadme() must already have been run.
+     * Since collections aren't always associated with a single strain, (e.g. "mixed" or "strain1_x_strain2") we don't set strain in processReadme().
      */
-    Item getStrain(Item organism) {
-	String identifier = DatastoreUtils.extractStrainIdentifier(getCurrentFile().getName());
-	return getStrain(identifier, organism);
+    void setStrain() {
+        if (strain!=null) return;
+        if (readme==null) {
+            throw new RuntimeException("ERROR: attempted to setStrain() before README has been read.");
+        }
+        strainIdentifier = DatastoreUtils.extractStrainIdentifierFromCollection(readme.identifier);
+        if (strainIdentifier==null) {
+            throw new RuntimeException("ERROR: could not extract strain identifier from "+readme.identifier+".");
+        }
+        strain = createItem("Strain");
+        strain.setAttribute("identifier", strainIdentifier);
+        strain.setReference("organism", organism);
     }
-    
+
     /**
-     * Get/add the strain Item associated with the given strain name.
-     * Sets the organism reference if created.
+     * Store core collection items:
+     *   dataSource
+     *   dataSet
+     *   organism
+     *   strain (if non-null)
+     *   publication (if non-null)
      */
-    Item getStrain(String identifier, Item organism) {
-        if (strains.containsKey(identifier)) {
-            return strains.get(identifier);
+    void storeCollectionItems() throws ObjectStoreException {
+        store(dataSource);
+        store(dataSet);
+        store(organism);
+        if (strain!=null) store(strain);
+        if (publication!=null) store(publication);
+    }
+
+    /**
+     * Form an LIS "full-yuck" primary identifier from a supplied secondaryIdentifier.
+     * primaryIdentifier = gensp.strain.assy.annot.secondaryIdentifier
+     * NOTE: strainIdentifier must have been set from setStrain().
+     */
+    String formPrimaryIdentifier(String secondaryIdentifier) {
+        if (readme==null) {
+            throw new RuntimeException("ERROR: cannot formPrimaryIdentifier() because README has not yet been read.");
+        }
+        if (assemblyVersion==null || annotationVersion==null) {
+            throw new RuntimeException("ERROR: cannot formPrimaryIdentifier() because assemblyVersion="+assemblyVersion+" and annotationVersion="+annotationVersion);
+        }
+        setStrain();
+        return gensp+"."+strainIdentifier+"."+assemblyVersion+"."+annotationVersion+"."+secondaryIdentifier;
+    }
+
+    /**
+     * Return true if the provided identifier matches the current collection.
+     * 0     1      2   3   4
+     * gensp.strain.gnm.ann.Name matches strain.gnm.ann.KEY4
+     * 0     1      2   3       
+     * gensp.strain.gnm.Name matches strain.gnm.KEY4
+     */
+    boolean matchesCollection(String identifier) {
+        if (readme==null) {
+            throw new RuntimeException("ERROR: cannot matchesCollection() because README has not yet been read.");
+        }
+        setStrain();
+        String[] fields = identifier.split("\\.");
+        if (fields.length>4) {
+            return identifier.startsWith(gensp+"."+strainIdentifier+"."+assemblyVersion+"."+annotationVersion);
+        } else if (fields.length==4) {
+            return identifier.startsWith(gensp+"."+strainIdentifier+"."+assemblyVersion);
         } else {
-            Item strain = createItem("Strain");
-            strain.setAttribute("identifier", identifier);
-            strain.setReference("organism", organism);
-            strains.put(identifier, strain);
-	    return strain;
+            return false;
         }
     }
 }

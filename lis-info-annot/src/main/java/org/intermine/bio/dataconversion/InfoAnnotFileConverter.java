@@ -49,6 +49,9 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
     Item ecOntology;
     Item koOntology;
 
+    // save the annot file reader for processing AFTER the README
+    Reader annotFileReader;
+
     /**
      * Create a new InfoAnnotFileConverter
      * @param writer the ItemWriter to write out new items
@@ -87,8 +90,18 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
-        if (getCurrentFile().getName().endsWith(".info_annot.txt")) {
-            processInfoAnnotFile(reader);
+        if (getCurrentFile().getName().startsWith("README")) {
+            processReadme(reader);
+            setStrain();
+            // process annot file if it came before README
+            if (annotFileReader!=null) processInfoAnnotFile(annotFileReader);
+        } else if (getCurrentFile().getName().endsWith(".info_annot.txt")) {
+            if (readme==null) {
+                // README not yet processed, store this reader for processing after README
+                annotFileReader = reader;
+            } else {
+                processInfoAnnotFile(reader);
+            }
 	}
     }
 
@@ -97,10 +110,28 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-	store(dataSource);
-	store(dataSets.values());
-	store(organisms.values());
-	store(strains.values());
+        // references and collections
+        for (Item gene : genes.values()) {
+            gene.setAttribute("assemblyVersion", assemblyVersion);
+            gene.setAttribute("annotationVersion", annotationVersion);
+            gene.setReference("organism", organism);
+            gene.setReference("strain", strain);
+        }
+        for (Item protein : proteins.values()) {
+            protein.setAttribute("assemblyVersion", assemblyVersion);
+            protein.setAttribute("annotationVersion", annotationVersion);
+            protein.setReference("organism", organism);
+            protein.setReference("strain", strain);
+        }
+        for (Item mRNA : mRNAs.values()) {
+            mRNA.setAttribute("assemblyVersion", assemblyVersion);
+            mRNA.setAttribute("annotationVersion", annotationVersion);
+            mRNA.setReference("organism", organism);
+            mRNA.setReference("strain", strain);
+        }
+        // store standard collection Items
+        storeCollectionItems();
+        // store local items
         store(geneOntology);
         store(pfamOntology);
         store(pantherOntology);
@@ -115,100 +146,19 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Get/add a Gene Item, keyed by primaryIdentifier
-     */
-    public Item getGene(String primaryIdentifier) {
-        Item gene;
-        if (genes.containsKey(primaryIdentifier)) {
-            gene = genes.get(primaryIdentifier);
-        } else {
-            // phavu.Phvul.002G040500
-            gene = createItem("Gene");
-            gene.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
-	    if (secondaryIdentifier!=null) gene.setAttribute("secondaryIdentifier", secondaryIdentifier);
-            genes.put(primaryIdentifier, gene);
-        }
-        return gene;
-    }
-
-    /**
-     * Get/add a Protein Item, keyed by primaryIdentifier
-     */
-    public Item getProtein(String primaryIdentifier) {
-        Item protein;
-        if (proteins.containsKey(primaryIdentifier)) {
-            protein = proteins.get(primaryIdentifier);
-        } else {
-            protein = createItem("Protein");
-            protein.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
-	    if (secondaryIdentifier!=null) protein.setAttribute("secondaryIdentifier", secondaryIdentifier);
-            proteins.put(primaryIdentifier, protein);
-        }
-        return protein;
-    }
-
-    /**
-     * Get/add an OntologyTerm Item, keyed by identifier
-     */
-    public Item getOntologyTerm(String identifier) {
-        Item ontologyTerm;
-        if (ontologyTerms.containsKey(identifier)) {
-            ontologyTerm = ontologyTerms.get(identifier);
-        } else {
-            ontologyTerm = createItem("OntologyTerm");
-            ontologyTerm.setAttribute("identifier", identifier);
-            ontologyTerms.put(identifier, ontologyTerm);
-        }
-        return ontologyTerm;
-    }
-
-    /**
-     * Get/add an MRNA Item, keyed by primaryIdentifier (!)
-     */
-    public Item getMRNA(String primaryIdentifier) {
-        Item mRNA;
-        if (mRNAs.containsKey(primaryIdentifier)) {
-            mRNA = mRNAs.get(primaryIdentifier);
-        } else {
-            // Phvul.002G040500.1
-            mRNA = createItem("MRNA");
-            mRNA.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
-	    if (secondaryIdentifier!=null) mRNA.setAttribute("secondaryIdentifier", secondaryIdentifier);
-            mRNAs.put(primaryIdentifier, mRNA);
-        }
-        return mRNA;
-    }
-
-    /**
-     * Form a key for an OntologyAnnotation for dupe avoidance.
-     */
-    public static String formAnnotKey(String termIdentifier, String subjectId) { 
-        return termIdentifier+"_"+subjectId;
-    }
-
-    /**
      * Process an info_annot.txt file which contains relationships between genes, transcripts, proteins and ontology terms.
      * This will also link genes to proteins. The file name starts with gensp.strain.assembly.annotation.
      * 0     1      2    3    4    5          6
      * phavu.G19833.gnm2.ann1.PB8d.info_annot.txt
      *
      * Note: gensp.strain.assembly.annotation must be prepended to names in this file, which only contain the core IDs.
+     * Therefore, README must be parsed before this is run!
      *
      * pacId locusName transcriptName peptideName Pfam Panther KOG ec KO GO Best-hit-arabi-name arabi-symbol arabi-defline
      * 37170591 Phvul.001G000400 Phvul.001G000400.1 Phvul.001G000400.1.p PF00504 PTHR21649,PTHR21649:SF24 1.10.3.9 K14172 GO:0016020,GO:0009765 AT1G76570.1 Chlorophyll family protein
      */
     void processInfoAnnotFile(Reader reader) throws IOException {
-	Item dataSet = getDataSet();
-        String assemblyVersion = DatastoreUtils.extractAssemblyVersion(getCurrentFile().getName());
-        String annotationVersion = DatastoreUtils.extractAnnotationVersion(getCurrentFile().getName());
-	String gensp = DatastoreUtils.extractGensp(getCurrentFile().getName());
-	String strainId = DatastoreUtils.extractStrainIdentifier(getCurrentFile().getName());
-	// organism and strain
-        Item organism = getOrganism(gensp);
-        Item strain = getStrain(strainId, organism);
+        System.out.println("Processing "+getCurrentFile().getName());
         // spin through the file
         BufferedReader br = new BufferedReader(reader);
         String line = null;
@@ -221,31 +171,16 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
             InfoAnnotRecord record = new InfoAnnotRecord(line);
             if (record.pacId!=null) {
                 // the gene
-                String geneIdentifier = DatastoreUtils.formPrimaryIdentifier(gensp, strainId, assemblyVersion, annotationVersion, record.locusName);
+                String geneIdentifier = formPrimaryIdentifier(record.locusName);
                 Item gene = getGene(geneIdentifier);
-                gene.setAttribute("assemblyVersion", assemblyVersion);
-                gene.setAttribute("annotationVersion", annotationVersion);
-                gene.setReference("organism", organism);
-                gene.setReference("strain", strain);
-                gene.addToCollection("dataSets", dataSet);
                 // the protein
-                String proteinIdentifier = DatastoreUtils.formPrimaryIdentifier(gensp, strainId, assemblyVersion, annotationVersion, record.peptideName);
+                String proteinIdentifier = formPrimaryIdentifier(record.peptideName);
                 Item protein = getProtein(proteinIdentifier);
-                protein.setAttribute("assemblyVersion", assemblyVersion);
-                protein.setAttribute("annotationVersion", annotationVersion);
-                protein.setReference("organism", organism);
-                protein.setReference("strain", strain);
                 protein.addToCollection("genes", gene);
-                protein.addToCollection("dataSets", dataSet);
                 // the transcript = mRNA
-                String mRNAIdentifier = DatastoreUtils.formPrimaryIdentifier(gensp, strainId, assemblyVersion, annotationVersion, record.transcriptName);
+                String mRNAIdentifier = formPrimaryIdentifier(record.transcriptName);
                 Item mRNA = getMRNA(mRNAIdentifier);
-                mRNA.setAttribute("assemblyVersion", assemblyVersion);
-                mRNA.setAttribute("annotationVersion", annotationVersion);
                 mRNA.setReference("gene", gene); 
-                mRNA.setReference("organism", organism);
-                mRNA.setReference("strain", strain);
-                mRNA.addToCollection("dataSets", dataSet);
                 mRNA.setReference("protein", protein);
                 // GO terms
                 for (String identifier : record.GO) {
@@ -256,7 +191,6 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
                         Item annotation = createItem("OntologyAnnotation");
                         annotation.setReference("subject", gene);
                         annotation.setReference("ontologyTerm", term);
-                        annotation.addToCollection("dataSets", dataSet);
                         ontologyAnnotations.put(annotKey, annotation);
                     }
                 }
@@ -269,7 +203,6 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
                         Item annotation = createItem("OntologyAnnotation");
                         annotation.setReference("subject", protein);
                         annotation.setReference("ontologyTerm", term);
-                        annotation.addToCollection("dataSets", dataSet);
                         ontologyAnnotations.put(annotKey, annotation);
                     }
                 }
@@ -282,7 +215,6 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
                         Item annotation = createItem("OntologyAnnotation");
                         annotation.setReference("subject", protein);
                         annotation.setReference("ontologyTerm", term);
-                        annotation.addToCollection("dataSets", dataSet);
                         ontologyAnnotations.put(annotKey, annotation);
                     }                }
                 // KOG terms
@@ -294,7 +226,6 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
                         Item annotation = createItem("OntologyAnnotation");
                         annotation.setReference("subject", protein);
                         annotation.setReference("ontologyTerm", term);
-                        annotation.addToCollection("dataSets", dataSet);
                         ontologyAnnotations.put(annotKey, annotation);
                     }
                 }
@@ -307,7 +238,6 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
                         Item annotation = createItem("OntologyAnnotation");
                         annotation.setReference("subject", protein);
                         annotation.setReference("ontologyTerm", term); 
-                        annotation.addToCollection("dataSets", dataSet);
                         ontologyAnnotations.put(annotKey, annotation);
                     }
                 }
@@ -320,12 +250,82 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
                         Item annotation = createItem("OntologyAnnotation");
                         annotation.setReference("subject", gene);
                         annotation.setReference("ontologyTerm", term);
-                        annotation.addToCollection("dataSets", dataSet);
                         ontologyAnnotations.put(annotKey, annotation);
                     }
                 }
             }
         }
         br.close();
+    }
+
+    /**
+     * Get/add a Gene Item, keyed by primaryIdentifier
+     */
+    public Item getGene(String primaryIdentifier) {
+        if (genes.containsKey(primaryIdentifier)) {
+            return genes.get(primaryIdentifier);
+        } else {
+            // phavu.Phvul.002G040500
+            Item gene = createItem("Gene");
+            gene.setAttribute("primaryIdentifier", primaryIdentifier);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
+	    if (secondaryIdentifier!=null) gene.setAttribute("secondaryIdentifier", secondaryIdentifier);
+            genes.put(primaryIdentifier, gene);
+            return gene;
+        }
+    }
+
+    /**
+     * Get/add a Protein Item, keyed by primaryIdentifier
+     */
+    public Item getProtein(String primaryIdentifier) {
+        if (proteins.containsKey(primaryIdentifier)) {
+            return proteins.get(primaryIdentifier);
+        } else {
+            Item protein = createItem("Protein");
+            protein.setAttribute("primaryIdentifier", primaryIdentifier);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
+	    if (secondaryIdentifier!=null) protein.setAttribute("secondaryIdentifier", secondaryIdentifier);
+            proteins.put(primaryIdentifier, protein);
+            return protein;
+        }
+    }
+
+    /**
+     * Get/add an OntologyTerm Item, keyed by identifier
+     */
+    public Item getOntologyTerm(String identifier) {
+        if (ontologyTerms.containsKey(identifier)) {
+            return ontologyTerms.get(identifier);
+        } else {
+            Item ontologyTerm = createItem("OntologyTerm");
+            ontologyTerm.setAttribute("identifier", identifier);
+            ontologyTerms.put(identifier, ontologyTerm);
+            return ontologyTerm;
+        }
+    }
+
+    /**
+     * Get/add an MRNA Item, keyed by primaryIdentifier (!)
+     */
+    public Item getMRNA(String primaryIdentifier) {
+        if (mRNAs.containsKey(primaryIdentifier)) {
+            return mRNAs.get(primaryIdentifier);
+        } else {
+            // Phvul.002G040500.1
+            Item mRNA = createItem("MRNA");
+            mRNA.setAttribute("primaryIdentifier", primaryIdentifier);
+	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
+	    if (secondaryIdentifier!=null) mRNA.setAttribute("secondaryIdentifier", secondaryIdentifier);
+            mRNAs.put(primaryIdentifier, mRNA);
+            return mRNA;
+        }
+    }
+
+    /**
+     * Form a key for an OntologyAnnotation for dupe avoidance.
+     */
+    public static String formAnnotKey(String termIdentifier, String subjectId) { 
+        return termIdentifier+"_"+subjectId;
     }
 }

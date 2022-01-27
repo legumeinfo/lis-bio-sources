@@ -18,6 +18,8 @@ import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
+import org.ncgr.datastore.Readme;
+
 /**
  * Store GWAS result/trait/marker data from a tab-delimited files.
  *
@@ -28,18 +30,13 @@ public class GWASFileConverter extends DatastoreFileConverter {
     private static final Logger LOG = Logger.getLogger(GWASFileConverter.class);
 
     // local things to store
+    Item gwas = createItem("GWAS");
     List<Item> gwasResults = new LinkedList<>();
     List<Item> ontologyAnnotations = new LinkedList<>();
     Map<String,Item> traits = new HashMap<>();           // keyed by identifier
     Map<String,Item> markers = new HashMap<>();          // keyed by secondaryIdentifier
     Map<String,Item> ontologyTerms = new HashMap<>();    // keyed by identifier
 
-    // singleton Items
-    Item organism = createItem("Organism");
-    Item dataSet = createItem("DataSet");
-    Item gwas = createItem("GWAS");
-    Item publication = createItem("Publication");
-                                  
     /**
      * Create a new GWASFileConverter
      * @param writer the ItemWriter to write out new items
@@ -47,7 +44,6 @@ public class GWASFileConverter extends DatastoreFileConverter {
      */
     public GWASFileConverter(ItemWriter writer, Model model) {
         super(writer, model);
-	dataSource = getDataSource();
     }
 
     /**
@@ -57,6 +53,19 @@ public class GWASFileConverter extends DatastoreFileConverter {
     public void process(Reader reader) throws IOException {
         if (getCurrentFile().getName().startsWith("README")) {
 	    processReadme(reader);
+            if (readme.genotyping_platform==null) {
+                throw new RuntimeException("ERROR: "+getCurrentFile().getName()+" must contain genotyping_platform.");
+            }
+            // GWAS
+            gwas = createItem("GWAS");
+            gwas.setAttribute("primaryIdentifier", readme.identifier);
+            gwas.setAttribute("synopsis", readme.synopsis);
+            gwas.setAttribute("description", readme.description);
+            gwas.setAttribute("genotypingPlatform", readme.genotyping_platform);
+            if (readme.genotyping_method!=null) gwas.setAttribute("genotypingMethod", readme.genotyping_method);
+            gwas.setAttribute("population", readme.genotype[0]);
+            gwas.setReference("organism", organism);
+            if (publication!=null) gwas.addToCollection("publications", publication);
         } else if (getCurrentFile().getName().endsWith("obo.tsv")) {
             processOboFile(reader);
 	} else if (getCurrentFile().getName().endsWith("result.tsv")) {
@@ -71,69 +80,22 @@ public class GWASFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-        // DatastoreFileConverter
-	store(dataSource);
-        // local
-	store(organism);
-	store(dataSet);
-	store(publication);
+        // references and collections
+        for (Item marker : markers.values()) {
+            marker.setReference("organism", organism);
+        }
+        for (Item gwasResult : gwasResults) {
+            gwasResult.setReference("gwas", gwas);
+        }
+        // collection stuff
+        storeCollectionItems();
+        // local items
 	store(gwas);
 	store(gwasResults);
-        store(traits.values());
         store(ontologyAnnotations);
-	store(markers.values());
         store(ontologyTerms.values());
-    }
-
-    /**
-     * Process the README, which contains the GWAS metadata.
-     *
-     * identifier: 2020NAMFlor7
-     * synopsis: GangurdeSS 2020 NAM Florida-7 GWAS study of pod and seed weight
-     * taxid: 3818
-     * genotype:
-     * - Florida-07 NAM population
-     * description: "A GWAS dataset from Gangurde SS, et al., 2020 NAM Florida-7 mapping population. Nested-association mapping..."
-     * publication_doi: 10.1111/pbi.13311
-     * publication_title: "Nested-association mapping (NAM)-based genetic dissection uncovers candidate genes for seed and pod weights in peanut (Arachis hypogaea)"
-     * genotyping_platform: "Affymetrix 58K SNP Axiom_Arachis array"
-     * genotyping_method: "Blah di blah di blah"
-     */
-    void processReadme(Reader reader) throws IOException {
-        Readme readme = Readme.getReadme(reader);
-        // check required stuff
-        if (readme.identifier==null ||
-            readme.taxid==null ||
-            readme.synopsis==null ||
-            readme.description==null ||
-            readme.genotype==null ||
-            readme.publication_doi==null ||
-            readme.publication_title==null ||
-            readme.genotyping_platform==null) {
-            throw new RuntimeException("ERROR: a required field is missing from "+getCurrentFile().getName()+": "+
-                                       "Required fields are: identifier, taxid, synopsis, description, genotype, publication_doi, publication_title, genotyping_platform");
-        }
-        // Organism
-        organism = getOrganism(Integer.parseInt(readme.taxid));
-        // GWAS
-        gwas.setAttribute("primaryIdentifier", readme.identifier);
-        gwas.setReference("organism", organism);
-        gwas.setAttribute("synopsis", readme.synopsis);
-        gwas.setAttribute("description", readme.description);
-        gwas.setAttribute("genotypingPlatform", readme.genotyping_platform);
-        if (readme.genotyping_method!=null) gwas.setAttribute("genotypingMethod", readme.genotyping_method);
-        gwas.setAttribute("population", readme.genotype[0]);
-        // Publication
-        publication.setAttribute("doi", readme.publication_doi);
-        publication.setAttribute("title", readme.publication_title);
-        gwas.addToCollection("publications", publication);
-        // override DataSet.description from README
-        dataSet.setReference("dataSource", dataSource);
-        dataSet.setAttribute("name", readme.identifier);
-        dataSet.setAttribute("description", readme.description);
-        dataSet.setAttribute("url", dataSetUrl);
-        dataSet.setReference("publication", publication);
-        gwas.addToCollection("dataSets", dataSet);
+        store(traits.values());
+	store(markers.values());
     }
 
     /**
@@ -144,6 +106,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
      * 100 Pod weight from Florida-7 NAM   After harvest and drying to less than 10% water content, 100 pods were picked randomly and weighed.
      */
     void processTraitFile(Reader reader) throws IOException {
+        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
 	String line;
         while ((line=br.readLine())!=null) {
@@ -159,7 +122,6 @@ public class GWASFileConverter extends DatastoreFileConverter {
                 traits.put(identifier, trait);
             }
             trait.setAttribute("description", description);
-            trait.addToCollection("dataSets", dataSet);
         }
         br.close();
     }
@@ -171,6 +133,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
      * 100 Seed weight from Florida-7 NAM  TO:0000181
      */
     void processOboFile(Reader reader) throws IOException {
+        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
 	String line;
         while ((line=br.readLine())!=null) {
@@ -194,12 +157,10 @@ public class GWASFileConverter extends DatastoreFileConverter {
                 trait.setAttribute("primaryIdentifier", traitId);
                 traits.put(traitId, trait);
             }
-            trait.addToCollection("dataSets", dataSet);
             // OntologyAnnotation
             Item ontologyAnnotation = createItem("OntologyAnnotation");
             ontologyAnnotation.setReference("subject", trait);
             ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
-            ontologyAnnotation.addToCollection("dataSets", dataSet);
             ontologyAnnotations.add(ontologyAnnotation);
         }
         br.close();
@@ -213,7 +174,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
      * 100 Pod weight from Florida-7 NAM	Affx-152042939	9.12e-9
      */
     void processResultFile(Reader reader) throws IOException {
-        gwas.addToCollection("dataSets", dataSet);
+        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader bufferedReader = new BufferedReader(reader);
 	String line;
         while ((line=bufferedReader.readLine())!=null) {
@@ -229,19 +190,15 @@ public class GWASFileConverter extends DatastoreFileConverter {
                 trait.setAttribute("primaryIdentifier", traitId);
                 traits.put(traitId, trait);
             }
-            trait.addToCollection("dataSets", dataSet);
             // GeneticMarker
             Item marker = markers.get(markerId);
             if (marker==null) {
                 marker = createItem("GeneticMarker");
                 marker.setAttribute("secondaryIdentifier", markerId);
-                marker.setReference("organism", organism);
                 markers.put(markerId, marker);
             }
-            marker.addToCollection("dataSets", dataSet);
             // GWASResult
             Item gwasResult = createItem("GWASResult");
-            gwasResult.setReference("gwas", gwas);
             gwasResult.setReference("trait", trait);
             gwasResult.setReference("marker", marker);
             gwasResult.setAttribute("pValue", String.valueOf(pValue));

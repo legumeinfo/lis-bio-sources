@@ -27,7 +27,7 @@ import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
 /**
- * Loads data from an LIS datastore gfa.tsv file, e.g. phalu.G27455.gnm1.ann1.JD7C.legfed_v1_0.M65K.gfa.tsv.
+ * Loads data from an LIS InterPro Scan GFF file.
  *
  * @author Sam Hokin
  */
@@ -37,6 +37,7 @@ public class IPRGFFConverter extends DatastoreFileConverter {
 
     // local things to store
     Map<String,Item> proteins = new HashMap<>();
+    List<Item> features = new ArrayList<>();
 
     /**
      * Create a new IPRGFFConverter
@@ -52,9 +53,12 @@ public class IPRGFFConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
-        if (getCurrentFile().getName().endsWith("iprscan.gff3")) {
+        if (getCurrentFile().getName().startsWith("README")) {
+            processReadme(reader);
+            setStrain();
+        } else if (getCurrentFile().getName().endsWith("iprscan.gff3")) {
             processGFF(reader);
-	}
+        }
     }
 
     /**
@@ -62,13 +66,20 @@ public class IPRGFFConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-        // global stuff
-	store(dataSource);
-	store(dataSets.values());
-        store(organisms.values());
-        store(strains.values());
+        // references and collections
+        for (Item protein : proteins.values()) {
+            protein.setReference("organism", organism);
+            protein.setReference("strain", strain);
+        }
+        for (Item feature : features) {
+            feature.setReference("organism", organism);
+            feature.setReference("strain", strain);
+        }
+        // collection items
+        storeCollectionItems();
         // local stuff
         store(proteins.values());
+        store(features);
     }
 
     /**
@@ -77,9 +88,7 @@ public class IPRGFFConverter extends DatastoreFileConverter {
      * medsa.XinJiangDaYe.gnm1.ann1.RKB9.iprscan.gff3
      */
     void processGFF(Reader reader) throws IOException {
-	Item dataSet = getDataSet();
-        Item organism = getOrganism();
-        Item strain = getStrain(organism);
+        System.out.println("Processing "+getCurrentFile().getName());
         // spin through the file
         String line = null;
         BufferedReader br = new BufferedReader(reader);
@@ -91,12 +100,7 @@ public class IPRGFFConverter extends DatastoreFileConverter {
             //    signature_desc=Trp-Asp (WD) repeats circular profile.
             // medsa.XinJiangDaYe.gnm1.ann1.MS_gene000000.t1 Pfam    protein_hmm_match 3 88 4.8E-11 + . Name=PF03732;status=T;ID=match$1047423_3_88;date=04-02-2021;
             //    signature_desc=Retrotransposon gag protein;Target=PF03732 6 96;
-            Item protein = proteins.get(rec.getSequenceID());
-            if (protein==null) {
-                protein = createItem("Protein");
-                protein.setAttribute("primaryIdentifier", rec.getSequenceID());
-                proteins.put(rec.getSequenceID(), protein);
-            }
+            Item protein = getProtein(rec.getSequenceID());
             Item feature;
             if (rec.getType().equals("protein_match")) {
                 feature = createItem("ProteinMatch");
@@ -107,6 +111,7 @@ public class IPRGFFConverter extends DatastoreFileConverter {
             } else {
                 throw new RuntimeException("GFF record type "+rec.getType()+" is not supported by this loader.");
             }
+            features.add(feature);
             // ID
             feature.setAttribute("primaryIdentifier", rec.getId());
             // location
@@ -138,7 +143,6 @@ public class IPRGFFConverter extends DatastoreFileConverter {
             // store this line
             try {
                 store(location);
-                store(feature);
             } catch (ObjectStoreException ex) {
                 throw new RuntimeException(ex);
             }
@@ -150,16 +154,15 @@ public class IPRGFFConverter extends DatastoreFileConverter {
      * Get/add a Protein Item, keyed by primaryIdentifier
      */
     public Item getProtein(String primaryIdentifier) {
-        Item protein;
         if (proteins.containsKey(primaryIdentifier)) {
-            protein = proteins.get(primaryIdentifier);
+            return proteins.get(primaryIdentifier);
         } else {
-            protein = createItem("Protein");
+            Item protein = createItem("Protein");
             protein.setAttribute("primaryIdentifier", primaryIdentifier);
 	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
 	    if (secondaryIdentifier!=null) protein.setAttribute("secondaryIdentifier", secondaryIdentifier);
             proteins.put(primaryIdentifier, protein);
+            return protein;
         }
-        return protein;
     }
 }

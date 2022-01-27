@@ -2,17 +2,6 @@
 
 <classes>
 
-  <!-- abbreviation=gensp -->
-  <class name="Organism" is-interface="true">
-    <attribute name="abbreviation" type="java.lang.String"/>
-  </class>
-
-  <!-- assemblyVersion=gnm1 annotationVersion=ann1 -->
-  <class name="SequenceFeature" is-interface="true">
-    <attribute name="assemblyVersion" type="java.lang.String"/>
-    <attribute name="annotationVersion" type="java.lang.String"/>
-  </class>
-
   <!-- Annotatable: primaryIdentifier, ontologyAnnotations, publications -->
   <class name="GenotypingStudy" extends="Annotatable" is-interface="true">
     <attribute name="synopsis" type="java.lang.String"/>
@@ -31,12 +20,6 @@
     <attribute name="identifier" type="java.lang.String"/>
   </class>
   
-  <!-- add LIS assembly and annotation versions -->
-  <class name="SequenceFeature" is-interface="true">
-    <attribute name="assemblyVersion" type="java.lang.String"/>
-    <attribute name="annotationVersion" type="java.lang.String"/>
-  </class>
-
   <!-- BioEntity: primaryIdentifier, etc. -->
   <class name="GenotypingSample" extends="BioEntity" is-interface="true">
     <reference name="study" referenced-type="GenotypingStudy" reverse-reference="samples"/>

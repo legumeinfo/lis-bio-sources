@@ -1,24 +1,13 @@
 <?xml version="1.0"?>
 <classes>
 
-  <!-- abbreviation=gensp -->
-  <class name="Organism" is-interface="true">
-    <attribute name="abbreviation" type="java.lang.String"/>
-  </class>
-
-  <!-- assemblyVersion=gnm1 annotationVersion=ann1 -->
-  <class name="SequenceFeature" is-interface="true">
-    <attribute name="assemblyVersion" type="java.lang.String"/>
-    <attribute name="annotationVersion" type="java.lang.String"/>
-  </class>
-
   <!-- NCBI BioProject -->
   <class name="BioProject" is-interface="true">
     <attribute name="accession" type="java.lang.String"/>
     <attribute name="title" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
   </class>
-
+  
   <!-- Annotatable -->
   <class name="ExpressionSource" extends="Annotatable" is-interface="true">
     <attribute name="synopsis" type="java.lang.String"/>

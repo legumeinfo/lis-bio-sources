@@ -1,5 +1,6 @@
 package org.intermine.bio.dataconversion;
 
+import java.io.File;
 import java.io.InputStream;
 import java.io.IOException;
 
@@ -105,88 +106,132 @@ public class DatastoreUtils {
     /**
      * Get the gensp (like "phavu") for a taxon ID.
      */
-    public String getGensp(String taxonId) {
-        String gensp = taxonIdGensp.get(taxonId);
-        if (gensp==null) {
-            throw new RuntimeException("gensp value not available for Taxon ID "+gensp);
-        }
-        return gensp;
-    }
+    // public String getGensp(String taxonId) {
+    //     String gensp = taxonIdGensp.get(taxonId);
+    //     if (gensp==null) {
+    //         throw new RuntimeException("gensp value not available for Taxon ID "+gensp);
+    //     }
+    //     return gensp;
+    // }
 
     /**
      * Get the Genus for a gensp string like "phavu".
      */
-    public String getGenus(String gensp) {
-        String taxonId = getTaxonId(gensp);
-        if (taxonIdGenus.containsKey(taxonId)) {
-            return taxonIdGenus.get(taxonId);
-        } else {
-            throw new RuntimeException("Genus not available for taxon ID "+taxonId);
-        }
-    }
+    // public String getGenus(String gensp) {
+    //     String taxonId = getTaxonId(gensp);
+    //     if (taxonIdGenus.containsKey(taxonId)) {
+    //         return taxonIdGenus.get(taxonId);
+    //     } else {
+    //         throw new RuntimeException("Genus not available for taxon ID "+taxonId);
+    //     }
+    // }
     
     /**
      * Get the species for a gensp string like "phavu".
      */
-    public String getSpecies(String gensp) {
-        String taxonId = genspTaxonId.get(gensp);
-        if (taxonIdSpecies.containsKey(taxonId)) {
-            return taxonIdSpecies.get(taxonId);
-        } else {
-            throw new RuntimeException("Species not available for taxon ID "+taxonId);
-        }
-    }
+    // public String getSpecies(String gensp) {
+    //     String taxonId = genspTaxonId.get(gensp);
+    //     if (taxonIdSpecies.containsKey(taxonId)) {
+    //         return taxonIdSpecies.get(taxonId);
+    //     } else {
+    //         throw new RuntimeException("Species not available for taxon ID "+taxonId);
+    //     }
+    // }
 
     /**
      * Determine whether the given primaryIdentifier is for a Supercontig (based on the given matching strings).
-     * TODO: THIS IS HORRIBLY SIMPLIFIED, BUT A NEW STARTING POINT.
-     * NOTE: non-static since we need supercontigStrings!
+     * 0     1    2    3
+     * glyma.Wm82.gnm4.Gm01 is a chromosome, it's name does not contain a supercontig-identifying string
+     * glyma.Wm82.gnm4.scaffold_99 is a supercontig because its name contains 'scaffold'
      */
-    public boolean isSupercontig(String gensp, String strainIdentifier, String primaryIdentifier) {
+    public boolean isSupercontig(String primaryIdentifier) {
+        String[] fields = primaryIdentifier.split("\\.");
+        String gensp = fields[0];
+        String strainIdentifier = fields[1];
+        String assy = fields[2];
+        String name = fields[3];
         String key = gensp+"."+strainIdentifier;
 	List<String> matchStrings = supercontigStrings.get(key);
 	if (matchStrings==null) {
 	    throw new RuntimeException("You must add a supercontig matching entry for "+key+" in datastore_config.properties.");
 	}
 	for (String matchString : matchStrings) {
-	    if (primaryIdentifier.contains(matchString)) return true;
+	    if (name.contains(matchString)) return true;
 	}
 	return false;
     }
+
     /**
-     * Extract the gensp string from the given filename.
-     * gensp.strain.assy.anno.key4.content.ext
+     * Extract the gensp string from the given identifier.
+     * glyma.Wm82.gnm1.Chr04
+     * glyma.Wm82.gnm1.ann1.Gene01
      */
-    public static String extractGensp(String filename) {
-	String[] fields = filename.split("\\.");
-	if (fields.length>1) {
-	    return fields[0];
-	} else {
-	    return null;
-	}
+    public static String extractGensp(String identifier) {
+        String[] fields = identifier.split("\\.");
+        if (fields.length>=4) {
+            return fields[0];
+        } else {
+            return null;
+        }
     }
 
     /**
-     * Extract the Strain identifier from the given filename.
-     * gensp.strain.assy.anno.KEY4.content.ext
-     * README.strain.assy.anno.KEY4.yml
+     * Extract the collection identifier from a README filename.
      */
-    public static String extractStrainIdentifier(String filename) {
-	String[] fields = filename.split("\\.");
-	if (fields.length>1) {
-	    return fields[1];
-	} else {
-	    return null;
-	}
+    public static String extractCollectionFromReadme(File readme) {
+        String[] fields = readme.getName().split("\\.");
+        String collection = fields[1];
+        for (int i=2; i<fields.length; i++) collection += "."+fields[i];
+        return collection;
     }
 
     /**
-     * Extract the assembly version from the given filename.
-     * gensp.strain.assy.anno.key4.content.ext
+     * Extract the Strain identifier from the given collection identifier.
+     * strain.assy.anno.KEY4
      */
-    public static String extractAssemblyVersion(String filename) {
-        String[] fields = filename.split("\\.");
-        if (fields.length>2 && fields[2].startsWith("gnm")) {
+    public static String extractStrainIdentifierFromCollection(String identifier) {
+	String[] fields = identifier.split("\\.");
+        return fields[0];
+    }
+
+    /**
+     * Extract the Strain identifier from the given feature identifier.
+     * gensp.strain.assy.secondaryIdentifier
+     * gensp.strain.assy.anno.secondaryIdentifier
+     */
+    public static String extractStrainIdentifierFromFeature(String identifier) {
+	String[] fields = identifier.split("\\.");
+        return fields[1];
+    }
+
+    /**
+     * Extract the assembly version from the given collection identifier.
+     * 0      1    2    3
+     * strain.assy.anno.key4
+     * 0       1    2
+     * strain.assy.key4
+     */
+    public static String extractAssemblyVersionFromCollection(String identifier) {
+        String[] fields = identifier.split("\\.");
+        if (fields.length==4 && fields[3].length()==4) {
+            return fields[1];
+        } else if (fields.length==3 && fields[2].length()==4) {
+            return fields[1];
+        } else {
+            return null;
+        }
+    }
+
+    /**
+     * Extract the assembly version from the given feature identifier.
+     * 0     1      2    3
+     * gensp.strain.assy.secondaryIdentifier
+     * 0     1      2    3    4
+     * gensp.strain.assy.anno.secondaryIdentifier
+     */
+    public static String extractAssemblyVersionFromFeature(String identifier) {
+	String[] fields = identifier.split("\\.");
+        if (fields.length==4 || fields.length==5) {
             return fields[2];
         } else {
             return null;
@@ -194,12 +239,28 @@ public class DatastoreUtils {
     }
 
     /**
-     * Extract the annotation version from the given filename.
-     * gensp.strain.assy.anno.key4.content.ext
+     * Extract the annotation version from the given collection identifier.
+     * 0      1    2    3
+     * strain.assy.anno.key4
      */
-    public static String extractAnnotationVersion(String filename) {
-        String[] fields = filename.split("\\.");
-        if (fields.length>3 && fields[3].startsWith("ann")) {
+    public static String extractAnnotationVersionFromCollection(String identifier) {
+        String[] fields = identifier.split("\\.");
+        if (fields.length==4 && fields[3].length()==4) {
+            return fields[2];
+        } else {
+            // are there other scenarios?
+            return null;
+        }
+    }
+
+    /**
+     * Extract the annotation version from the given feature identifier.
+     * 0     1      2    3    4
+     * gensp.strain.assy.anno.secondaryIdentifier
+     */
+    public static String extractAnnotationVersionFromFeature(String identifier) {
+	String[] fields = identifier.split("\\.");
+        if (fields.length==4) {
             return fields[3];
         } else {
             return null;
@@ -207,14 +268,14 @@ public class DatastoreUtils {
     }
 
     /**
-     * Extract the KEY4 portion of the given filename.
-     * gensp.strain.assy.xxx.key4.extension
-     * glyma.Wm82.gnm2.div.0SZD.SNPData.vcf.gz
+     * Extract the KEY4 portion of the given collection identifier.
+     * strain.assy.xxx.key4, etc.
      */
-    public static String extractKEY4(String filename) {
-        String[] fields = filename.split("\\.");
-        if (fields.length>=6) {
-            return fields[4];
+    public static String extractKEY4(String identifier) {
+        String[] fields = identifier.split("\\.");
+        int i = fields.length -1;
+        if (fields[i].length()==4) {
+            return fields[i];
         } else {
             return null;
         }
@@ -237,22 +298,22 @@ public class DatastoreUtils {
      * @returns the secondaryIdentifier
      */
     public static String extractSecondaryIdentifier(String lisIdentifier, boolean isAnnotationFeature) {
-	String[] fields = lisIdentifier.split("\\.");
-	if (isAnnotationFeature && fields.length>=5) {
-	    String secondaryIdentifier = fields[4];
-	    for (int i=5; i<fields.length; i++) {
-		secondaryIdentifier += "."+fields[i];
-	    }
-	    return secondaryIdentifier;
-	} else if (!isAnnotationFeature && fields.length>=4) {
-	    String secondaryIdentifier = fields[3];
-	    for (int i=4; i<fields.length; i++) {
-		secondaryIdentifier += "."+fields[i];
-	    }
-	    return secondaryIdentifier;
-	} else {
-	    return null;
-	}
+        String[] fields = lisIdentifier.split("\\.");
+        if (isAnnotationFeature && fields.length>=5) {
+            String secondaryIdentifier = fields[4];
+            for (int i=5; i<fields.length; i++) {
+        	secondaryIdentifier += "."+fields[i];
+            }
+            return secondaryIdentifier;
+        } else if (!isAnnotationFeature && fields.length>=4) {
+            String secondaryIdentifier = fields[3];
+            for (int i=4; i<fields.length; i++) {
+        	secondaryIdentifier += "."+fields[i];
+            }
+            return secondaryIdentifier;
+        } else {
+            return null;
+        }
     }
 
     /**
@@ -268,12 +329,5 @@ public class DatastoreUtils {
 	    geneIdentifier += "."+fields[i];
 	}
 	return geneIdentifier;
-    }
-
-    /**
-     * Form a primaryIdentifier from the secondaryIdentifier, gensp, strain, assembly and annotation
-     */
-    public static String formPrimaryIdentifier(String gensp, String strain, String assembly, String annotation, String secondaryIdentifier) {
-        return gensp+"."+strain+"."+assembly+"."+annotation+"."+secondaryIdentifier;
     }
 }

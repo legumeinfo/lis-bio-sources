@@ -16,6 +16,8 @@ import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
+import org.ncgr.datastore.Readme;
+
 /**
  * Store GeneticMap/marker/linkage group data from tab-delimited files.
  * 
@@ -25,12 +27,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(GeneticFileConverter.class);
 
-    // local things to store in close()
-    Item organism = createItem("Organism");
-    Item dataSet = createItem("DataSet");
-    Item geneticMap = createItem("GeneticMap");
-    Item publication = createItem("Publication");
-
+    // local Items to store
+    Item geneticMap;
     List<Item> ontologyAnnotations = new LinkedList<>();
     List<Item> qtlMarkers = new LinkedList<>();
     List<Item> linkageGroupPositions = new LinkedList<>();
@@ -66,6 +64,25 @@ public class GeneticFileConverter extends DatastoreFileConverter {
     public void process(Reader reader) throws IOException {
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
+            if (readme.genotype==null) {
+                throw new RuntimeException("ERROR: README file must contain genotype.");
+            }
+            // GeneticMap
+            geneticMap = createItem("GeneticMap");
+            geneticMap.setReference("organism", organism);
+            geneticMap.setAttribute("primaryIdentifier", readme.identifier);
+            geneticMap.setAttribute("synopsis", readme.synopsis);
+            geneticMap.setAttribute("description", readme.description);
+            if (readme.genotyping_platform!=null) geneticMap.setAttribute("genotypingPlatform", readme.genotyping_platform);
+            
+            // Populations (from genotype)
+            for (String genotype : readme.genotype) {
+                Item population = createItem("Population");
+                population.setAttribute("identifier", genotype);
+                populations.add(population);
+                geneticMap.addToCollection("populations", population);
+            }
+            if (publication!=null) geneticMap.addToCollection("publications", publication);
         } else if (getCurrentFile().getName().endsWith("lg.tsv")) {
             processLgFile(reader);
 	} else if (getCurrentFile().getName().endsWith("qtlmrk.tsv")) {
@@ -86,19 +103,26 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-        // DatastoreFileConverter
-        store(dataSource);
-        // local singletons
-        store(organism);
-        store(dataSet);
-        // local Lists
+        // set references to collection items
+        for (Item linkageGroup : linkageGroups.values()) {
+            linkageGroup.setReference("organism", organism);
+            linkageGroup.setReference("geneticMap", geneticMap);
+        }
+        for (Item marker : markers.values()) {
+            marker.setReference("organism", organism);
+        }
+        for (Item qtl : qtls.values()) {
+            qtl.setReference("organism", organism);
+            qtl.setReference("geneticMap", geneticMap);
+        }
+        // store collection items
+        storeCollectionItems();
+        // store local Items
         store(geneticMap);
-        store(publication);
         store(populations);
         store(ontologyAnnotations);
         store(qtlMarkers);
         store(linkageGroupPositions);
-        // local Maps
         store(ontologyTerms.values());
         store(traits.values());
         store(qtls.values());
@@ -106,61 +130,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
         store(markers.values());
     }
     
-    /**
-     * Process the README, which contains the GeneticMap details.
-     *
-     * README.CB27_x_IT97K-556-6.gen.Huynh_Ehlers_2015.yml
-     * ---------------
-     * identifier: CB27_x_IT97K-556-6.gen.Huynh_Ehlers_2015
-     * synopsis: "Genetic map of CB27 x IT97K-556-6 blah di blah di blah"
-     * taxid: 3818
-     * genotype: 
-     *  - CB27 x IT97K-556-6 
-     * description: "Cowpea aphid (Aphis craccivora, CPA) resistance was studied using F8 RILs ..."
-     * publication_doi: 10.1007/s11032-015-0254-0
-     * publication_title: "Genetic mapping and legume synteny of aphid resistance in African cowpea (Vigna unguiculata L. Walp.) grown in California"
-     */
-    void processReadme(Reader reader) throws IOException {
-        Readme readme = Readme.getReadme(reader);
-        // check required stuff
-        if (readme.identifier==null ||
-            readme.taxid==null ||
-            readme.synopsis==null ||
-            readme.description==null ||
-            readme.genotype==null ||
-            readme.publication_doi==null ||
-            readme.publication_title==null) {
-            throw new RuntimeException("ERROR: a required field is missing from README. "+
-                                       "Required fields are: identifier, taxid, synopsis, description, genotype, publication_doi, publication_title");
-        }
-        // Organism
-        organism = getOrganism(Integer.parseInt(readme.taxid));
-        // GeneticMap
-        geneticMap.setReference("organism", organism);
-        geneticMap.setAttribute("primaryIdentifier", readme.identifier);
-        geneticMap.setAttribute("synopsis", readme.synopsis);
-        geneticMap.setAttribute("description", readme.description);
-        if (readme.genotyping_platform!=null) geneticMap.setAttribute("genotypingPlatform", readme.genotyping_platform);
-        // Populations (genotype)
-        for (String genotype : readme.genotype) {
-            Item population = createItem("Population");
-            population.setAttribute("identifier", genotype);
-            populations.add(population);
-            geneticMap.addToCollection("populations", population);
-        }
-        // Publication
-        publication = createItem("Publication");
-        publication.setAttribute("doi", readme.publication_doi);
-        publication.setAttribute("title", readme.publication_title);
-        geneticMap.addToCollection("publications", publication);
-        // DataSet
-        dataSet.setReference("dataSource", dataSource);
-        dataSet.setAttribute("url", dataSetUrl);
-        dataSet.setAttribute("name", readme.identifier);
-        dataSet.setAttribute("description", readme.description);
-        dataSet.setReference("publication", publication);
-    }
-
     /**
      * Process an lg.tsv file
      * 0                                1
@@ -170,6 +139,7 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * TT_Tifrunner_x_GT-C20_c-A03      192.46
      */
     void processLgFile(Reader reader) throws IOException {
+        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
         int number = 0; // convenience numbering of LGs
         String line = null;
@@ -183,9 +153,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
             linkageGroup.setAttribute("identifier", identifier);
             linkageGroup.setAttribute("number", String.valueOf(number));
             linkageGroup.setAttribute("length", String.valueOf(length));
-            linkageGroup.setReference("organism", organism);
-            linkageGroup.setReference("geneticMap", geneticMap);
-            linkageGroup.addToCollection("dataSets", dataSet);
             linkageGroups.put(identifier, linkageGroup);
         }
         br.close();
@@ -200,6 +167,7 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * A01_304818	A01     2.18
      */
     void processMrkFile(Reader reader) throws IOException {
+        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
         String line = null;
         while ((line=br.readLine())!=null) {
@@ -222,9 +190,7 @@ public class GeneticFileConverter extends DatastoreFileConverter {
             Item marker = markers.get(markerId);
             if (marker==null) {
                 marker = createItem("GeneticMarker");
-                marker.setReference("organism", organism);
                 marker.setAttribute("secondaryIdentifier", markerId);
-                marker.addToCollection("dataSets", dataSet);
                 markers.put(markerId, marker);
             }
             // marker-linkage group
@@ -248,6 +214,7 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      *
      */
     void processQTLMrkFile(Reader reader) throws IOException {
+        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
 	String line;
         while ((line=br.readLine())!=null) {
@@ -263,20 +230,16 @@ public class GeneticFileConverter extends DatastoreFileConverter {
 	    Item qtl = qtls.get(qtlId);
 	    if (qtl==null) {
                 qtl = createItem("QTL");
-                qtl.setReference("organism", organism);
                 qtl.setAttribute("identifier", qtlId);
                 qtls.put(qtlId, qtl);
             }
-	    qtl.addToCollection("dataSets", dataSet);
             // GeneticMarker
 	    Item marker = markers.get(markerId);
 	    if (marker==null) {
 		marker = createItem("GeneticMarker");
-		marker.setReference("organism", organism);
 		marker.setAttribute("secondaryIdentifier", markerId);
 		markers.put(markerId, marker);
 	    }
-	    marker.addToCollection("dataSets", dataSet);
             // QTLMarker
 	    Item qtlMarker = createItem("QTLMarker");
 	    if (distinction!=null) qtlMarker.setAttribute("distinction", distinction);
@@ -294,6 +257,7 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * Early leaf spot 1-1  Early leaf spot   TT_Tifrunner_x_GT-C20_c-A08  100.7     102.9      102                                3.02 12.42             0.56                             
      */
     void processQTLFile(Reader reader) throws IOException {
+        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
 	String line;
         while ((line=br.readLine())!=null) {
@@ -330,7 +294,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                 trait.setAttribute("primaryIdentifier", traitId);
                 traits.put(traitId, trait);
             }
-            trait.addToCollection("dataSets", dataSet);
             // QTL
             Item qtl = qtls.get(qtlId);
             if (qtl==null) {
@@ -338,8 +301,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                 qtl.setAttribute("identifier", qtlId);
                 qtls.put(qtlId, qtl);
             }
-            qtl.setReference("organism", organism);
-            qtl.addToCollection("dataSets", dataSet);
             qtl.setReference("trait", trait);
             if (leftEnd<Double.MAX_VALUE) qtl.setAttribute("start", String.valueOf(leftEnd));
             if (rightEnd<Double.MAX_VALUE) qtl.setAttribute("end", String.valueOf(rightEnd));
@@ -358,13 +319,9 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                     linkageGroup.setAttribute("identifier", lgId);
                     linkageGroups.put(lgId, linkageGroup);
                 }
-                linkageGroup.setReference("organism", organism);
-                linkageGroup.addToCollection("dataSets", dataSet);
-                linkageGroup.setReference("geneticMap", geneticMap);
                 qtl.setReference("linkageGroup", linkageGroup);
             }
             // GeneticMap
-            qtl.setReference("geneticMap", geneticMap);
         }
         br.close();
     }
@@ -376,7 +333,7 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * Early leaf spot resistance  Leafs were photographed and spots were counted...
      */
     void processTraitFile(Reader reader) throws IOException {
-        geneticMap.addToCollection("dataSets", dataSet);
+        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
 	String line;
         while ((line=br.readLine())!=null) {
@@ -392,7 +349,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                 traits.put(identifier, trait);
             }
             trait.setAttribute("description", description);
-            trait.addToCollection("dataSets", dataSet);
         }
         br.close();
     }
@@ -404,6 +360,7 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * Seed weight  TO:0000181
      */
     void processOboFile(Reader reader) throws IOException {
+        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
 	String line;
         while ((line=br.readLine())!=null) {
@@ -427,12 +384,10 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                 trait.setAttribute("primaryIdentifier", traitId);
                 traits.put(traitId, trait);
             }
-            trait.addToCollection("dataSets", dataSet);
             // OntologyAnnotation
             Item ontologyAnnotation = createItem("OntologyAnnotation");
             ontologyAnnotation.setReference("subject", trait);
             ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
-            ontologyAnnotation.addToCollection("dataSets", dataSet);
             ontologyAnnotations.add(ontologyAnnotation);
         }
         br.close();

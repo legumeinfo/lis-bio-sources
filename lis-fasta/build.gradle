@@ -22,8 +22,13 @@ dependencies {
     compile group: 'org.intermine', name: 'intermine-integrate', version: imVersion
     // https://mvnrepository.com/artifact/org.biojava/biojava-core
     compile group: 'org.biojava', name: 'biojava-core', version: '5.4.0'
+    compile fileTree(dir: 'libs', include: '*.jar')
 }
 
 processResources {
     from('.') { include ("*.properties")}
+}
+
+compileJava {
+    options.compilerArgs += ["-Xlint:deprecation"]
 }
