@@ -284,12 +284,20 @@ public class SyntenyGFF3Record {
     }
 
     /**
-     * Return the strand field of this record.
+     * Return the strand field of this record in IM format plus = "1", minus = "-1".
      * @return returns null if the strand is unset (ie. with an empty field or contained "." in the
      * original GFF3 file)
      */
     public String getStrand () {
-        return strand;
+        if (strand==null) {
+            return null;
+        } else if (strand.equals("+")) {
+            return "1";
+        } else if (strand.equals("-")) {
+            return "-1";
+        } else {
+            return null;
+        }
     }
 
     /**

@@ -208,10 +208,9 @@ public class GeneticFileConverter extends DatastoreFileConverter {
     
     /**
      * Process a qtlmrk.tsv file. distinction column is optional.
-     * #qtl_name            marker        distinction
+     * 0                    1             2
      * Early leaf spot 1-1  A08_35596996  flanking
      * Early leaf spot 1-1  A08_35776787  nearest
-     *
      */
     void processQTLMrkFile(Reader reader) throws IOException {
         System.out.println("Processing "+getCurrentFile().getName());

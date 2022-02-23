@@ -63,10 +63,13 @@ public class LISGFF3FileConverter extends DatastoreFileConverter {
                                                       entry("pseudogene", "Pseudogene"),
                                                       entry("primary_transcript", "Transcript"),
                                                       entry("miRNA", "MiRNA"),
+                                                      entry("miRNA_primary_transcript", "MiRNA"),
                                                       entry("tRNA", "TRNA"),
+                                                      entry("tRNA_primary_transcript", "TRNA"),
                                                       entry("snoRNA", "SnoRNA"),
                                                       entry("snRNA", "SnRNA"),
                                                       entry("rRNA", "RRNA"),
+                                                      entry("rRNA_primary_transcript", "RRNA"),
                                                       entry("genetic_marker", "GeneticMarker")
                                                       );
 
@@ -133,7 +136,10 @@ public class LISGFF3FileConverter extends DatastoreFileConverter {
             String dbxref = featureI.getAttribute("Dbxref");
             String ontology_term = featureI.getAttribute("Ontology_term");
             String alleles = featureI.getAttribute("alleles");
-            // check that id matches collection
+            // check that id exists and matches collection
+            if (id==null) {
+                throw new RuntimeException("GFF line does not include ID: "+featureI.toString());
+            }
             if (!matchesCollection(id)) {
                 throw new RuntimeException("ID "+id+" does not match collection "+readme.identifier);
             }
@@ -233,16 +239,19 @@ public class LISGFF3FileConverter extends DatastoreFileConverter {
         } else if (dsu.isSupercontig(seqname)) {
             Item supercontig = features.get(seqname);
             if (supercontig==null) {
+                // create new supercontig
                 supercontig = createItem("Supercontig");
                 supercontig.setAttribute("primaryIdentifier", seqname);
                 features.put(seqname, supercontig);
             }
-            // create feature on supercontig
+            // create new feature on supercontig
             Item feature = createItem(className);
             feature.setAttribute("primaryIdentifier", primaryIdentifier);
             feature.setReference("supercontig", supercontig);
             feature.setAttribute("length", String.valueOf(location.length()));
+            // create new IM Location
             Item supercontigLocation = createItem("Location");
+            supercontigLocation.setReference("feature", feature);
             if (location.isNegative()) {
                 supercontigLocation.setAttribute("strand", "-1");
             } else {
@@ -258,16 +267,19 @@ public class LISGFF3FileConverter extends DatastoreFileConverter {
         } else {
             Item chromosome = features.get(seqname);
             if (chromosome==null) {
+                // create new chromosome
                 chromosome = createItem("Chromosome");
                 chromosome.setAttribute("primaryIdentifier", seqname);
                 features.put(seqname, chromosome);
             }
-            // create feature on chromosome
+            // create new feature on chromosome
             Item feature = createItem(className);
             feature.setAttribute("primaryIdentifier", primaryIdentifier);
             feature.setReference("chromosome", chromosome);
             feature.setAttribute("length", String.valueOf(location.length()));
+            // create new IM Location
             Item chromosomeLocation = createItem("Location");
+            chromosomeLocation.setReference("feature", feature);
             if (location.isNegative()) {
                 chromosomeLocation.setAttribute("strand", "-1");
             } else {

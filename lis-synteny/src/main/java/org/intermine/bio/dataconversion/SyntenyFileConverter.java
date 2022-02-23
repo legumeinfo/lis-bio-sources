@@ -202,7 +202,7 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
 	syntenicRegion.setReference("chromosomeLocation", chromosomeLocation);
 	chromosomeLocation.setAttribute("start", String.valueOf(getSourceStart(gff)));
 	chromosomeLocation.setAttribute("end", String.valueOf(getSourceEnd(gff)));
-	chromosomeLocation.setAttribute("strand", String.valueOf(gff.getStrand()));
+	chromosomeLocation.setAttribute("strand", gff.getStrand());
 	chromosomeLocation.setReference("feature", syntenicRegion);
 	chromosomeLocation.setReference("locatedOn", chromosome);
     }
@@ -226,23 +226,23 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
 	syntenicRegion.setReference("chromosomeLocation", chromosomeLocation);
 	chromosomeLocation.setAttribute("start", String.valueOf(getTargetStart(gff)));
 	chromosomeLocation.setAttribute("end", String.valueOf(getTargetEnd(gff)));
-	if (getTargetStrand(gff)!='\0') chromosomeLocation.setAttribute("strand", String.valueOf(getTargetStrand(gff)));
+	if (getTargetStrand(gff)!=null) chromosomeLocation.setAttribute("strand", getTargetStrand(gff));
 	chromosomeLocation.setReference("feature", syntenicRegion);
 	chromosomeLocation.setReference("locatedOn", chromosome);
     }
 
     /**
-     * Return the DAGchainer target strand from a DAGchainer Name attribute, checking for ' ' instead of '+' since SyntenyGFF3Record converts a plus to space.
+     * Return the IM-format target strand from a DAGchainer Name attribute, checking for ' ' instead of '+' since SyntenyGFF3Record converts a plus to space.
      */
-    char getTargetStrand(SyntenyGFF3Record gff) {
+    String getTargetStrand(SyntenyGFF3Record gff) {
 	String name = gff.getNames().get(0);
 	char endChar = name.charAt(name.length()-1);
 	if (endChar==' ' || endChar=='+') {
-	    return '+';
+	    return "1";
 	} else if (endChar=='-') {
-	    return '-';
+	    return "-1";
 	} else {
-	    return '\0';
+	    return null;
 	}
     }
 
