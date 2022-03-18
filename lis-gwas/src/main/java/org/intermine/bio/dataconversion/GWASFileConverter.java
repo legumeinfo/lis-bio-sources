@@ -22,6 +22,7 @@ import org.ncgr.datastore.Readme;
 
 /**
  * Store GWAS result/trait/marker data from a tab-delimited files.
+ * Markers are stored by name, and a post-processor loads the markers collection with the matching GeneticMarker objects.
  *
  * @author Sam Hokin
  */
@@ -34,7 +35,6 @@ public class GWASFileConverter extends DatastoreFileConverter {
     List<Item> gwasResults = new LinkedList<>();
     List<Item> ontologyAnnotations = new LinkedList<>();
     Map<String,Item> traits = new HashMap<>();           // keyed by identifier
-    Map<String,Item> markers = new HashMap<>();          // keyed by secondaryIdentifier
     Map<String,Item> ontologyTerms = new HashMap<>();    // keyed by identifier
 
     /**
@@ -80,14 +80,10 @@ public class GWASFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-        // references and collections
-        for (Item marker : markers.values()) {
-            marker.setReference("organism", organism);
-        }
         for (Item gwasResult : gwasResults) {
             gwasResult.setReference("gwas", gwas);
         }
-        // collection stuff
+        // DatastoreFileConverter stuff
         storeCollectionItems();
         // local items
 	store(gwas);
@@ -95,7 +91,6 @@ public class GWASFileConverter extends DatastoreFileConverter {
         store(ontologyAnnotations);
         store(ontologyTerms.values());
         store(traits.values());
-	store(markers.values());
     }
 
     /**
@@ -181,7 +176,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
             String[] fields = line.split("\t");
             String traitId = fields[0];
-            String markerId = fields[1];
+            String markerName = fields[1];
             double pValue = Double.parseDouble(fields[2]);
             // Trait
             Item trait = traits.get(traitId);
@@ -190,18 +185,11 @@ public class GWASFileConverter extends DatastoreFileConverter {
                 trait.setAttribute("primaryIdentifier", traitId);
                 traits.put(traitId, trait);
             }
-            // GeneticMarker
-            Item marker = markers.get(markerId);
-            if (marker==null) {
-                marker = createItem("GeneticMarker");
-                marker.setAttribute("secondaryIdentifier", markerId);
-                markers.put(markerId, marker);
-            }
             // GWASResult
             Item gwasResult = createItem("GWASResult");
-            gwasResult.setReference("trait", trait);
-            gwasResult.setReference("marker", marker);
+            gwasResult.setAttribute("markerName", markerName);
             gwasResult.setAttribute("pValue", String.valueOf(pValue));
+            gwasResult.setReference("trait", trait);
             gwasResults.add(gwasResult);
             trait.addToCollection("gwasResults", gwasResult);
         }

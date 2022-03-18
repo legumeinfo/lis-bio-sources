@@ -140,8 +140,14 @@ public class LISGFF3FileConverter extends DatastoreFileConverter {
             if (id==null) {
                 throw new RuntimeException("GFF line does not include ID: "+featureI.toString());
             }
-            if (!matchesCollection(id)) {
-                throw new RuntimeException("ID "+id+" does not match collection "+readme.identifier);
+            if (type.equals("genetic_marker")) {
+                if (!matchesStrainAssembly(id)) {
+                    throw new RuntimeException("ID "+id+" does not match strain.assembly from collection "+readme.identifier);
+                }
+            } else {
+                if (!matchesCollection(id)) {
+                    throw new RuntimeException("ID "+id+" does not match collection "+readme.identifier);
+                }
             }
             // get associated class
             String featureClass = featureClasses.get(type);

@@ -2,7 +2,7 @@
 <classes>
 
   <!-- extends Annotatable: primaryIdentifier, ontologyAnnotations, publications -->
-  <!-- NOTE: some maps do not have linkage groups, so we must have QTL<->GeneticMap -->
+  <!-- NOTE: some maps do not have linkage groups, so we must have GeneticMap.qtls as well -->
   <class name="GeneticMap" extends="Annotatable" is-interface="true">
     <attribute name="synopsis" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
@@ -15,16 +15,19 @@
     <collection name="dataSets" referenced-type="DataSet"/>
   </class>
 
-  <!-- a Population is simply the name of a bi-parental cross, etc. -->
+  <!-- a Population is simply the name of a bi-parental cross, RILs, etc. -->
   <class name="Population" is-interface="true">
     <attribute name="identifier" type="java.lang.String"/>
   </class>
   
   <!-- a linkage group is a part of a genetic map and is related to markers and QTLs -->
+  <!-- marker names are stored in a |-delimited markerNames string; markers are loaded by a post-processor -->
+  <!-- marker reverse reference is via LinkageGroupPosition-->
   <class name="LinkageGroup" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000018">
     <attribute name="identifier" type="java.lang.String"/>
     <attribute name="number" type="java.lang.Integer"/>
     <attribute name="length" type="java.lang.Double"/>
+    <attribute name="markerNames" type="java.lang.String"/>
     <reference name="organism" referenced-type="Organism"/>
     <reference name="geneticMap" referenced-type="GeneticMap" reverse-reference="linkageGroups"/>
     <collection name="markers" referenced-type="GeneticMarker"/>
@@ -32,20 +35,23 @@
     <collection name="dataSets" referenced-type="DataSet"/>
   </class>
 
-  <!-- a genetic marker is a sequence feature when mapped to a genome assembly; it has cM positions on linkage groups -->
+  <!-- a genetic marker is a sequence feature mapped to a genome assembly; these gives its cM position on linkage groups -->
   <class name="GeneticMarker" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645" >
     <collection name="linkageGroupPositions" referenced-type="LinkageGroupPosition"/>
+    <collection name="qtls" referenced-type="QTL" reverse-reference="markers"/>
   </class>
 
-  <!-- a marker's position (in cM) on a linkage group -->
+  <!-- a marker's position (in cM) on a linkage group, referenced by name -->
   <class name="LinkageGroupPosition" is-interface="true">
+    <attribute name="markerName" type="java.lang.String"/>
     <attribute name="position" type="java.lang.Double"/>
     <reference name="linkageGroup" referenced-type="LinkageGroup"/>
-    <reference name="marker" referenced-type="GeneticMarker"/>
   </class>
 
   <!-- QTL references a trait, resides on a linkage group (on a genetic map), and has associated markers -->
-  <!-- NOTE: some maps do not have linkage groups, so we must have QTL<->GeneticMap -->
+  <!-- marker names are stored in a |-delimited markerNames string; markers are loaded by a post-processor -->
+  <!-- NOTE 1: some maps do not have linkage groups, so we must have QTL.geneticMap reference here -->
+  <!-- NOTE 2: genes are populated by a post-processor -->
   <class name="QTL" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645">
     <attribute name="identifier" type="java.lang.String"/>
     <attribute name="lod" type="java.lang.Double"/>
@@ -54,32 +60,38 @@
     <attribute name="peak" type="java.lang.Double"/>
     <attribute name="start" type="java.lang.Double"/>
     <attribute name="end" type="java.lang.Double"/>
+    <attribute name="markerNames" type="java.lang.String"/>
     <reference name="organism" referenced-type="Organism"/>
     <reference name="trait" referenced-type="Trait" reverse-reference="qtls"/>
     <reference name="linkageGroup" referenced-type="LinkageGroup" reverse-reference="qtls"/>
     <reference name="geneticMap" referenced-type="GeneticMap" reverse-reference="qtls"/>
+    <collection name="markers" referenced-type="GeneticMarker" reverse-reference="qtls"/>
     <collection name="genes" referenced-type="Gene" reverse-reference="qtls"/>
     <collection name="dataSets" referenced-type="DataSet"/>
   </class>
 
-  <!-- Genes can be associated with QTLs that span them, via associated markers -->
-  <class name="Gene" is-interface="true">
-    <collection name="qtls" referenced-type="QTL" reverse-reference="genes"/>
-  </class>
+  <!-- DEPRECATED -->
+  <!-- relates a QTL to an associated marker; distinction=flanking, nearest, etc. -->
+  <!-- markers is a collection, loaded by a post-processor, since a given marker may be mapped to different genomes -->
+  <!-- <class name="QTLMarker" is-interface="true"> -->
+  <!--   <attribute name="markerName" type="java.lang.String"/> -->
+  <!--   <attribute name="distinction" type="java.lang.String"/> -->
+  <!--   <reference name="qtl" referenced-type="QTL"/> -->
+  <!--   <collection name="markers" referenced-type="GeneticMarker"/> -->
+  <!--   <collection name="dataSets" referenced-type="DataSet"/> -->
+  <!-- </class> -->
 
-  <!-- A Trait is a measured phenotype for a QTL, which has ontology annotations -->
+  <!-- A Trait is an experimentally measured phenotype for a QTL, which has ontology annotations -->
+  <!-- because description is specific to an experiment, it has a single dataset which keys it along with primaryIdentifier -->
   <class name="Trait" extends="Annotatable" is-interface="true" term="https://browser.planteome.org/amigo/term/TO:0000387">
     <attribute name="description" type="java.lang.String"/>
+    <reference name="dataSet" referenced-type="DataSet"/>
     <collection name="qtls" referenced-type="QTL" reverse-reference="trait"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
   </class>
   
-  <!-- relates a QTL to a marker; distinction=flanking, nearest, etc. -->
-  <class name="QTLMarker" is-interface="true">
-    <reference name="qtl" referenced-type="QTL"/>
-    <reference name="marker" referenced-type="GeneticMarker"/>
-    <attribute name="distinction" type="java.lang.String"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
+  <!-- Genes can be associated with QTLs that span them, via overlapping markers -->
+  <class name="Gene" is-interface="true">
+    <collection name="qtls" referenced-type="QTL" reverse-reference="genes"/>
   </class>
 
 </classes>

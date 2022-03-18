@@ -20,6 +20,9 @@ import org.ncgr.datastore.Readme;
 
 /**
  * Store GeneticMap/marker/linkage group data from tab-delimited files.
+ *
+ * Actual GeneticMarker objects are NOT created here; rather, their names are stored and the
+ * corresponding GeneticMarker objects (SequenceFeatures) are loaded by a post-processor.
  * 
  * @author Sam Hokin
  */
@@ -30,7 +33,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
     // local Items to store
     Item geneticMap;
     List<Item> ontologyAnnotations = new LinkedList<>();
-    List<Item> qtlMarkers = new LinkedList<>();
     List<Item> linkageGroupPositions = new LinkedList<>();
     List<Item> populations = new LinkedList<>();
 
@@ -38,7 +40,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
     Map<String,Item> traits = new HashMap<>();
     Map<String,Item> qtls = new HashMap<>();
     Map<String,Item> linkageGroups = new HashMap<>();
-    Map<String,Item> markers = new HashMap<>();
+    Map<String,String> qtlMarkers = new HashMap<>();
+    Map<String,String> linkageGroupMarkers = new HashMap<>();
 
     /**
      * Create a new GeneticFileConverter
@@ -108,9 +111,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
             linkageGroup.setReference("organism", organism);
             linkageGroup.setReference("geneticMap", geneticMap);
         }
-        for (Item marker : markers.values()) {
-            marker.setReference("organism", organism);
-        }
         for (Item qtl : qtls.values()) {
             qtl.setReference("organism", organism);
             qtl.setReference("geneticMap", geneticMap);
@@ -121,13 +121,11 @@ public class GeneticFileConverter extends DatastoreFileConverter {
         store(geneticMap);
         store(populations);
         store(ontologyAnnotations);
-        store(qtlMarkers);
         store(linkageGroupPositions);
         store(ontologyTerms.values());
         store(traits.values());
         store(qtls.values());
         store(linkageGroups.values());
-        store(markers.values());
     }
     
     /**
@@ -159,9 +157,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Process a mrk.tsv file
+     * Process a mrk.tsv file which gives marker positions on linkage groups.
      * 0                1       2
-     * #marker          lg      position
      * A01_859822	A01     0.0
      * B01_15102376     A01     0.75
      * A01_304818	A01     2.18
@@ -176,7 +173,7 @@ public class GeneticFileConverter extends DatastoreFileConverter {
             if (fields.length<3) {
                 throw new RuntimeException("File "+getCurrentFile().getName()+" data line does not contain three required fields: marker, linkagegroup, position:"+line);
             }
-            String markerId = fields[0].trim();
+            String markerName = fields[0].trim();
             String lgId = fields[1].trim();
             Double position = Double.parseDouble(fields[2]);
             // linkage group
@@ -187,20 +184,19 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                 linkageGroups.put(lgId, linkageGroup);
             }
             // marker
-            Item marker = markers.get(markerId);
-            if (marker==null) {
-                marker = createItem("GeneticMarker");
-                marker.setAttribute("secondaryIdentifier", markerId);
-                markers.put(markerId, marker);
+            if (linkageGroupMarkers.containsKey(lgId)) {
+                String markerNames = linkageGroupMarkers.get(lgId) + "|" + markerName;
+                linkageGroupMarkers.put(lgId, markerNames);
+                linkageGroup.setAttribute("markerNames", markerNames);
+            } else {
+                linkageGroupMarkers.put(lgId, markerName);
+                linkageGroup.setAttribute("markerNames", markerName);
             }
-            // marker-linkage group
-            linkageGroup.addToCollection("markers", marker);
             // linkage group position
             Item lgPosition = createItem("LinkageGroupPosition");
-            lgPosition.setReference("marker", marker);
-            lgPosition.setReference("linkageGroup", linkageGroup);
+            lgPosition.setAttribute("markerName", markerName);
             lgPosition.setAttribute("position", String.valueOf(position));
-            marker.addToCollection("linkageGroupPositions", lgPosition);
+            lgPosition.setReference("linkageGroup", linkageGroup);
             linkageGroupPositions.add(lgPosition);
         }
         br.close();
@@ -221,7 +217,7 @@ public class GeneticFileConverter extends DatastoreFileConverter {
             String[] fields = line.split("\t");
             // required fields
 	    String qtlId = fields[0];
-	    String markerId = fields[1];
+	    String markerName = fields[1];
             //  optional fields
 	    String distinction = null;
 	    if (fields.length>2) distinction = fields[2];
@@ -232,19 +228,15 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                 qtl.setAttribute("identifier", qtlId);
                 qtls.put(qtlId, qtl);
             }
-            // GeneticMarker
-	    Item marker = markers.get(markerId);
-	    if (marker==null) {
-		marker = createItem("GeneticMarker");
-		marker.setAttribute("secondaryIdentifier", markerId);
-		markers.put(markerId, marker);
-	    }
-            // QTLMarker
-	    Item qtlMarker = createItem("QTLMarker");
-	    if (distinction!=null) qtlMarker.setAttribute("distinction", distinction);
-	    qtlMarker.setReference("qtl", qtl);
-	    qtlMarker.setReference("marker", marker);
-            qtlMarkers.add(qtlMarker);
+            // marker
+            if (qtlMarkers.containsKey(qtlId)) {
+                String markerNames = qtlMarkers.get(qtlId) + "|" + markerName;
+                qtlMarkers.put(qtlId, markerNames);
+                qtl.setAttribute("markerNames", markerNames);
+            } else {
+                qtlMarkers.put(qtlId, markerName);
+                qtl.setAttribute("markerNames", markerName);
+            }
 	}
         br.close();
     }

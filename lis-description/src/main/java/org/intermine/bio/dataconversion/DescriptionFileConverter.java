@@ -67,13 +67,6 @@ public class DescriptionFileConverter extends FileConverter {
         organism.setAttribute("abbreviation", species.abbrev);
         organism.setAttribute("description", species.description);
         if (species.commonName!=null) organism.setAttribute("commonName", species.commonName);
-        // DEBUG
-        System.out.println("taxonId="+species.taxid);
-        System.out.println("genus="+species.genus);
-        System.out.println("abbreviation="+species.abbrev);
-        System.out.println("description="+species.description);
-        System.out.println("commonName="+species.commonName);
-        //
         // extras
         organism.setAttribute("name", species.genus+" "+species.species);
         organism.setAttribute("shortName", species.genus.charAt(0)+". "+species.species);
@@ -85,13 +78,6 @@ public class DescriptionFileConverter extends FileConverter {
             strainItem.setAttribute("origin", strain.origin);
             strainItem.setAttribute("description", strain.description);
             strainItem.setReference("organism", organism);
-            // DEBUG
-            System.out.println("identifier="+strain.identifier);
-            System.out.println("accession="+strain.accession);
-            System.out.println("name="+strain.name);
-            System.out.println("origin="+strain.origin);
-            System.out.println("description="+strain.description);
-            //
             strains.add(strainItem);
         }
     }

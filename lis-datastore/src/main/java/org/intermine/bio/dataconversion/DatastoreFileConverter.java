@@ -273,4 +273,18 @@ public abstract class DatastoreFileConverter extends FileConverter {
             return false;
         }
     }
+
+    /**
+     * Return true if the strain and assembly version match between identifier and collection.
+     * 0     1      2    3                                       1      2    !   !
+     * phavu.G19833.gnm1.TOG905303_749 does not match collection G19833.gnm1.mrk.PvCookUCDavis2009
+     */
+    boolean matchesStrainAssembly(String identifier) {
+        if (readme==null) {
+            throw new RuntimeException("ERROR: cannot matchesCollection() because README has not yet been read.");
+        }
+        setStrain();
+        String[] fields = identifier.split("\\.");
+        return (fields[1].equals(strainIdentifier) && fields[2].equals(assemblyVersion));
+    }
 }
