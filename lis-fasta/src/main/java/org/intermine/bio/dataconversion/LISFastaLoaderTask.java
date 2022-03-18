@@ -74,6 +74,8 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
 
     String gensp, assemblyVersion, annotationVersion;
 
+    boolean fastaProcessed; // must be true to store results
+    
     // collection items
     Organism organism;
     Strain strain;
@@ -124,6 +126,9 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         dsu = new DatastoreUtils();
         // process files, which stores the features and sequences
         super.process();
+        if (!fastaProcessed) {
+            throw new BuildException("FASTA file not read - aborting!");
+        }
         try {
             // store collection items
             getDirectDataLoader().store(organism);
@@ -159,7 +164,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         }
         // required project.xml parameters
         if (className==null || className.trim().length()==0) {
-            throw new RuntimeException("className must be set in project.xml.");
+            throw new BuildException("className must be set in project.xml.");
         }
         // this will call processFile() for each file
         super.execute();
@@ -177,14 +182,14 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             try {
                 processReadme(file);
             } catch (IOException ex) {
-                throw new RuntimeException(ex);
+                throw new BuildException(ex);
             } catch (ObjectStoreException ex) {
-                throw new RuntimeException(ex);
+                throw new BuildException(ex);
             }
         } else if (file.getName().endsWith(".fna") || file.getName().endsWith(".faa")) {
             // README must precede FASTA
             if (organism==null) {
-                throw new RuntimeException("ERROR: README not read before FASTA file. Switch order in project.xml.");
+                throw new BuildException("ERROR: README missing or not read before FASTA file. Add to includes or switch order in project.xml.");
             }
             if (file.getName().endsWith(".fna")) {
                 sequenceType = "dna";
@@ -193,6 +198,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             }
             System.out.println("# Reading "+sequenceType+" sequences from: "+file.getName());
             processFasta(file);
+            fastaProcessed = true;
         }
     }
 
@@ -204,7 +210,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         Readme readme = Readme.parse(file);
         // project.xml check
         if (dataSetUrl==null) {
-            throw new RuntimeException("ERROR: dataSetUrl must be set in project.xml.");
+            throw new BuildException("ERROR: dataSetUrl must be set in project.xml.");
         }
         // check required stuff
         if (readme.identifier==null ||
@@ -213,7 +219,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             readme.description==null ||
             readme.scientific_name_abbrev==null
             ) {
-            throw new RuntimeException("ERROR in README: a required field is missing. "+
+            throw new BuildException("ERROR in README: a required field is missing. "+
                                        "Required fields are: identifier, taxid, synopsis, description, scientific_name_abbrev");
         }
         String collection = DatastoreUtils.extractCollectionFromReadme(file);
@@ -268,7 +274,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         // Strain
         String strainIdentifier = DatastoreUtils.extractStrainIdentifierFromCollection(collection);
         if (strainIdentifier==null) {
-            throw new RuntimeException("ERROR: could not extract strain identifier from "+collection+".");
+            throw new BuildException("ERROR: could not extract strain identifier from "+collection+".");
         }
         strain = getDirectDataLoader().createObject(Strain.class);
         strain.setIdentifier(strainIdentifier);
@@ -291,7 +297,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
                     processSequence(sequence);
                 }
             } else {
-                throw new RuntimeException("Sequence type set in project.xml is neither dna nor protein.");
+                throw new BuildException("Sequence type set in project.xml is neither dna nor protein.");
             }
         } catch (ParserException e) {
             throw new BuildException("Sequence not in FASTA format or wrong alphabet for: "+file, e);
@@ -338,7 +344,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         // HACK: set the className to "Chromosome" or "Supercontig" based on identifier and identifying supercontig matching strings.
         if (className.equals("org.intermine.model.bio.Chromosome") || className.equals("org.intermine.model.bio.Supercontig")) {
             if (gensp==null) {
-                throw new RuntimeException("ERROR: gensp is not set in README, or README not read before processSequence().");
+                throw new BuildException("ERROR: gensp is not set in README, or README not read before processSequence().");
             }
             if (dsu.isSupercontig(identifier)) {
                 className = "org.intermine.model.bio.Supercontig";
@@ -354,10 +360,10 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             if (InterMineObject.class.isAssignableFrom(c)) {
                 imClass = (Class<? extends InterMineObject>) c;
             } else {
-                throw new RuntimeException("Feature className must be a valid class in the model that inherits from InterMineObject, but was "+className);
+                throw new BuildException("Feature className must be a valid class in the model that inherits from InterMineObject, but was "+className);
             }
         } catch (ClassNotFoundException e1) {
-            throw new RuntimeException("Unknown class: "+className+" while creating new Sequence object");
+            throw new BuildException("Unknown class: "+className+" while creating new Sequence object");
         }
 
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -366,78 +372,44 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         if (className.equals("org.intermine.model.bio.Chromosome")) {
             // vigun.IT97K-499-35.gnm1.Vu01 (old4)
             Chromosome feature = (Chromosome) getDirectDataLoader().createObject(imClass);
-	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
-	    // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, false);
-	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
-            // name from ID attribute
-            if (idAttribute!=null) {
-                String name = getAttribute(bioJavaSequence, idAttribute);
-                if (name!=null) feature.setName(name);
-            }
-            if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
+            setSecondaryIdentifier(feature, identifier, false);
+            setName(feature, bioJavaSequence, idAttribute, identifier, false);
+            setAssemblyVersion(feature);
             storeSequenceFeature(feature, bioSequence);
         } else if (className.equals("org.intermine.model.bio.Supercontig")) {
             // vigun.IT97K-499-35.gnm1.contig_700
             Supercontig feature = (Supercontig) getDirectDataLoader().createObject(imClass);
-	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
-            // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, false);
-	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
-	    // name from idAttribute
-            if (idAttribute!=null) {
-                String name = getAttribute(bioJavaSequence, idAttribute);
-                if (name!=null) feature.setName(name);
-            }
-            if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
+            setSecondaryIdentifier(feature, identifier, false);
+            setName(feature, bioJavaSequence, idAttribute, identifier, false);
+            setAssemblyVersion(feature);
             storeSequenceFeature(feature, bioSequence);
         } else if (className.equals("org.intermine.model.bio.MRNA")) {
             MRNA feature = (MRNA) getDirectDataLoader().createObject(imClass);
-	    // primaryIdentifier
 	    feature.setPrimaryIdentifier(identifier);
-            // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, true);
-	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
-	    // name from idAttribute
-            if (idAttribute!=null) {
-                String name = getAttribute(bioJavaSequence, idAttribute);
-                if (name!=null) feature.setName(name);
-            }
-            if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
-            if (annotationVersion!=null) feature.setAnnotationVersion(annotationVersion);
+            setSecondaryIdentifier(feature, identifier, true);
+            setName(feature, bioJavaSequence, idAttribute, identifier, true);
+            setAssemblyVersion(feature);
+            setAnnotationVersion(feature);
             storeSequenceFeature(feature, bioSequence);
         } else if (className.equals("org.intermine.model.bio.CDS")) {
             CDS feature = (CDS) getDirectDataLoader().createObject(imClass);
-	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
-            // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, true);
-	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
-	    // name from idAttribute
-            if (idAttribute!=null) {
-                String name = getAttribute(bioJavaSequence, idAttribute);
-                if (name!=null) feature.setName(name);
-            }
-            if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
-            if (annotationVersion!=null) feature.setAnnotationVersion(annotationVersion);
-            // store with the sequence
+            setSecondaryIdentifier(feature, identifier, true);
+            setName(feature, bioJavaSequence, idAttribute, identifier, true);
+            setAssemblyVersion(feature);
+            setAnnotationVersion(feature);
             storeCDS(feature, bioSequence);
         } else if (className.equals("org.intermine.model.bio.Protein")) {
             // lupal.Amiga.gnm1.ann0.mRNA:Lalb_Chr00c01g0403611.1 locus_tag=Lalb_Chr00c01g0403611 gn=Lalb_Chr00c01g0403611 len=96 chr=Lalb_Chr00c01 strand=1 sp=Unknown
             // def=Putative RNA-directed DNA polymerase
             Protein feature = (Protein) getDirectDataLoader().createObject(imClass);
-	    // primaryIdentifier
             feature.setPrimaryIdentifier(identifier);
-            // secondaryIdentifier
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, true);
-	    if (secondaryIdentifier!=null) feature.setSecondaryIdentifier(secondaryIdentifier);
-	    // name from idAttribute
-            if (idAttribute!=null) {
-                String name = getAttribute(bioJavaSequence, idAttribute);
-                if (name!=null) feature.setName(name);
-            }
+            setSecondaryIdentifier(feature, identifier, true);
+            setName(feature, bioJavaSequence, idAttribute, identifier, true);
+            setAssemblyVersion(feature);
+            setAnnotationVersion(feature);
             // description
             if (loadHeaderDescriptions) {
                 String description = getDescription(bioJavaSequence);
@@ -446,12 +418,9 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
                 String description = getAttribute(bioJavaSequence, descriptionAttribute);
                 if (description!=null) feature.setDescription(description);
             }
-            if (assemblyVersion!=null) feature.setAssemblyVersion(assemblyVersion);
-            if (annotationVersion!=null) feature.setAnnotationVersion(annotationVersion);
-            // store with the sequence
             storeProtein(feature, bioSequence);
         } else {
-            throw new RuntimeException("Loading of "+className+" from FASTA isn't currently supported.");
+            throw new BuildException("Loading of "+className+" from FASTA isn't currently supported.");
         }
     }
 
@@ -539,7 +508,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
      * @param field the name of the desired field, e.g. protein_id
      * @return an identifier
      */
-    protected String getAttribute(AbstractSequence bioJavaSequence, String field) {
+    static String getAttribute(AbstractSequence bioJavaSequence, String field) {
         String header = bioJavaSequence.getAccession().getID();
         if (!header.contains(field)) return null;
         String[] split = header.split(" "+field+"=");
@@ -586,5 +555,56 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
      */
     public void setLoadHeaderDescriptions(String s) {
         loadHeaderDescriptions = s.equals("true");
+    }
+
+    /**
+     * Set secondaryIdentifier from identifier or throw error.
+     */
+    static void setSecondaryIdentifier(BioEntity feature, String identifier, boolean isAnnotationFeature) {
+        String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, isAnnotationFeature);
+        if (secondaryIdentifier==null) {
+            throw new BuildException("Could not get secondaryIdentifier from "+identifier+".");
+        }
+        feature.setSecondaryIdentifier(secondaryIdentifier);
+    }
+
+    /**
+     * Set name to idAttribute if exists, else to secondaryIdentifier from identifier.
+     */
+    static void setName(BioEntity feature, AbstractSequence bioJavaSequence, String idAttribute, String identifier, boolean isAnnotationFeature) {
+        if (idAttribute!=null) {
+            String name = getAttribute(bioJavaSequence, idAttribute);
+            if (name!=null) {
+                feature.setName(name);
+                return;
+            }
+        }
+        String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, isAnnotationFeature);
+        if (secondaryIdentifier==null) {
+            throw new BuildException("Could not get secondaryIdentifier from "+identifier+".");
+        }
+        feature.setName(secondaryIdentifier);
+    }
+
+    /**
+     * Set the assembly version or throw an exception.
+     */
+    void setAssemblyVersion(BioEntity feature) {
+        if (assemblyVersion!=null) {
+            feature.setAssemblyVersion(assemblyVersion);
+        } else {
+            throw new BuildException("Assembly version is not set from README.");
+        }
+    }
+
+    /**
+     * Set the annotation version or throw an exception.
+     */
+    void setAnnotationVersion(BioEntity feature) {
+        if (annotationVersion!=null) {
+            feature.setAnnotationVersion(annotationVersion);
+        } else {
+            throw new BuildException("Annotation version is not set from README.");
+        }
     }
 }
