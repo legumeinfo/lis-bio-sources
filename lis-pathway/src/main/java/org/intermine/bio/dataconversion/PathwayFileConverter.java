@@ -94,9 +94,6 @@ public class PathwayFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     public void close() throws ObjectStoreException {
-        if (readme==null) {
-            throw new RuntimeException("README file missing. Aborting.");
-        }
         if (pathways.size()==0) {
             throw new RuntimeException("No pathway file found. Aborting.");
         }

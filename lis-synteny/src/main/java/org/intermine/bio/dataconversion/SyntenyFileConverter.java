@@ -81,9 +81,6 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-        if (readme==null) {
-            throw new RuntimeException("README not read - aborting.");
-        }
         storeCollectionItems();
         store(organisms.values());
         store(strains.values());

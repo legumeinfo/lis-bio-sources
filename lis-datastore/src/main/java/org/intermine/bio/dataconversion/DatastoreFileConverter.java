@@ -222,13 +222,21 @@ public abstract class DatastoreFileConverter extends FileConverter {
 
     /**
      * Store core collection items:
+     *
      *   dataSource
      *   dataSet
      *   organism
      *   strain (if non-null)
      *   publication (if non-null)
+     *
+     * @throws RuntimeException if README not read.
      */
     void storeCollectionItems() throws ObjectStoreException {
+        // bail if README not read
+        if (readme==null) {
+            throw new RuntimeException("README not read. Aborting.");
+        }
+        // store stuff
         store(dataSource);
         store(dataSet);
         store(organism);

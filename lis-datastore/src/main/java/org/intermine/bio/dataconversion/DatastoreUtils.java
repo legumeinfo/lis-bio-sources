@@ -146,18 +146,22 @@ public class DatastoreUtils {
      */
     public boolean isSupercontig(String primaryIdentifier) {
         String[] fields = primaryIdentifier.split("\\.");
-        String gensp = fields[0];
-        String strainIdentifier = fields[1];
-        String assy = fields[2];
-        String name = fields[3];
-        String key = gensp+"."+strainIdentifier;
-	List<String> matchStrings = supercontigStrings.get(key);
-	if (matchStrings==null) {
-	    throw new RuntimeException("You must add a supercontig matching entry for "+key+" in datastore_config.properties.");
-	}
-	for (String matchString : matchStrings) {
-	    if (name.contains(matchString)) return true;
-	}
+        try {
+            String gensp = fields[0];
+            String strainIdentifier = fields[1];
+            String assy = fields[2];
+            String name = fields[3];
+            String key = gensp+"."+strainIdentifier;
+            List<String> matchStrings = supercontigStrings.get(key);
+            if (matchStrings==null) {
+                throw new RuntimeException("You must add a supercontig matching entry for "+key+" in datastore_config.properties.");
+            }
+            for (String matchString : matchStrings) {
+                if (name.contains(matchString)) return true;
+            }
+        } catch (ArrayIndexOutOfBoundsException ex) {
+            throw new RuntimeException(primaryIdentifier+" does not have enough dot-delimited parts!");
+        }
 	return false;
     }
 

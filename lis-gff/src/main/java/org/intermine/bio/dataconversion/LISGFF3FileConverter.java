@@ -101,7 +101,7 @@ public class LISGFF3FileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-        // collection attributes and references
+        // set some feature attributes and references
         for (Item feature : features.values()) {
             if (assemblyVersion!=null) feature.setAttribute("assemblyVersion", assemblyVersion);
             if (annotationVersion!=null) feature.setAttribute("annotationVersion", annotationVersion);
