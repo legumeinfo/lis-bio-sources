@@ -71,6 +71,9 @@ public class GFAFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
+        if (readme==null) {
+            throw new RuntimeException("README file missing. Aborting.");
+        }
         if (geneFamilies.size()==0) {
             throw new RuntimeException("No GFA file found. Aborting.");
         }
