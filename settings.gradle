@@ -17,7 +17,9 @@ include ':bio-source-lis-datastore',
 	':bio-source-lis-ipr-gff',
 	':bio-source-lis-hsh',
 	':bio-source-lis-mstmap'
+	//	':bio-source-lis-annotation'
 
+// project(':bio-source-lis-annotation').projectDir = new File(settingsDir, 'lis-annotation')
 project(':bio-source-lis-datastore').projectDir = new File(settingsDir, 'lis-datastore')
 project(':bio-source-lis-description').projectDir = new File(settingsDir, 'lis-description')
 project(':bio-source-lis-info-annot').projectDir = new File(settingsDir, 'lis-info-annot')

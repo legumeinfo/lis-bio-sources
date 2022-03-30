@@ -47,6 +47,11 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     Map<String,Item> samples = new HashMap<>();
     Map<String,Item> genes = new HashMap<>();
 
+    // keep track of files read in case they're gzipped!
+    boolean samplesRead = false;
+    boolean valuesRead = false;
+    boolean oboRead = false;
+        
     /**
      * Constructor.
      *
@@ -90,10 +95,13 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             if (publication!=null) expressionSource.addToCollection("publications", publication);
         } else if (getCurrentFile().getName().endsWith("samples.tsv")) {
 	    processSamples(reader);
+            samplesRead = true;
         } else if (getCurrentFile().getName().endsWith("values.tsv")) {
             processExpression(reader);
+            valuesRead = true;
         } else if (getCurrentFile().getName().endsWith("obo.tsv")) {
             processOboFile(reader);
+            oboRead = true;
         }
     }
 
@@ -102,6 +110,11 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
+        if (!samplesRead || !valuesRead || !oboRead) {
+            throw new RuntimeException("One of samples.tsv, values.tsv, and/or obo.tsv files not read. Aborting.");
+        }
+        // DatastoreFileConverter items
+        storeCollectionItems();
         // add references to samples
         for (Item sample : samples.values()) {
             sample.setReference("organism", organism);
@@ -114,8 +127,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             gene.setReference("organism", organism);
             gene.setReference("strain", strain);
         }
-        // DatastoreFileConverter items
-        storeCollectionItems();
         // local items
         store(expressionSource);
         if (bioProject!=null) store(bioProject);

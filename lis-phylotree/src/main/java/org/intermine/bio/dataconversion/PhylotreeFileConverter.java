@@ -39,7 +39,9 @@ import org.apache.log4j.Logger;
  * @author Sam Hokin
  */
 public class PhylotreeFileConverter extends DatastoreFileConverter {
-	
+
+    final String GENE_FAMILY_PREFIX="legfed_v1_0";     // because it's in the name of the tarball and directory
+
     private static final Logger LOG = Logger.getLogger(PhylotreeFileConverter.class);
 
     // local Items to store
@@ -184,7 +186,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         phylotree.setAttribute("identifier", identifier);
         Item geneFamily = createItem("GeneFamily");
         geneFamilies.add(geneFamily);
-        geneFamily.setAttribute("identifier", identifier);
+        geneFamily.setAttribute("identifier", GENE_FAMILY_PREFIX+"."+identifier);
         geneFamily.setReference("phylotree", phylotree);
         phylotree.setReference("geneFamily", geneFamily);
         // keep track of the leaf nodes

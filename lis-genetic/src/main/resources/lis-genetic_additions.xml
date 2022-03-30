@@ -70,17 +70,6 @@
     <collection name="dataSets" referenced-type="DataSet"/>
   </class>
 
-  <!-- DEPRECATED -->
-  <!-- relates a QTL to an associated marker; distinction=flanking, nearest, etc. -->
-  <!-- markers is a collection, loaded by a post-processor, since a given marker may be mapped to different genomes -->
-  <!-- <class name="QTLMarker" is-interface="true"> -->
-  <!--   <attribute name="markerName" type="java.lang.String"/> -->
-  <!--   <attribute name="distinction" type="java.lang.String"/> -->
-  <!--   <reference name="qtl" referenced-type="QTL"/> -->
-  <!--   <collection name="markers" referenced-type="GeneticMarker"/> -->
-  <!--   <collection name="dataSets" referenced-type="DataSet"/> -->
-  <!-- </class> -->
-
   <!-- A Trait is an experimentally measured phenotype for a QTL, which has ontology annotations -->
   <!-- because description is specific to an experiment, it has a single dataset which keys it along with primaryIdentifier -->
   <class name="Trait" extends="Annotatable" is-interface="true" term="https://browser.planteome.org/amigo/term/TO:0000387">

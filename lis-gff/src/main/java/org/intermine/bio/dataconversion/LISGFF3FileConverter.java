@@ -141,10 +141,12 @@ public class LISGFF3FileConverter extends DatastoreFileConverter {
                 throw new RuntimeException("GFF line does not include ID: "+featureI.toString());
             }
             if (type.equals("genetic_marker")) {
-                if (!matchesStrainAssembly(id)) {
+                // marker collections are not in IDs, but strain.assembly must be
+                if (!matchesStrainAndAssembly(id)) {
                     throw new RuntimeException("ID "+id+" does not match strain.assembly from collection "+readme.identifier);
                 }
             } else {
+                // other features have full collection in IDs
                 if (!matchesCollection(id)) {
                     throw new RuntimeException("ID "+id+" does not match collection "+readme.identifier);
                 }

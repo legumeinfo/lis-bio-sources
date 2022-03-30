@@ -215,6 +215,9 @@ public class GeneticFileConverter extends DatastoreFileConverter {
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue;
             String[] fields = line.split("\t");
+            if (fields.length<2) {
+                throw new RuntimeException(getCurrentFile().getName()+" has record without marker name.");
+            }
             // required fields
 	    String qtlId = fields[0];
 	    String markerName = fields[1];

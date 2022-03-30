@@ -269,7 +269,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
      */
     boolean matchesCollection(String identifier) {
         if (readme==null) {
-            throw new RuntimeException("ERROR: cannot matchesCollection() because README has not yet been read.");
+            throw new RuntimeException("ERROR: DatastoreFileConverter.matchesCollection(identifier) cannot run - README has not yet been read.");
         }
         setStrain();
         String[] fields = identifier.split("\\.");
@@ -287,12 +287,18 @@ public abstract class DatastoreFileConverter extends FileConverter {
      * 0     1      2    3                                       1      2    !   !
      * phavu.G19833.gnm1.TOG905303_749 does not match collection G19833.gnm1.mrk.PvCookUCDavis2009
      */
-    boolean matchesStrainAssembly(String identifier) {
+    boolean matchesStrainAndAssembly(String identifier) {
         if (readme==null) {
-            throw new RuntimeException("ERROR: cannot matchesCollection() because README has not yet been read.");
+            throw new RuntimeException("ERROR: DatastoreFileConverter.matchesStrainAndAssembly(identifier) cannot run - README has not yet been read.");
         }
         setStrain();
         String[] fields = identifier.split("\\.");
-        return (fields[1].equals(strainIdentifier) && fields[2].equals(assemblyVersion));
+        try {
+            boolean matches = fields[1].equals(strainIdentifier) && fields[2].equals(assemblyVersion);
+            return matches;
+        } catch (Exception ex) {
+            System.err.println("ERROR in DatastoreFileConverter.matchesStrainAndAssembly: ID="+identifier);
+            throw new RuntimeException(ex);
+        }
     }
 }
