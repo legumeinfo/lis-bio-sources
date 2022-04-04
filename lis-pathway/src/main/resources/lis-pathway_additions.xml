@@ -1,10 +1,6 @@
 <?xml version="1.0"?>
 <classes>
       
-  <class name="Protein" is-interface="true">
-     <collection name="pathways" referenced-type="Pathway" reverse-reference="proteins"/>
-  </class>
-
   <!-- populated by source -->
   <class name="Gene" is-interface="true">
      <collection name="pathways" referenced-type="Pathway" reverse-reference="genes"/>
@@ -14,7 +10,6 @@
      <attribute name="identifier" type="java.lang.String"/>
      <attribute name="name" type="java.lang.String"/>
      <collection name="genes" referenced-type="Gene" reverse-reference="pathways"/>
-     <collection name="proteins" referenced-type="Protein" reverse-reference="pathways"/>
      <collection name="dataSets" referenced-type="DataSet"/>
   </class>
 

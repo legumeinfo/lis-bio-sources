@@ -63,7 +63,12 @@ public class GWASFileConverter extends DatastoreFileConverter {
             gwas.setAttribute("description", readme.description);
             gwas.setAttribute("genotypingPlatform", readme.genotyping_platform);
             if (readme.genotyping_method!=null) gwas.setAttribute("genotypingMethod", readme.genotyping_method);
-            gwas.setAttribute("population", readme.genotype[0]);
+            String genotypes = "";
+            for (String genotype : readme.genotype) {
+                if (genotypes.length()>0) genotypes += "|";
+                genotypes += genotype;
+            }
+            gwas.setAttribute("genotypes", genotypes);
             gwas.setReference("organism", organism);
             if (publication!=null) gwas.addToCollection("publications", publication);
         } else if (getCurrentFile().getName().endsWith("obo.tsv")) {

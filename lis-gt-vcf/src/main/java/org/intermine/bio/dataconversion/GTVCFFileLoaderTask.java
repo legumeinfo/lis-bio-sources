@@ -31,7 +31,6 @@ import org.intermine.model.bio.DataSet;
 import org.intermine.model.bio.DataSource;
 import org.intermine.model.bio.Location;
 import org.intermine.model.bio.Organism;
-import org.intermine.model.bio.Population;
 import org.intermine.model.bio.Publication;
 import org.intermine.model.bio.Strain;
 
@@ -232,13 +231,13 @@ public class GTVCFFileLoaderTask extends FileDirectDataLoaderTask {
         if (readme.genotyping_platform!=null) study.setGenotypingPlatform(readme.genotyping_platform);
         if (readme.genotyping_method!=null) study.setGenotypingMethod(readme.genotyping_method);
         if (readme.genbank_accession!=null) study.setGenbank(readme.genbank_accession);
-        // Genotyping populations (from README.genotype)
+        // Genotypes
+        String genotypes = "";
         for (String genotype : readme.genotype) {
-            Population population = getDirectDataLoader().createObject(Population.class);
-            population.setIdentifier(genotype);
-            getDirectDataLoader().store(population);
-            study.addPopulations(population);
+            if (genotypes.length()>0) genotypes += "|";
+            genotypes += genotype;
         }
+        study.setGenotypes(genotypes);
         // form full-yuck prefix for markers
         String yuckyPrefix = readme.scientific_name_abbrev+"."+strainIdentifier+"."+assemblyVersion;
         if (annotationVersion!=null) yuckyPrefix += "."+annotationVersion;

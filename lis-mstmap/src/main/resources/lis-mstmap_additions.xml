@@ -7,16 +7,11 @@
     <attribute name="description" type="java.lang.String"/>
     <attribute name="genotypingPlatform" type="java.lang.String"/>
     <attribute name="genotypingMethod" type="java.lang.String"/>
+    <attribute name="genotypes" type="java.lang.String"/>
     <attribute name="genbank" type="java.lang.String"/>
-    <collection name="populations" referenced-type="Population"/>
     <reference name="organism" referenced-type="Organism"/>
     <reference name="dataSet" referenced-type="DataSet"/>
     <collection name="samples" referenced-type="GenotypingSample" reverse-reference="study"/>
-  </class>
-
-  <!-- a Population is simply the name of a bi-parental cross, etc. -->
-  <class name="Population" is-interface="true">
-    <attribute name="identifier" type="java.lang.String"/>
   </class>
 
   <!-- sample1 sample2 sample3 ... -->

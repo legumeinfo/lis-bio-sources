@@ -17,18 +17,22 @@ sourceSets {
     }
 }
 
+repositories {
+    maven {
+	// needed for openchart:1.4.2 needed by biojava-genome
+        url 'https://repository.jboss.org/nexus/content/repositories/thirdparty-releases/'
+    }
+}
 dependencies {
+    compile group: 'org.intermine', name: 'bio-model', version: bioVersion //to read genomic_keyDefs.properties
     bioModel group: 'org.intermine', name: 'bio-model', version: bioVersion, transitive: false
-    compile group: 'org.intermine', name: 'intermine-integrate', version: imVersion
     // https://mvnrepository.com/artifact/org.biojava/biojava-core
     compile group: 'org.biojava', name: 'biojava-core', version: '6.0.5'
+    // https://mvnrepository.com/artifact/org.biojava/biojava-genome
+    implementation group: 'org.biojava', name: 'biojava-genome', version: '6.0.5'
     compile fileTree(dir: 'libs', include: '*.jar')
 }
 
 processResources {
     from('.') { include ("*.properties")}
-}
-
-compileJava {
-    options.compilerArgs += ["-Xlint:deprecation"]
 }

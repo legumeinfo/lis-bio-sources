@@ -19,10 +19,10 @@ import org.intermine.xml.full.Item;
 import org.ncgr.datastore.Readme;
 
 /**
- * Store GeneticMap/marker/linkage group data from tab-delimited files.
+ * Store GWAS or genetic map data from tab-delimited files in LIS Datastore /genetic/ collections.
  *
  * Actual GeneticMarker objects are NOT created here; rather, their names are stored and the
- * corresponding GeneticMarker objects (SequenceFeatures) are loaded by a post-processor.
+ * corresponding GeneticMarker objects (SequenceFeatures) are related by a post-processor.
  * 
  * @author Sam Hokin
  */
@@ -32,9 +32,10 @@ public class GeneticFileConverter extends DatastoreFileConverter {
 
     // local Items to store
     Item geneticMap;
+    Item gwas;
     List<Item> ontologyAnnotations = new LinkedList<>();
     List<Item> linkageGroupPositions = new LinkedList<>();
-    List<Item> populations = new LinkedList<>();
+    List<Item> gwasResults = new LinkedList<>();
 
     Map<String,Item> ontologyTerms = new HashMap<>();
     Map<String,Item> traits = new HashMap<>();
@@ -70,34 +71,64 @@ public class GeneticFileConverter extends DatastoreFileConverter {
             if (readme.genotype==null) {
                 throw new RuntimeException("ERROR: README file must contain genotype.");
             }
-            // GeneticMap
-            geneticMap = createItem("GeneticMap");
-            geneticMap.setReference("organism", organism);
-            geneticMap.setAttribute("primaryIdentifier", readme.identifier);
-            geneticMap.setAttribute("synopsis", readme.synopsis);
-            geneticMap.setAttribute("description", readme.description);
-            if (readme.genotyping_platform!=null) geneticMap.setAttribute("genotypingPlatform", readme.genotyping_platform);
-            
-            // Populations (from genotype)
-            for (String genotype : readme.genotype) {
-                Item population = createItem("Population");
-                population.setAttribute("identifier", genotype);
-                populations.add(population);
-                geneticMap.addToCollection("populations", population);
+            if (getCurrentFile().getName().contains(".gen.")) {
+                // GeneticMap
+                geneticMap = createItem("GeneticMap");
+                geneticMap.setReference("organism", organism);
+                geneticMap.setAttribute("primaryIdentifier", readme.identifier);
+                geneticMap.setAttribute("synopsis", readme.synopsis);
+                geneticMap.setAttribute("description", readme.description);
+                if (readme.genotyping_platform!=null) geneticMap.setAttribute("genotypingPlatform", readme.genotyping_platform);
+                if (readme.genotyping_method!=null) gwas.setAttribute("genotypingMethod", readme.genotyping_method);
+                // form |-delimited list of genotypes
+                String genotypes = "";
+                for (String genotype : readme.genotype) {
+                    if (genotypes.length()>0) genotypes += "|";
+                    genotypes += genotype;
+                }
+                geneticMap.setAttribute("genotypes", genotypes);
+                if (publication!=null) geneticMap.addToCollection("publications", publication);
+            } else if (getCurrentFile().getName().contains(".gwas.")) {
+                // GWAS
+                if (readme.genotyping_platform==null) {
+                    throw new RuntimeException("ERROR: "+getCurrentFile().getName()+" must contain genotyping_platform.");
+                }
+                gwas = createItem("GWAS");
+                gwas.setReference("organism", organism);
+                gwas.setAttribute("primaryIdentifier", readme.identifier);
+                gwas.setAttribute("synopsis", readme.synopsis);
+                gwas.setAttribute("description", readme.description);
+                gwas.setAttribute("genotypingPlatform", readme.genotyping_platform);
+                if (readme.genotyping_method!=null) gwas.setAttribute("genotypingMethod", readme.genotyping_method);
+                String genotypes = "";
+                for (String genotype : readme.genotype) {
+                    if (genotypes.length()>0) genotypes += "|";
+                    genotypes += genotype;
+                }
+                gwas.setAttribute("genotypes", genotypes);
+                if (publication!=null) gwas.addToCollection("publications", publication);
             }
-            if (publication!=null) geneticMap.addToCollection("publications", publication);
         } else if (getCurrentFile().getName().endsWith("lg.tsv")) {
+            System.out.println("Processing "+getCurrentFile().getName());
             processLgFile(reader);
 	} else if (getCurrentFile().getName().endsWith("qtlmrk.tsv")) {
+            System.out.println("Processing "+getCurrentFile().getName());
 	    processQTLMrkFile(reader);
         } else if (getCurrentFile().getName().endsWith("mrk.tsv")) {
+            System.out.println("Processing "+getCurrentFile().getName());
             processMrkFile(reader);
         } else if (getCurrentFile().getName().endsWith("obo.tsv")) {
+            System.out.println("Processing "+getCurrentFile().getName());
             processOboFile(reader);
 	} else if (getCurrentFile().getName().endsWith("qtl.tsv")) {
+            System.out.println("Processing "+getCurrentFile().getName());
             processQTLFile(reader);
 	} else if (getCurrentFile().getName().endsWith("trait.tsv")) {
+            System.out.println("Processing "+getCurrentFile().getName());
             processTraitFile(reader);
+	} else if (getCurrentFile().getName().endsWith("result.tsv")) {
+            System.out.println("Processing "+getCurrentFile().getName());
+            processResultFile(reader);
 	}
     }
 
@@ -106,26 +137,33 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-        // set references to collection items
-        for (Item linkageGroup : linkageGroups.values()) {
-            linkageGroup.setReference("organism", organism);
-            linkageGroup.setReference("geneticMap", geneticMap);
+        if (readme==null) {
+            throw new RuntimeException("README not read. Aborting.");
         }
-        for (Item qtl : qtls.values()) {
-            qtl.setReference("organism", organism);
-            qtl.setReference("geneticMap", geneticMap);
-        }
-        // store collection items
         storeCollectionItems();
-        // store local Items
-        store(geneticMap);
-        store(populations);
+        // local items
+        if (geneticMap!=null) {
+            for (Item linkageGroup : linkageGroups.values()) {
+                linkageGroup.setReference("geneticMap", geneticMap);
+            }
+            for (Item qtl : qtls.values()) {
+                qtl.setReference("geneticMap", geneticMap);
+            }
+            store(geneticMap);
+            store(linkageGroups.values());
+            store(linkageGroupPositions);
+            store(qtls.values());
+        }
+	if (gwas!=null) {
+            for (Item gwasResult : gwasResults) {
+                gwasResult.setReference("gwas", gwas);
+            }
+            store(gwas);
+            store(gwasResults);
+        }
         store(ontologyAnnotations);
-        store(linkageGroupPositions);
         store(ontologyTerms.values());
         store(traits.values());
-        store(qtls.values());
-        store(linkageGroups.values());
     }
     
     /**
@@ -137,7 +175,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * TT_Tifrunner_x_GT-C20_c-A03      192.46
      */
     void processLgFile(Reader reader) throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
         int number = 0; // convenience numbering of LGs
         String line = null;
@@ -164,7 +201,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * A01_304818	A01     2.18
      */
     void processMrkFile(Reader reader) throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
         String line = null;
         while ((line=br.readLine())!=null) {
@@ -209,7 +245,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * Early leaf spot 1-1  A08_35776787  nearest
      */
     void processQTLMrkFile(Reader reader) throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
 	String line;
         while ((line=br.readLine())!=null) {
@@ -251,7 +286,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * Early leaf spot 1-1  Early leaf spot   TT_Tifrunner_x_GT-C20_c-A08  100.7     102.9      102                                3.02 12.42             0.56                             
      */
     void processQTLFile(Reader reader) throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
 	String line;
         while ((line=br.readLine())!=null) {
@@ -327,7 +361,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * Early leaf spot resistance  Leafs were photographed and spots were counted...
      */
     void processTraitFile(Reader reader) throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
 	String line;
         while ((line=br.readLine())!=null) {
@@ -354,7 +387,6 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * Seed weight  TO:0000181
      */
     void processOboFile(Reader reader) throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
         BufferedReader br = new BufferedReader(reader);
 	String line;
         while ((line=br.readLine())!=null) {
@@ -385,6 +417,40 @@ public class GeneticFileConverter extends DatastoreFileConverter {
             ontologyAnnotations.add(ontologyAnnotation);
         }
         br.close();
+    }
+
+    /**
+     * Process a GWASResult file with trait-marker associations.
+     * 0                                        1               2
+     * #trait_id				marker		pvalue
+     * 100 Seed weight from Florida-7 NAM	Affx-152042939	9.12e-9
+     * 100 Pod weight from Florida-7 NAM	Affx-152042939	9.12e-9
+     */
+    void processResultFile(Reader reader) throws IOException {
+        BufferedReader bufferedReader = new BufferedReader(reader);
+	String line;
+        while ((line=bufferedReader.readLine())!=null) {
+            if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
+            String[] fields = line.split("\t");
+            String traitId = fields[0];
+            String markerName = fields[1];
+            double pValue = Double.parseDouble(fields[2]);
+            // Trait
+            Item trait = traits.get(traitId);
+            if (trait==null) {
+                trait = createItem("Trait");
+                trait.setAttribute("primaryIdentifier", traitId);
+                traits.put(traitId, trait);
+            }
+            // GWASResult
+            Item gwasResult = createItem("GWASResult");
+            gwasResult.setAttribute("markerName", markerName);
+            gwasResult.setAttribute("pValue", String.valueOf(pValue));
+            gwasResult.setReference("trait", trait);
+            gwasResults.add(gwasResult);
+            trait.addToCollection("gwasResults", gwasResult);
+        }
+        bufferedReader.close();
     }
 
     /**

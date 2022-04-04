@@ -36,7 +36,6 @@ import org.intermine.model.bio.Genotype;
 import org.intermine.model.bio.GenotypingStudy;
 import org.intermine.model.bio.GenotypingSample;
 import org.intermine.model.bio.GenotypingRecord;
-import org.intermine.model.bio.Population;
 
 import org.apache.log4j.Logger;
 import org.apache.tools.ant.BuildException;
@@ -190,14 +189,13 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
         // Publication
         publication.setDoi(readme.publication_doi);
         publication.setTitle(readme.publication_title);
-        // Populations (from README.genotype)
-        Set<Population> populations = new HashSet<>();
+        // genotypes
+        String genotypes = "";
         for (String genotype : readme.genotype) {
-            Population population = getDirectDataLoader().createObject(org.intermine.model.bio.Population.class);
-            population.setIdentifier(genotype);
-            getDirectDataLoader().store(population);
-            populations.add(population);
+            if (genotypes.length()>0) genotypes += "|";
+            genotypes += genotype;
         }
+        study.setGenotypes(genotypes);
         // GenotypingStudy
         study.setPrimaryIdentifier(readme.identifier);
         study.setSynopsis(readme.synopsis);
@@ -208,7 +206,6 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
         // references
         study.setOrganism(organism);
         study.setDataSet(dataSet);
-        study.setPopulations(populations);
         study.addPublications(publication);
     }
 

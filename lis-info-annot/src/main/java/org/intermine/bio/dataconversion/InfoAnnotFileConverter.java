@@ -216,7 +216,8 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
                         annotation.setReference("subject", protein);
                         annotation.setReference("ontologyTerm", term);
                         ontologyAnnotations.put(annotKey, annotation);
-                    }                }
+                    }
+                }
                 // KOG terms
                 for (String identifier : record.KOG) {
                     Item term = getOntologyTerm(identifier);

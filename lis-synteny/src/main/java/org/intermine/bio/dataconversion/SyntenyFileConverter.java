@@ -93,26 +93,27 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Process a synteny GFF file.
+     * Process a synteny GFF file. The filename must have 9 dot-separated parts as follows:
+     * 0     1           2    3 4     5    6    7    8
+     * cicar.CDCFrontier.gnm1.x.lotja.MG20.gnm3.7Bqh.gff3
      */
     public void processGFF(Reader reader) throws IOException {
         System.out.println("Processing "+getCurrentFile().getName());
         dsu = new DatastoreUtils();
         String[] fileNameParts = getCurrentFile().getName().split("\\.");
-        if (fileNameParts.length<9) {
-            System.err.println(getCurrentFile().getName()+" does not have at least 9 dot-separated parts.");
-            System.err.println("Example: cicar.CDCFrontier.gnm1.ann1.x.lotja.MG20.gnm3.ann1.7Bqh.gff3");
-            return;
+        if (fileNameParts.length!=9) {
+            throw new RuntimeException(getCurrentFile().getName()+" does not have 9 dot-separated parts.");
         }
         // get the identifiers from the file name
         String sourceGensp = fileNameParts[0];
         String sourceStrainId = fileNameParts[1];
         String sourceAssy = fileNameParts[2];
-        String sourceAnnot = fileNameParts[3];
-        String targetGensp = fileNameParts[5];
-        String targetStrainId = fileNameParts[6];
-        String targetAssy = fileNameParts[7];
-        String targetAnnot = fileNameParts[8];
+        if (!fileNameParts[3].equals("x")) {
+            throw new RuntimeException(getCurrentFile().getName()+" does not have a proper synteny file format, with the .x. between genomes.");
+        }
+        String targetGensp = fileNameParts[4];
+        String targetStrainId = fileNameParts[5];
+        String targetAssy = fileNameParts[6];
         // get the organisms and strains
         Item sourceOrganism = getOrganism(sourceGensp);
         Item sourceStrain = getStrain(sourceStrainId, sourceOrganism);
@@ -143,14 +144,12 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
                 // populate the source region and its location
                 Item sourceRegion = createItem("SyntenicRegion");
                 sourceRegion.setAttribute("assemblyVersion", sourceAssy);
-                if (sourceAnnot!=null) sourceRegion.setAttribute("annotationVersion", sourceAnnot);
                 Item sourceChromosomeLocation = createItem("Location");
                 populateSourceRegion(sourceRegion, gff, sourceOrganism, sourceStrain, sourceChromosome, sourceChromosomeLocation);
                 String sourceIdentifier = getSourceRegionName(gff);
                 // populate the target region and its location
                 Item targetRegion = createItem("SyntenicRegion");
                 targetRegion.setAttribute("assemblyVersion", targetAssy);
-                if (targetAnnot!=null) targetRegion.setAttribute("annotationVersion", targetAnnot);
                 Item targetChromosomeLocation = createItem("Location");
                 populateTargetRegion(targetRegion, gff, targetOrganism, targetStrain, targetChromosome, targetChromosomeLocation);
                 String targetIdentifier = getTargetRegionName(gff);
@@ -368,9 +367,6 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
         } else {
             // return a non-collection organism keyed by taxonId
             String taxonId = dsu.getTaxonId(gs);
-            if (taxonId==null) {
-                throw new RuntimeException("ERROR: could not get taxon ID from gensp="+gs);
-            }
             if (organisms.containsKey(taxonId)) {
                 return organisms.get(taxonId);
             } else {
