@@ -458,6 +458,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             String dbxref = featureI.getAttribute("Dbxref");
             String ontology_term = featureI.getAttribute("Ontology_term");
             String alleles = featureI.getAttribute("alleles");
+            String symbol = featureI.getAttribute("symbol");
             // check that id exists and matches collection
             if (id==null) {
                 throw new RuntimeException("GFF line does not include ID: "+featureI.toString());
@@ -487,9 +488,11 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 feature.setAttribute("length", String.valueOf(location.length()));
             }
             // Name=GlymaLee.02G198600;
-            if (name!=null) {
-                feature.setAttribute("name", name);
-            }
+            if (name!=null) feature.setAttribute("name", name);
+            // Note=Cytochrome P450 superfamily protein%3B IPR001128 (Cytochrome P450)%3B GO:0005506 (iron ion binding)%2C GO:0020037 (heme binding)%2C ...
+            if (note!=null) feature.setAttribute("description", note);
+            // Symbol=RGB4
+            if (symbol!=null) feature.setAttribute("symbol", symbol);
             // Dbxref=Gene3D:G3DSA:1.10.630.10,InterPro:IPR001128,InterPro:IPR002401,InterPro:IPR017972,PANTHER:PTHR24298,...
             if (dbxref!=null) {
                 String[] terms = dbxref.split(",");
@@ -507,10 +510,6 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                         createOntologyAnnotation(feature, term);
                     }
                 }
-            }
-            // Note=Cytochrome P450 superfamily protein%3B IPR001128 (Cytochrome P450)%3B GO:0005506 (iron ion binding)%2C GO:0020037 (heme binding)%2C ...
-            if (note!=null) {
-                feature.setAttribute("description", note);
             }
             // Parent is not required but must already be loaded if present
             if (parent!=null) {

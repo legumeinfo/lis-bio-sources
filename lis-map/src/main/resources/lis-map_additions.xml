@@ -1,0 +1,37 @@
+<?xml version="1.0"?>
+<classes>
+
+  <!-- A GeneticMap represents a set of LinkageGroups and GeneticMarkers mapped to them -->
+  <class name="GeneticMap" extends="Annotatable" is-interface="true">
+    <attribute name="synopsis" type="java.lang.String"/>
+    <attribute name="description" type="java.lang.String"/>
+    <attribute name="genotypes" type="java.lang.String"/>
+    <attribute name="genotypingPlatform" type="java.lang.String"/>
+    <attribute name="genotypingMethod" type="java.lang.String"/>
+    <reference name="organism" referenced-type="Organism"/>
+    <reference name="dataSet" referenced-type="DataSet"/>
+    <collection name="linkageGroups" referenced-type="LinkageGroup" reverse-reference="geneticMap"/>
+  </class>
+
+  <!-- a LinkageGroup is a component of a GeneticMap -->
+  <class name="LinkageGroup" extends="Annotatable" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000018">
+    <attribute name="number" type="java.lang.Integer"/>
+    <attribute name="length" type="java.lang.Double"/>
+    <reference name="geneticMap" referenced-type="GeneticMap" reverse-reference="linkageGroups"/>
+    <collection name="dataSets" referenced-type="DataSet"/>
+  </class>
+
+  <!-- a marker's position (in cM) on a linkage group, referenced by name -->
+  <class name="LinkageGroupPosition" is-interface="true">
+    <attribute name="markerName" type="java.lang.String"/>
+    <attribute name="position" type="java.lang.Double"/>
+    <reference name="linkageGroup" referenced-type="LinkageGroup"/>
+  </class>
+
+  <!-- a genetic marker is a sequence feature mapped to a genome assembly; these gives its cM position on linkage groups -->
+  <!-- linkageGroupPositions is populated by a post-processor -->
+  <class name="GeneticMarker" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645" >
+    <collection name="linkageGroupPositions" referenced-type="LinkageGroupPosition"/>
+  </class>
+
+</classes>

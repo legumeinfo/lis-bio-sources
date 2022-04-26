@@ -1,54 +1,27 @@
 <?xml version="1.0"?>
 <classes>
 
-  <!-- extends Annotatable: primaryIdentifier, ontologyAnnotations, publications -->
-  <!-- NOTE: some maps do not have linkage groups, so we must have GeneticMap.qtls as well -->
-  <class name="GeneticMap" extends="Annotatable" is-interface="true">
+  <!-- a LinkageGroup is a component of a GeneticMap, loaded in lis-map, keyed by identifier -->
+  <class name="LinkageGroup" extends="Annotatable" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000018">
+    <collection name="qtls" referenced-type="QTL" reverse-reference="linkageGroup"/>
+  </class>
+
+  <!-- a QTLStudy represents a particular QTL study from a DataSet/Publication -->
+  <class name="QTLStudy" extends="Annotatable" is-interface="true">
     <attribute name="synopsis" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
     <attribute name="genotypes" type="java.lang.String"/>
-    <attribute name="genotypingPlatform" type="java.lang.String"/>
-    <attribute name="genotypingMethod" type="java.lang.String"/>
+    <attribute name="geneticMap" type="java.lang.String"/>
     <reference name="organism" referenced-type="Organism"/>
-    <collection name="linkageGroups" referenced-type="LinkageGroup" reverse-reference="geneticMap"/>
-    <collection name="qtls" referenced-type="QTL" reverse-reference="geneticMap"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
-  </class>
-
-  <!-- a linkage group is a part of a genetic map and is related to markers and QTLs -->
-  <!-- marker names are stored in a |-delimited markerNames string; markers are loaded by a post-processor -->
-  <!-- marker reverse reference is via LinkageGroupPosition-->
-  <class name="LinkageGroup" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000018">
-    <attribute name="identifier" type="java.lang.String"/>
-    <attribute name="number" type="java.lang.Integer"/>
-    <attribute name="length" type="java.lang.Double"/>
-    <attribute name="markerNames" type="java.lang.String"/>
-    <reference name="geneticMap" referenced-type="GeneticMap" reverse-reference="linkageGroups"/>
-    <collection name="markers" referenced-type="GeneticMarker"/>
-    <collection name="qtls" referenced-type="QTL" reverse-reference="linkageGroup"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
-  </class>
-
-  <!-- a genetic marker is a sequence feature mapped to a genome assembly; these gives its cM position on linkage groups -->
-  <class name="GeneticMarker" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645" >
-    <collection name="linkageGroupPositions" referenced-type="LinkageGroupPosition"/>
-    <collection name="qtls" referenced-type="QTL" reverse-reference="markers"/>
-    <collection name="gwasResults" referenced-type="GWASResult" reverse-reference="markers"/>
-  </class>
-
-  <!-- a marker's position (in cM) on a linkage group, referenced by name -->
-  <class name="LinkageGroupPosition" is-interface="true">
-    <attribute name="markerName" type="java.lang.String"/>
-    <attribute name="position" type="java.lang.Double"/>
-    <reference name="linkageGroup" referenced-type="LinkageGroup"/>
+    <reference name="dataSet" referenced-type="DataSet"/>
+    <collection name="qtls" referenced-type="QTL" reverse-reference="qtlStudy"/>
   </class>
   
-  <!-- QTL references a trait, resides on a linkage group (on a genetic map), and has associated markers -->
-  <!-- marker names are stored in a |-delimited markerNames string; markers are loaded by a post-processor -->
-  <!-- NOTE 1: some maps do not have linkage groups, so we must have QTL.geneticMap reference here -->
-  <!-- NOTE 2: genes are populated by a post-processor -->
-  <class name="QTL" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645">
-    <attribute name="identifier" type="java.lang.String"/>
+  <!-- QTL references a trait, resides on a linkage group, and has associated markers -->
+  <!-- marker names are stored here in a |-delimited markerNames string; -->
+  <!-- QTL.markers are loaded by a post-processor from markerNames -->
+  <!-- QTL.genes are populated by a post-processor -->
+  <class name="QTL" extends="Annotatable" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001645">
     <attribute name="lod" type="java.lang.Double"/>
     <attribute name="likelihoodRatio" type="java.lang.Double"/>
     <attribute name="markerR2" type="java.lang.Double"/>
@@ -56,12 +29,12 @@
     <attribute name="start" type="java.lang.Double"/>
     <attribute name="end" type="java.lang.Double"/>
     <attribute name="markerNames" type="java.lang.String"/>
+    <reference name="qtlStudy" referenced-type="QTLStudy" reverse-reference="qtls"/>
     <reference name="trait" referenced-type="Trait" reverse-reference="qtls"/>
-    <reference name="linkageGroup" referenced-type="LinkageGroup" reverse-reference="qtls"/>
-    <reference name="geneticMap" referenced-type="GeneticMap" reverse-reference="qtls"/>
     <collection name="markers" referenced-type="GeneticMarker" reverse-reference="qtls"/>
-    <collection name="genes" referenced-type="Gene" reverse-reference="qtls"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
+    <reference name="linkageGroup" referenced-type="LinkageGroup" reverse-reference="qtls"/>
+    <reference name="dataSet" referenced-type="DataSet"/>
+    <collection name="genes" referenced-type="Gene"/>
   </class>
 
   <!-- A Trait is an experimentally measured phenotype for a QTL, which has ontology annotations -->
@@ -73,7 +46,7 @@
     <collection name="gwasResults" referenced-type="GWASResult" reverse-reference="trait"/>
   </class>
 
-   <!-- Annotatable for Publication support -->
+  <!-- GWAS is a study from a publication containing GWASResults, one per marker association -->
   <class name="GWAS" extends="Annotatable" is-interface="true">
     <attribute name="genotypes" type="java.lang.String"/>
     <attribute name="synopsis" type="java.lang.String"/>
@@ -81,24 +54,26 @@
     <attribute name="genotypingPlatform" type="java.lang.String"/>
     <attribute name="genotypingMethod" type="java.lang.String"/>
     <reference name="organism" referenced-type="Organism"/>
+    <reference name="dataSet" referenced-type="DataSet"/>
     <collection name="results" referenced-type="GWASResult" reverse-reference="gwas"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
   </class>
 
   <!-- GWASResult relates a marker to a measured trait with a p-value -->
-  <!-- Since a marker may have several genomic mappings, we store markerName here and populate markers with a post-processor -->
+  <!-- Since a marker may have several genomic mappings, we store markerName here -->
+  <!-- GWASResult.markers is populated with a post-processor -->
   <class name="GWASResult" is-interface="true">
     <attribute name="markerName" type="java.lang.String"/>
     <attribute name="pValue" type="java.lang.Double"/>
     <reference name="gwas" referenced-type="GWAS" reverse-reference="results"/>
     <reference name="trait" referenced-type="Trait" reverse-reference="gwasResults"/>
     <collection name="markers" referenced-type="GeneticMarker" reverse-reference="gwasResults"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
+    <reference name="dataSet" referenced-type="DataSet"/>
   </class>
 
-  <!-- Genes can be associated with QTLs that span them, via overlapping markers, found in a post-processor -->
-  <class name="Gene" is-interface="true">
-    <collection name="qtls" referenced-type="QTL" reverse-reference="genes"/>
+  <!-- GeneticMarker collections populated by post-processors -->
+  <class name="GeneticMarker" is-interface="true">
+    <collection name="qtls" referenced-type="QTL" reverse-reference="markers"/>
+    <collection name="gwasResults" referenced-type="GWASResult" reverse-reference="markers"/>
   </class>
   
 </classes>

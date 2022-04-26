@@ -66,6 +66,9 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
     public void process(Reader reader) throws IOException {
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
+            if (readme.genotyping_platform==null) {
+                throw new RuntimeException(getCurrentFile().getName()+" does not have genotyping_platform, which is required.");
+            }
             setStrain();
         } else if (getCurrentFile().getName().endsWith(".gff3")) {
             System.out.println("Processing "+getCurrentFile().getName());
@@ -78,11 +81,15 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
+        if (readme==null) {
+            throw new RuntimeException("README file not read. Aborting.");
+        }
         if (geneticMarkers.size()==0) {
             throw new RuntimeException("No genetic markers loaded. Aborting.");
         }
         // set collection attributes and references
         for (Item geneticMarker : geneticMarkers.values()) {
+            geneticMarker.setAttribute("genotypingPlatform", readme.genotyping_platform);
             geneticMarker.setAttribute("assemblyVersion", assemblyVersion);
             geneticMarker.setReference("organism", organism);
             geneticMarker.setReference("strain", strain);
@@ -123,6 +130,8 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
             String name = featureI.getAttribute("Name");
             String note = featureI.getAttribute("Note");
             String alleles = featureI.getAttribute("alleles");
+            String alias = featureI.getAttribute("alias");
+            String symbol = featureI.getAttribute("symbol");
             // check that id exists and matches collection
             if (id==null) {
                 throw new RuntimeException("GFF line does not include ID: "+featureI.toString());
@@ -132,20 +141,20 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
             if (!matchesStrainAndAssembly(id)) {
                 throw new RuntimeException("ID "+id+" does not match strain.assembly from collection "+readme.identifier);
             }
-            // get associated class
+            // GeneticMarker
             Item geneticMarker = getGeneticMarker(id, location, seqname);
-            // Name
-            if (name!=null) {
-                geneticMarker.setAttribute("name", name);
-                geneticMarker.setAttribute("secondaryIdentifier", name);
-            }
-            // Note is normally not present
-            if (note!=null) {
-                geneticMarker.setAttribute("description", note);
-            }
+            // name
+            if (name!=null) geneticMarker.setAttribute("name", name);
+            // symbol
+            if (symbol!=null) geneticMarker.setAttribute("symbol", symbol);
+            // alias
+            if (alias!=null) geneticMarker.setAttribute("alias", alias);
+            // note is normally not present
+            if (note!=null) geneticMarker.setAttribute("description", note);
+            // alleles
+            if (alleles!=null) geneticMarker.setAttribute("alleles", alleles);
             // GeneticMarker gets type=SNP if length==1 as well as alleles
             if (location.length()==1) geneticMarker.setAttribute("type", "SNP");
-            if (alleles!=null) geneticMarker.setAttribute("alleles", alleles);
         }
     }
 
