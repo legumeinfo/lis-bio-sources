@@ -244,35 +244,7 @@ public class LISGFF3FileConverter extends DatastoreFileConverter {
     Item getFeature(String primaryIdentifier, String className, Location location, String seqname) {
         if (features.containsKey(primaryIdentifier)) {
             return features.get(primaryIdentifier);
-        } else if (dsu.isSupercontig(seqname)) {
-            Item supercontig = features.get(seqname);
-            if (supercontig==null) {
-                // create new supercontig
-                supercontig = createItem("Supercontig");
-                supercontig.setAttribute("primaryIdentifier", seqname);
-                features.put(seqname, supercontig);
-            }
-            // create new feature on supercontig
-            Item feature = createItem(className);
-            feature.setAttribute("primaryIdentifier", primaryIdentifier);
-            feature.setReference("supercontig", supercontig);
-            feature.setAttribute("length", String.valueOf(location.length()));
-            // create new IM Location
-            Item supercontigLocation = createItem("Location");
-            supercontigLocation.setReference("feature", feature);
-            if (location.isNegative()) {
-                supercontigLocation.setAttribute("strand", "-1");
-            } else {
-                supercontigLocation.setAttribute("strand", "1");
-            }
-            supercontigLocation.setAttribute("start", String.valueOf(location.bioStart()));
-            supercontigLocation.setAttribute("end", String.valueOf(location.bioEnd()));
-            supercontigLocation.setReference("locatedOn", supercontig);
-            locations.add(supercontigLocation);
-            feature.setReference("supercontigLocation", supercontigLocation);
-            features.put(primaryIdentifier, feature);
-            return feature;
-        } else {
+        } else if (dsu.isChromosome(seqname)) {
             Item chromosome = features.get(seqname);
             if (chromosome==null) {
                 // create new chromosome
@@ -298,6 +270,34 @@ public class LISGFF3FileConverter extends DatastoreFileConverter {
             chromosomeLocation.setReference("locatedOn", chromosome);
             locations.add(chromosomeLocation);
             feature.setReference("chromosomeLocation", chromosomeLocation);
+            features.put(primaryIdentifier, feature);
+            return feature;
+        } else {
+            Item supercontig = features.get(seqname);
+            if (supercontig==null) {
+                // create new supercontig
+                supercontig = createItem("Supercontig");
+                supercontig.setAttribute("primaryIdentifier", seqname);
+                features.put(seqname, supercontig);
+            }
+            // create new feature on supercontig
+            Item feature = createItem(className);
+            feature.setAttribute("primaryIdentifier", primaryIdentifier);
+            feature.setReference("supercontig", supercontig);
+            feature.setAttribute("length", String.valueOf(location.length()));
+            // create new IM Location
+            Item supercontigLocation = createItem("Location");
+            supercontigLocation.setReference("feature", feature);
+            if (location.isNegative()) {
+                supercontigLocation.setAttribute("strand", "-1");
+            } else {
+                supercontigLocation.setAttribute("strand", "1");
+            }
+            supercontigLocation.setAttribute("start", String.valueOf(location.bioStart()));
+            supercontigLocation.setAttribute("end", String.valueOf(location.bioEnd()));
+            supercontigLocation.setReference("locatedOn", supercontig);
+            locations.add(supercontigLocation);
+            feature.setReference("supercontigLocation", supercontigLocation);
             features.put(primaryIdentifier, feature);
             return feature;
         }
