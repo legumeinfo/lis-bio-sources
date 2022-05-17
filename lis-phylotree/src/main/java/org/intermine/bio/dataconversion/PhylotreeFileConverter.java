@@ -64,15 +64,21 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) {
-        if (dataSet==null) {
-            // in lieu of a README, which we should have
-            String collection = getCurrentFile().getParent();
-            dataSet = createItem("DataSet");
-            dataSet.setAttribute("name", collection);
-            dataSet.setAttribute("description", "LIS gene family phylogenetic tree files");
-            dataSet.setAttribute("licence", DEFAULT_DATASET_LICENCE);
-            dataSet.setReference("dataSource", dataSource);
+        // there is no README (yet)
+        // DataSet
+        if (dataSetName==null || dataSetUrl==null || dataSetDescription==null) {
+            throw new RuntimeException("ERROR: dataSetName, dataSetUrl, and dataSetDescription must be set in project.xml.");
         }
+        dataSet = createItem("DataSet");
+        dataSet.setAttribute("name", dataSetName);
+        dataSet.setAttribute("url", dataSetUrl);
+        dataSet.setAttribute("description", dataSetDescription);
+        if (dataSetLicence!=null) {
+            dataSet.setAttribute("licence", dataSetLicence);
+        } else {
+            dataSet.setAttribute("licence", DatastoreFileConverter.DEFAULT_DATASET_LICENCE);
+        }
+        dataSet.setReference("dataSource", dataSource);
         try {
             processTreeFile();
         } catch (IOException ex) {
@@ -86,7 +92,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
     @Override
     public void close() throws Exception {
         store(dataSource);
-	store(dataSet);
+        store(dataSet);
 	store(geneFamilies);
         store(phylotrees);
         store(phylonodes.values());

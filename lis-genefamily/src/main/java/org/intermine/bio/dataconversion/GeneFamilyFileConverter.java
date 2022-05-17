@@ -79,6 +79,8 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws Exception {
+        store(dataSource);
+        store(dataSet);
 	store(geneFamilies.values());
 	store(ontologyTerms.values());
 	store(ontologyAnnotations);
