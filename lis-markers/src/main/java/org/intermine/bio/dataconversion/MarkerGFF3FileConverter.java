@@ -17,6 +17,7 @@ import java.util.HashSet;
 import java.util.Properties;
 import static java.util.Map.entry;
 
+import org.apache.commons.text.WordUtils;
 import org.apache.log4j.Logger;
 
 import org.intermine.dataconversion.FileConverter;
@@ -125,13 +126,14 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
             String seqname = featureI.seqname();
             Location location = featureI.location();
             String type = featureI.type();
-            // attributes
-            String id = featureI.getAttribute("ID");
-            String name = featureI.getAttribute("Name");
-            String note = featureI.getAttribute("Note");
-            String alleles = featureI.getAttribute("alleles");
-            String alias = featureI.getAttribute("alias");
-            String symbol = featureI.getAttribute("symbol");
+            // attributes (case-insensitive to initcap)
+            String id = getAttribute(featureI, "ID");
+            String name = getAttribute(featureI, "Name");
+            String note = getAttribute(featureI, "Note");
+            String alleles = getAttribute(featureI, "Alleles");
+            String alias = getAttribute(featureI, "Alias");
+            String symbol = getAttribute(featureI, "Symbol");
+            String motif = getAttribute(featureI, "Motif");
             // check that id exists and matches collection
             if (id==null) {
                 throw new RuntimeException("GFF line does not include ID: "+featureI.toString());
@@ -153,6 +155,8 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
             if (note!=null) geneticMarker.setAttribute("description", note);
             // alleles
             if (alleles!=null) geneticMarker.setAttribute("alleles", alleles);
+            // motif
+            if (motif!=null) geneticMarker.setAttribute("motif", motif);
             // GeneticMarker gets type=SNP if length==1 as well as alleles
             if (location.length()==1) geneticMarker.setAttribute("type", "SNP");
         }
@@ -206,22 +210,7 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
             geneticMarker.setAttribute("primaryIdentifier", primaryIdentifier);
             geneticMarker.setAttribute("length", String.valueOf(location.length()));
             geneticMarkers.put(primaryIdentifier, geneticMarker);
-            if (dsu.isSupercontig(seqname)) {
-                Item supercontig = getSupercontig(seqname);
-                geneticMarker.setReference("supercontig", supercontig);
-                Item supercontigLocation = createItem("Location");
-                supercontigLocation.setReference("feature", geneticMarker);
-                if (location.isNegative()) {
-                    supercontigLocation.setAttribute("strand", "-1");
-                } else {
-                    supercontigLocation.setAttribute("strand", "1");
-                }
-                supercontigLocation.setAttribute("start", String.valueOf(location.bioStart()));
-                supercontigLocation.setAttribute("end", String.valueOf(location.bioEnd()));
-                supercontigLocation.setReference("locatedOn", supercontig);
-                locations.add(supercontigLocation);
-                geneticMarker.setReference("supercontigLocation", supercontigLocation);
-            } else {
+            if (dsu.isChromosome(seqname)) {
                 Item chromosome = getChromosome(seqname);
                 geneticMarker.setReference("chromosome", chromosome);
                 Item chromosomeLocation = createItem("Location");
@@ -236,8 +225,36 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
                 chromosomeLocation.setReference("locatedOn", chromosome);
                 locations.add(chromosomeLocation);
                 geneticMarker.setReference("chromosomeLocation", chromosomeLocation);
+            } else {
+                Item supercontig = getSupercontig(seqname);
+                geneticMarker.setReference("supercontig", supercontig);
+                Item supercontigLocation = createItem("Location");
+                supercontigLocation.setReference("feature", geneticMarker);
+                if (location.isNegative()) {
+                    supercontigLocation.setAttribute("strand", "-1");
+                } else {
+                    supercontigLocation.setAttribute("strand", "1");
+                }
+                supercontigLocation.setAttribute("start", String.valueOf(location.bioStart()));
+                supercontigLocation.setAttribute("end", String.valueOf(location.bioEnd()));
+                supercontigLocation.setReference("locatedOn", supercontig);
+                locations.add(supercontigLocation);
+                geneticMarker.setReference("supercontigLocation", supercontigLocation);
             }
             return geneticMarker;
         }
+    }
+
+    /**
+     * Return an attribute for either the given name ignoring case
+     */
+    static String getAttribute(FeatureI featureI, String name) {
+        Map<String,String> attributeMap = featureI.getAttributes();
+        for (String attributeName : attributeMap.keySet()) {
+            if (attributeName.equalsIgnoreCase(name)) {
+                return attributeMap.get(attributeName);
+            }
+        }
+        return null;
     }
 }

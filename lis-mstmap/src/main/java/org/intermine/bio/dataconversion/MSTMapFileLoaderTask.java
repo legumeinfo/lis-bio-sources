@@ -96,8 +96,6 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
             getDirectDataLoader().store(dataSource);
             getDirectDataLoader().store(dataSet);
             getDirectDataLoader().store(publication);
-            getIntegrationWriter().commitTransaction();
-            getIntegrationWriter().beginTransaction();
         } catch (ObjectStoreException e) {
             throw new BuildException("Failed to store object", e);
         }
@@ -133,6 +131,9 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
      */
     @Override
     public void processFile(File file) {
+        // DEBUG
+        System.err.println("## "+file.getName());
+        //
         if (file.getName().endsWith("mstmap.tsv")) {
             try {
                 System.err.println("Processing "+file.getName());
@@ -218,6 +219,9 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
         String line = null;
         BufferedReader reader = new BufferedReader(new FileReader(file));
         while ((line=reader.readLine())!=null) {
+            // DEBUG
+            System.err.println(line);
+            //
             if (line.length()==0 || line.startsWith("#")) continue;
             String[] fields = line.split("\t");
             if (samples.size()==0) {
@@ -235,15 +239,15 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
                 LOG.info("Loaded "+samples.size()+" samples from MSTMap genotyping file.");
             } else {
                 // GeneticMarker
-                String markerSecondaryIdentifier = fields[0];
+                String markerName = fields[0];
                 GeneticMarker marker = getDirectDataLoader().createObject(org.intermine.model.bio.GeneticMarker.class);
-                marker.setSecondaryIdentifier(markerSecondaryIdentifier);
+                marker.setName(markerName);
                 marker.setOrganism(organism);
                 marker.addDataSets(dataSet);
                 getDirectDataLoader().store(marker);
                 // GenotypingRecord
                 GenotypingRecord record = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingRecord.class);
-                record.setIdentifier(markerSecondaryIdentifier);
+                record.setIdentifier(markerName);
                 record.setStudy(study);
                 record.setMarker(marker);
                 record.setDataSet(dataSet);

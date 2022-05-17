@@ -20,8 +20,8 @@
     <reference name="study" referenced-type="GenotypingStudy" reverse-reference="samples"/>
   </class>
 
-  <!-- we just get marker.secondaryIdentifier here -->
-  <class name="GeneticMarker" extends="SequenceFeature" is-interface="true">
+  <!-- we just get marker.name here -->
+  <class name="GeneticMarker" is-interface="true">
     <collection name="genotypingRecords" referenced-type="GenotypingRecord" reverse-reference="marker"/>
   </class>
 

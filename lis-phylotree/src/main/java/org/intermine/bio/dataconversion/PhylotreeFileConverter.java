@@ -40,14 +40,12 @@ import org.apache.log4j.Logger;
  */
 public class PhylotreeFileConverter extends DatastoreFileConverter {
 
-    final String GENE_FAMILY_PREFIX="legfed_v1_0";     // because it's in the name of the tarball and directory
-
     private static final Logger LOG = Logger.getLogger(PhylotreeFileConverter.class);
 
     // local Items to store
     Map<String,Item> proteins = new HashMap<>();       // keyed by primaryIdentifier
-    Map<String,Item> phylonodes = new HashMap<>();     // key=(Phylotree.identifier).(Node.id)
-    Map<String,Integer> childCounts = new HashMap<>(); // key=(Phylotree.identifier).(Node.id)
+    Map<String,Item> phylonodes = new HashMap<>();     // key=(phylotree.name).(Node.id)
+    Map<String,Integer> childCounts = new HashMap<>(); // key=(phylotree.name).(Node.id)
     List<Item> geneFamilies = new LinkedList<>();      // unique per file
     List<Item> phylotrees = new LinkedList<>();        // unique per file
     List<Item> newicks = new LinkedList<>();           // unique per file
@@ -97,17 +95,17 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Get/add/update a Phylonode Item, keyed by identifier.id
+     * Get/add/update a Phylonode Item, keyed by name.id
      *
      * @param node the Node
-     * @param identifier the identifier of the PhyloTree
+     * @param name the name of the PhyloTree
      * @return the Phylonode Item
      */
-    Item getPhylonode(Node node, String identifier) {
+    Item getPhylonode(Node node, String name) {
         if (node==null) {
             throw new RuntimeException("null Node passed into getPhylonode.");
         }
-        String key = identifier+"."+node.id;
+        String key = name+"."+node.id;
         Item phylonode;
         if (phylonodes.containsKey(key)) {
             phylonode = phylonodes.get(key);
@@ -180,13 +178,13 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
             throw new RuntimeException(ex);
         }
         // create this Phylotree and GeneFamily
-        String identifier = getCurrentFile().getName();
+        String name = getCurrentFile().getName();
         Item phylotree = createItem("Phylotree");
         phylotrees.add(phylotree);
-        phylotree.setAttribute("identifier", identifier);
+        phylotree.setAttribute("name", name);
         Item geneFamily = createItem("GeneFamily");
         geneFamilies.add(geneFamily);
-        geneFamily.setAttribute("identifier", GENE_FAMILY_PREFIX+"."+identifier);
+        geneFamily.setAttribute("name", name);
         geneFamily.setReference("phylotree", phylotree);
         phylotree.setReference("geneFamily", geneFamily);
         // keep track of the leaf nodes
@@ -214,12 +212,12 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
                 case EDGE:
                     // Indicates an edge in a phylogenetic tree or network.
                     Edge e = new Edge(event.asEdgeEvent());
-                    processEdge(e, identifier);
+                    processEdge(e, name);
                     break;
                 case NODE:
                     // Indicates a node in a phylogenetic tree or network.
                     Node n = new Node(event.asNodeEvent());
-                    Item phylonode = getPhylonode(n, identifier);
+                    Item phylonode = getPhylonode(n, name);
                     phylonode.setReference("tree", phylotree);
                     phylotree.addToCollection("nodes", phylonode);
                     if (n.isFeature()) numLeaves++;
@@ -245,7 +243,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         // now store the Newick file contents
         Item newick = createItem("Newick");
         newicks.add(newick);
-        newick.setAttribute("identifier", identifier);
+        newick.setAttribute("name", name);
         newick.setReference("phylotree", phylotree);
         newick.setReference("geneFamily", geneFamily);
         String contents = "";
@@ -268,8 +266,6 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
             Item protein = createItem("Protein");
             proteins.put(primaryIdentifier, protein);
             protein.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
-	    if (secondaryIdentifier!=null) protein.setAttribute("secondaryIdentifier", secondaryIdentifier);
             return protein;
         }
     }

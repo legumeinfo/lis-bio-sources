@@ -26,7 +26,8 @@ public class DatastoreUtils {
     Map<String,String> genspTaxonId = new HashMap<>();
     Map<String,String> genusSpeciesTaxonId = new HashMap<>();
 
-    Map<String,List<String>> supercontigStrings = new HashMap<>();
+    Map<String,List<String>> chromosomePrefixes = new HashMap<>();
+    Map<String,List<String>> supercontigPrefixes = new HashMap<>();
 
     /**
      * Constructor for methods that require loading properties files.
@@ -68,7 +69,7 @@ public class DatastoreUtils {
             genusSpeciesTaxonId.put(genusSpecies, taxonId);
         }
         
-        // load datastore properties, like supercontig-matching strings
+        // load datastore properties, like chromosome and supercontig prefixes
         Properties datastoreProps = new Properties();
         try {
             InputStream datastorePropsResource = getClass().getClassLoader().getResourceAsStream(DATASTORE_PROP_FILE);
@@ -80,12 +81,17 @@ public class DatastoreUtils {
             for (Object obj : datastoreProps.keySet()) {
                 String key = (String) obj;
                 String[] dotparts = key.split("\\.");
-                if (dotparts[0].equals("supercontig")) {
-                    // supercontig.3870.Amiga=Chr00c,Foo
+                if (dotparts[0].equals("chromosome")) {
+                    // chromosome.medtr.A17=Chr,CP,MT
                     String value = datastoreProps.getProperty(key);
-                    List<String> matchStrings = Arrays.asList(value.split(","));
-                    supercontigStrings.put(dotparts[1]+"."+dotparts[2], matchStrings);
-                }
+                    List<String> prefixes = Arrays.asList(value.split(","));
+                    chromosomePrefixes.put(dotparts[1]+"."+dotparts[2], prefixes);
+                } else if (dotparts[0].equals("supercontig")) {
+                    // supercontig.medtr.A17=Chr0
+                    String value = datastoreProps.getProperty(key);
+                    List<String> prefixes = Arrays.asList(value.split(","));
+                    supercontigPrefixes.put(dotparts[1]+"."+dotparts[2], prefixes);
+                }                    
             }
         } catch (IOException e) {
             throw new RuntimeException("Problem loading properties from:"+DATASTORE_PROP_FILE, e);
@@ -139,12 +145,19 @@ public class DatastoreUtils {
     // }
 
     /**
-     * Determine whether the given primaryIdentifier is for a Supercontig (based on the given matching strings).
-     * 0     1    2    3
-     * glyma.Wm82.gnm4.Gm01 is a chromosome, it's name does not contain a supercontig-identifying string
-     * glyma.Wm82.gnm4.scaffold_99 is a supercontig because its name contains 'scaffold'
+     * Determine whether the given primaryIdentifier is for a Chromosome (based on the given matching strings).
+     *
+     * datastore_config.properties:
+     * supercontig.medtr.A17=MtrunA17Chr0c
+     * chromosome.medtr.A17=MtrunA17Chr
+     *
+     * 0     1   2    3=name
+     * medtr.A17.gnm1.MtrunA17Chr0c03 is a supercontig, its name "MtrunA17Chr0c03" starts with "MtrunA17Chr0c"
+     * medtr.A17.gnm5.MtrunA17Chr1 is a chromosome, its name "MtrunA17Chr1" starts with "MtrunA17Chr" and does NOT start with "MtrunA17Chr0"
+     *
+     * Default is to return false.
      */
-    public boolean isSupercontig(String primaryIdentifier) {
+    public boolean isChromosome(String primaryIdentifier) {
         String[] fields = primaryIdentifier.split("\\.");
         try {
             String gensp = fields[0];
@@ -152,12 +165,22 @@ public class DatastoreUtils {
             String assy = fields[2];
             String name = fields[3];
             String key = gensp+"."+strainIdentifier;
-            List<String> matchStrings = supercontigStrings.get(key);
-            if (matchStrings==null) {
-                throw new RuntimeException("You must add a supercontig matching entry for "+key+" in datastore_config.properties.");
-            }
-            for (String matchString : matchStrings) {
-                if (name.contains(matchString)) return true;
+            List<String> chrPrefixes = chromosomePrefixes.get(key);
+            List<String> scPrefixes = supercontigPrefixes.get(key);
+            // default
+            if (chrPrefixes==null) {
+                return false;
+            } else {
+                // supercontig prefix match takes precedence
+                if (scPrefixes!=null) {
+                    for (String prefix : scPrefixes) {
+                        if (name.startsWith(prefix)) return false;
+                    }
+                }
+                // chromosome prefix match is required to return true
+                for (String prefix : chrPrefixes) {
+                    if (name.startsWith(prefix)) return true;
+                }
             }
         } catch (ArrayIndexOutOfBoundsException ex) {
             throw new RuntimeException(primaryIdentifier+" does not have enough dot-delimited parts!");

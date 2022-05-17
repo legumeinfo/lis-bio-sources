@@ -72,7 +72,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     String dataSourceName, dataSourceUrl, dataSourceDescription;
     String dataSetUrl, dataSetLicence;
 
-    String gensp, assemblyVersion, annotationVersion;
+    String assemblyVersion, annotationVersion;
 
     boolean fastaProcessed; // must be true to store results
     
@@ -136,9 +136,6 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             getDirectDataLoader().store(dataSource);
             getDirectDataLoader().store(dataSet);
             if (publication!=null) getDirectDataLoader().store(publication);
-            // DO WE NEED THESE?
-            // getIntegrationWriter().commitTransaction();
-            // getIntegrationWriter().beginTransaction();
         } catch (ObjectStoreException ex) {
             throw new BuildException("Failed to store object", ex);
         }
@@ -223,8 +220,6 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
                                        "Required fields are: identifier, taxid, synopsis, description, scientific_name_abbrev");
         }
         String collection = DatastoreUtils.extractCollectionFromReadme(file);
-        // needed for DatastoreUtils.isSupercontig()
-        gensp = readme.scientific_name_abbrev;
         // DataSource
         dataSource = getDirectDataLoader().createObject(DataSource.class);
         if (dataSourceName==null) {
@@ -341,15 +336,13 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             identifier = tabChunks[0];
             symbol = tabChunks[1];
         }
-        // HACK: set the className to "Chromosome" or "Supercontig" based on identifier and identifying supercontig matching strings.
+        // HACK: set the className to "Chromosome" or "Supercontig" based on matching identifier and chromosome/supercontig prefixes.
+        // anything that isn't explicitly a chromosome is stored as a supercontig
         if (className.equals("org.intermine.model.bio.Chromosome") || className.equals("org.intermine.model.bio.Supercontig")) {
-            if (gensp==null) {
-                throw new BuildException("ERROR: gensp is not set in README, or README not read before processSequence().");
-            }
-            if (dsu.isSupercontig(identifier)) {
-                className = "org.intermine.model.bio.Supercontig";
-            } else {
+            if (dsu.isChromosome(identifier)) {
                 className = "org.intermine.model.bio.Chromosome";
+            } else {
+                className = "org.intermine.model.bio.Supercontig";
             }
         }
         // create the feature class
@@ -400,7 +393,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             setName(feature, bioJavaSequence, idAttribute, identifier, true);
             setAssemblyVersion(feature);
             setAnnotationVersion(feature);
-            storeCDS(feature, bioSequence);
+            storeSequenceFeature(feature, bioSequence);
         } else if (className.equals("org.intermine.model.bio.Protein")) {
             // lupal.Amiga.gnm1.ann0.mRNA:Lalb_Chr00c01g0403611.1 locus_tag=Lalb_Chr00c01g0403611 gn=Lalb_Chr00c01g0403611 len=96 chr=Lalb_Chr00c01 strand=1 sp=Unknown
             // def=Putative RNA-directed DNA polymerase
@@ -422,19 +415,6 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         } else {
             throw new BuildException("Loading of "+className+" from FASTA isn't currently supported.");
         }
-    }
-
-    /**
-     * Store a CDS and its sequence.
-     */
-    void storeCDS(CDS feature, Sequence bioSequence) throws ObjectStoreException {
-        feature.addDataSets(dataSet);
-        feature.setOrganism(organism);
-        feature.setStrain(strain);
-        feature.setSequence(bioSequence);
-        feature.setLength(bioSequence.getLength());
-        getDirectDataLoader().store(bioSequence);
-        getDirectDataLoader().store(feature);
     }
 
     /**

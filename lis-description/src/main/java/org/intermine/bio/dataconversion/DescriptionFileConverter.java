@@ -39,10 +39,31 @@ import org.ncgr.datastore.DescriptionStrain;
  */
 public class DescriptionFileConverter extends FileConverter {
 
+    Item dataSet;
+    Item dataSource;
     Item organism;
     List<Item> strains = new ArrayList<>();
-	
-    private static final Logger LOG = Logger.getLogger(DescriptionFileConverter.class);
+
+    String dataSetName, dataSetUrl, dataSetDescription;
+
+    /**
+     * dataSetUrl is set in project.xml
+     */
+    public void setDataSetName(String name) {
+        this.dataSetName = name;
+    }
+    /**
+     * dataSetUrl is set in project.xml
+     */
+    public void setDataSetUrl(String url) {
+        this.dataSetUrl = url;
+    }
+    /**
+     * dataSetDescription is set in project.xml
+     */
+    public void setDataSetDescription(String description) {
+        this.dataSetDescription = description;
+    }
 
     /**
      * Create a new DescriptionFileConverter
@@ -87,6 +108,26 @@ public class DescriptionFileConverter extends FileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
+        // stock DataSource
+        Item dataSource = createItem("DataSource");
+        dataSource.setAttribute("name", DatastoreFileConverter.DEFAULT_DATASOURCE_NAME);
+        dataSource.setAttribute("url", DatastoreFileConverter.DEFAULT_DATASOURCE_URL);
+        dataSource.setAttribute("description", DatastoreFileConverter.DEFAULT_DATASOURCE_DESCRIPTION);
+        // DataSet from project.xml params
+        Item dataSet = createItem("DataSet");
+        dataSet = createItem("DataSet");
+        dataSet.setReference("dataSource", dataSource);
+        dataSet.setAttribute("name", dataSetName);
+        dataSet.setAttribute("description", dataSetDescription);
+        dataSet.setAttribute("url", dataSetUrl);
+        // organism and strains
+        organism.addToCollection("dataSets", dataSet);
+        for (Item strain : strains) {
+            strain.addToCollection("dataSets", dataSet);
+        }
+        // store
+        store(dataSource);
+        store(dataSet);
 	store(organism);
         store(strains);
     }

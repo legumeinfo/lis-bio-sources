@@ -1,16 +1,6 @@
 <?xml version="1.0"?>
 <classes>
 
-  <!-- GeneFamily.size is populated by a post-processor since it has multiple annotations contributing -->
-  <class name="GeneFamily" is-interface="true">
-    <attribute name="identifier" type="java.lang.String"/>
-    <attribute name="version" type="java.lang.String"/>
-    <attribute name="size" type="java.lang.Integer"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
-    <collection name="genes" referenced-type="Gene" reverse-reference="geneFamily"/>
-    <collection name="proteins" referenced-type="Protein" reverse-reference="geneFamily"/>
-  </class>
-
   <!-- not all proteins are associated with a gene family -->
   <!-- primary transcript proteins are loaded from protein_primary.faa files -->
   <class name="Protein" is-interface="true">

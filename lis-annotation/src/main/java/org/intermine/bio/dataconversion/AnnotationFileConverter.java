@@ -95,6 +95,9 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                                                       entry("primary_transcript", "Transcript"),
                                                       entry("miRNA", "MiRNA"),
                                                       entry("miRNA_primary_transcript", "MiRNA"),
+                                                      entry("ncRNA", "NcRNA"),
+                                                      entry("pre_miRNA", "PreMiRNA"),
+                                                      entry("transposable_element_gene", "Gene"),
                                                       entry("tRNA", "TRNA"),
                                                       entry("tRNA_primary_transcript", "TRNA"),
                                                       entry("snoRNA", "SnoRNA"),
@@ -436,7 +439,6 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         }
     }
 
-
     /**
      * Process a GFF3 file, referenced by filename because GFFReader doesn't have a method to parse a Reader.
      * Assumes that ID=full-yuck-LIS-identifier and Name=name
@@ -451,14 +453,14 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             Location location = featureI.location();
             String type = featureI.type();
             // attributes
-            String id = featureI.getAttribute("ID");
-            String name = featureI.getAttribute("Name");
-            String parent = featureI.getAttribute("Parent");
-            String note = featureI.getAttribute("Note");
-            String dbxref = featureI.getAttribute("Dbxref");
-            String ontology_term = featureI.getAttribute("Ontology_term");
-            String alleles = featureI.getAttribute("alleles");
-            String symbol = featureI.getAttribute("symbol");
+            String id = getAttribute(featureI, "ID");
+            String name = getAttribute(featureI, "Name");
+            String parent = getAttribute(featureI, "Parent");
+            String note = getAttribute(featureI, "Note");
+            String dbxref = getAttribute(featureI, "Dbxref");
+            String ontology_term = getAttribute(featureI, "Ontology_term");
+            String alleles = getAttribute(featureI, "alleles");
+            String symbol = getAttribute(featureI, "symbol");
             // check that id exists and matches collection
             if (id==null) {
                 throw new RuntimeException("GFF line does not include ID: "+featureI.toString());
@@ -580,24 +582,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
      * Place a feature on a sequence, determining whether it's a Chromosome or Supercontig from its name.
      */
     void placeFeatureOnSequence(Item feature, String seqname, Location location) {
-        if (dsu.isSupercontig(seqname)) {
-            Item supercontig = getSupercontig(seqname);
-            // reference feature on supercontig
-            feature.setReference("supercontig", supercontig);
-            // reference feature on new IM Location
-            Item supercontigLocation = createItem("Location");
-            supercontigLocation.setReference("feature", feature);
-            if (location.isNegative()) {
-                supercontigLocation.setAttribute("strand", "-1");
-            } else {
-                supercontigLocation.setAttribute("strand", "1");
-            }
-            supercontigLocation.setAttribute("start", String.valueOf(location.bioStart()));
-            supercontigLocation.setAttribute("end", String.valueOf(location.bioEnd()));
-            supercontigLocation.setReference("locatedOn", supercontig);
-            locations.add(supercontigLocation);
-            feature.setReference("supercontigLocation", supercontigLocation);
-        } else {
+        if (dsu.isChromosome(seqname)) {
             Item chromosome = getChromosome(seqname);
             // reference feature on chromosome
             feature.setReference("chromosome", chromosome);
@@ -614,6 +599,23 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             chromosomeLocation.setReference("locatedOn", chromosome);
             locations.add(chromosomeLocation);
             feature.setReference("chromosomeLocation", chromosomeLocation);
+        } else {
+            Item supercontig = getSupercontig(seqname);
+            // reference feature on supercontig
+            feature.setReference("supercontig", supercontig);
+            // reference feature on new IM Location
+            Item supercontigLocation = createItem("Location");
+            supercontigLocation.setReference("feature", feature);
+            if (location.isNegative()) {
+                supercontigLocation.setAttribute("strand", "-1");
+            } else {
+                supercontigLocation.setAttribute("strand", "1");
+            }
+            supercontigLocation.setAttribute("start", String.valueOf(location.bioStart()));
+            supercontigLocation.setAttribute("end", String.valueOf(location.bioEnd()));
+            supercontigLocation.setReference("locatedOn", supercontig);
+            locations.add(supercontigLocation);
+            feature.setReference("supercontigLocation", supercontigLocation);
         }
     }
 
@@ -838,5 +840,18 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         String geneId = parts[0];
         for (int i=1; i<parts.length-1; i++) geneId += "."+parts[i];
         return geneId;
+    }
+
+    /**
+     * Return an attribute for the given name ignoring case
+     */
+    static String getAttribute(FeatureI featureI, String name) {
+        Map<String,String> attributeMap = featureI.getAttributes();
+        for (String attributeName : attributeMap.keySet()) {
+            if (attributeName.equalsIgnoreCase(name)) {
+                return attributeMap.get(attributeName);
+            }
+        }
+        return null;
     }
 }

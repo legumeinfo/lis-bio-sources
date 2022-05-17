@@ -177,20 +177,20 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                 throw new RuntimeException(getCurrentFile().getName()+" has record with less than 3 fields:"+line);
             }
             // 0 QTL
-	    String qtlId = fields[0];
-	    Item qtl = getQTL(qtlId);
+	    String qtlName = fields[0];
+	    Item qtl = getQTL(qtlName);
             // 1 QTL.trait
-            String traitId = fields[1];
-            Item trait = getTrait(traitId);
+            String traitName = fields[1];
+            Item trait = getTrait(traitName);
             qtl.setReference("trait", trait);
             // 2 QTL.markerNames
 	    String markerName = fields[2];
-            if (qtlMarkers.containsKey(qtlId)) {
-                String markerNames = qtlMarkers.get(qtlId) + "|" + markerName;
-                qtlMarkers.put(qtlId, markerNames);
+            if (qtlMarkers.containsKey(qtlName)) {
+                String markerNames = qtlMarkers.get(qtlName) + "|" + markerName;
+                qtlMarkers.put(qtlName, markerNames);
                 qtl.setAttribute("markerNames", markerNames);
             } else {
-                qtlMarkers.put(qtlId, markerName);
+                qtlMarkers.put(qtlName, markerName);
                 qtl.setAttribute("markerNames", markerName);
             }
             // 3 QTL.linkageGroup
@@ -204,9 +204,13 @@ public class GeneticFileConverter extends DatastoreFileConverter {
     }
 
     /**
+
      * Process a qtl.tsv file. The first two columns are required.
+     * └── vigun.MAGIC-2017.gen.Huynh_Ehlers_2018.qtl.tsv
+     * The qtl_name may not be unique across the mine, so we'll prefix the collection identifier for the primaryIdentifier. Same for trait.
+     * The first five columns are required.
      * 0                    1                 2                            3         4          5         6                        7    8                 9          10        11
-     * #qtl_name            trait_id          lg                           left_end  right_end  qtl_peak  favorable_allele_source  lod  likelihood_ratio  marker_r2  total_r2  additivity
+     * #qtl_name            trait_name        lg                           left_end  right_end  qtl_peak  favorable_allele_source  lod  likelihood_ratio  marker_r2  total_r2  additivity
      * Early leaf spot 1-1  Early leaf spot   TT_Tifrunner_x_GT-C20_c-A08  100.7     102.9      102                                3.02 12.42             0.56                             
      */
     void processQTLFile(Reader reader) throws IOException {
@@ -215,23 +219,20 @@ public class GeneticFileConverter extends DatastoreFileConverter {
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
             String[] fields = line.split("\t");
-            if (fields.length<3) {
-                throw new RuntimeException("ERROR: file "+getCurrentFile().getName()+" does not have three required fields: qtl,trait,linkage_group in this line:"+line);
+            if (fields.length<5) {
+                throw new RuntimeException("ERROR: file "+getCurrentFile().getName()+" does not have five required fields: qtl_name, trait_name, lg, left_end, right_end here:"+line);
             }
             // 0 QTL
-            String qtlId = fields[0];
-            Item qtl = getQTL(qtlId);
+            Item qtl = getQTL(fields[0]);
             // 1 QTL.trait
-            String traitId = fields[1];
-            Item trait = getTrait(traitId);
-            qtl.setReference("trait", trait);
+            qtl.setReference("trait", getTrait(fields[1]));
             // 2 QTL.linkageGroup
-            String lgId = fields[2];
-            Item linkageGroup = getLinkageGroup(lgId);
-            qtl.setReference("linkageGroup", linkageGroup);
+            qtl.setReference("linkageGroup", getLinkageGroup(fields[2]));
+            // 3 QTL.start
+            qtl.setAttribute("start", String.valueOf(doubleOrZero(fields[3])));
+            // 4 QTL.end
+            qtl.setAttribute("end", String.valueOf(doubleOrZero(fields[4])));
             // optional columns
-            if (fields.length>3) qtl.setAttribute("start", String.valueOf(doubleOrZero(fields[3])));
-            if (fields.length>4) qtl.setAttribute("end", String.valueOf(doubleOrZero(fields[4])));
             if (fields.length>5) qtl.setAttribute("peak", String.valueOf(doubleOrZero(fields[5])));
             // not loading 6:favorableAlleleSource
             if (fields.length>7) qtl.setAttribute("lod", String.valueOf(doubleOrZero(fields[7])));
@@ -245,6 +246,7 @@ public class GeneticFileConverter extends DatastoreFileConverter {
 
     /**
      * Process a trait.tsv file, creating Trait records.
+     * Trait name is likely not unique across mine, so primaryIdentifier has prefix collection identifier prefix.
      * 0                           2
      * #trait_name                 description/method/etc.
      * Early leaf spot resistance  Leafs were photographed and spots were counted...
@@ -256,8 +258,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
             String[] fields = line.split("\t");
             // 0:Trait
-            String identifier = fields[0];
-            Item trait = getTrait(identifier);
+            String name = fields[0];
+            Item trait = getTrait(name);
             // 1:Trait.description
             if (fields.length>1) {
                 String description = fields[1];
@@ -286,8 +288,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                 throw new RuntimeException("File "+getCurrentFile().getName()+" has empty OBO term in line:"+line);
             }
             // 0:Trait
-            String traitId = fields[0];
-            Item trait = getTrait(traitId);
+            String traitName = fields[0];
+            Item trait = getTrait(traitName);
             // 1:OntologyTerm
             String ontologyId = fields[1];
             Item ontologyTerm = getOntologyTerm(ontologyId);
@@ -302,8 +304,9 @@ public class GeneticFileConverter extends DatastoreFileConverter {
 
     /**
      * Process a GWASResult file with trait-marker associations.
+     * Prefix trait_name with collection identifier for primaryIdentifier.
      * 0                                        1               2
-     * #trait_id				marker		pvalue
+     * #trait_name				marker		pvalue
      * 100 Seed weight from Florida-7 NAM	Affx-152042939	9.12e-9
      * 100 Pod weight from Florida-7 NAM	Affx-152042939	9.12e-9
      */
@@ -317,8 +320,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                 throw new RuntimeException("File "+getCurrentFile().getName()+" has less than three fields in line:"+line);
             }
             // 0:Trait
-            String traitId = fields[0];
-            Item trait = getTrait(traitId);
+            String traitName = fields[0];
+            Item trait = getTrait(traitName);
             // 1-2:GWASResult
             String markerName = fields[1];
             double pValue = Double.parseDouble(fields[2]);
@@ -333,15 +336,16 @@ public class GeneticFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Return a new or existing QTL Item
+     * Return a new or existing QTL Item keyed by name
      */
-    Item getQTL(String identifier) {
-        if (qtls.containsKey(identifier)) {
-            return qtls.get(identifier);
+    Item getQTL(String name) {
+        if (qtls.containsKey(name)) {
+            return qtls.get(name);
         } else {
             Item qtl = createItem("QTL");
-            qtl.setAttribute("primaryIdentifier", identifier);
-            qtls.put(identifier, qtl);
+            qtl.setAttribute("name", name);
+            qtl.setAttribute("primaryIdentifier", getCollectionIdentifier()+":"+name);
+            qtls.put(name, qtl);
             return qtl;
         }
     }
@@ -361,15 +365,16 @@ public class GeneticFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Return a new or existing Trait Item
+     * Return a new or existing Trait Item keyed by name.
      */
-    Item getTrait(String primaryIdentifier) {
-        if (traits.containsKey(primaryIdentifier)) {
-            return traits.get(primaryIdentifier);
+    Item getTrait(String name) {
+        if (traits.containsKey(name)) {
+            return traits.get(name);
         } else {
             Item trait = createItem("Trait");
-            trait.setAttribute("primaryIdentifier", primaryIdentifier);
-            traits.put(primaryIdentifier, trait);
+            trait.setAttribute("name", name);
+            trait.setAttribute("primaryIdentifier", getCollectionIdentifier()+":"+name);
+            traits.put(name, trait);
             return trait;
         }
     }
@@ -386,6 +391,16 @@ public class GeneticFileConverter extends DatastoreFileConverter {
             ontologyTerms.put(identifier, ontologyTerm);
             return ontologyTerm;
         }
+    }
+
+    /**
+     * Return the collection identifier portion of the current file.
+     *     0     1          2   3                 4   5
+     * └── vigun.MAGIC-2017.gen.Huynh_Ehlers_2018.qtl.tsv
+     */
+    String getCollectionIdentifier() {
+        String[] parts = getCurrentFile().getName().split("\\.");
+        return parts[1]+"."+parts[2]+"."+parts[3];
     }
 
     /**
