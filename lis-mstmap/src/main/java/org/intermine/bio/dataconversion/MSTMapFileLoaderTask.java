@@ -131,9 +131,6 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
      */
     @Override
     public void processFile(File file) {
-        // DEBUG
-        System.err.println("## "+file.getName());
-        //
         if (file.getName().endsWith("mstmap.tsv")) {
             try {
                 System.err.println("Processing "+file.getName());
@@ -219,9 +216,6 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
         String line = null;
         BufferedReader reader = new BufferedReader(new FileReader(file));
         while ((line=reader.readLine())!=null) {
-            // DEBUG
-            System.err.println(line);
-            //
             if (line.length()==0 || line.startsWith("#")) continue;
             String[] fields = line.split("\t");
             if (samples.size()==0) {

@@ -514,14 +514,23 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 }
             }
             // Parent is not required but must already be loaded if present
+            // This handles multiple parents
             if (parent!=null) {
-                Item parentItem = features.get(parent);
-                if (parentItem==null) parentItem = genes.get(parent);
-                if (parentItem==null) parentItem = mRNAs.get(parent);
-                if (parentItem==null) {
-                    throw new RuntimeException("Parent "+parent+" not loaded before child "+id+". Is the GFF sorted?");
+                List<String> parents = new ArrayList<>();
+                if (parent.contains(",")) {
+                    for (String p : parent.split(",")) parents.add(p);
+                } else {
+                    parents.add(parent);
                 }
-                parentItem.addToCollection("childFeatures", feature);
+                for (String p : parents) {
+                    Item parentItem = features.get(p);
+                    if (parentItem==null) parentItem = genes.get(p);
+                    if (parentItem==null) parentItem = mRNAs.get(p);
+                    if (parentItem==null) {
+                        throw new RuntimeException("Parent "+p+" not loaded before child "+id+". Is the GFF sorted?");
+                    }
+                    parentItem.addToCollection("childFeatures", feature);
+                }
             }
             // Ontology_term=GO:0005506,GO:0016705,GO:0020037,GO:0055114;
             if (ontology_term!=null) {
