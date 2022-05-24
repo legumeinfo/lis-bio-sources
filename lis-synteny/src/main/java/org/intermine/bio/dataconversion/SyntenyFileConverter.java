@@ -193,6 +193,7 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
     void populateSourceRegion(Item syntenicRegion, SyntenyGFF3Record gff, Item organism, Item strain, Item chromosome, Item chromosomeLocation) {
 	syntenicRegion.setAttribute("primaryIdentifier", getSourceRegionName(gff));
 	syntenicRegion.setAttribute("secondaryIdentifier", DatastoreUtils.extractSecondaryIdentifier(getSourceRegionName(gff), false));
+	syntenicRegion.setAttribute("name", DatastoreUtils.extractSecondaryIdentifier(getSourceRegionName(gff), false));
 	syntenicRegion.setAttribute("length", String.valueOf(getSourceEnd(gff)-getSourceStart(gff)+1));
 	syntenicRegion.setAttribute("score", String.valueOf(gff.getScore()));
 	syntenicRegion.setReference("organism", organism);
@@ -217,6 +218,7 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
     void populateTargetRegion(Item syntenicRegion, SyntenyGFF3Record gff, Item organism, Item strain, Item chromosome, Item chromosomeLocation) {
 	syntenicRegion.setAttribute("primaryIdentifier", getTargetRegionName(gff));
 	syntenicRegion.setAttribute("secondaryIdentifier", DatastoreUtils.extractSecondaryIdentifier(getTargetRegionName(gff), false));
+	syntenicRegion.setAttribute("name", DatastoreUtils.extractSecondaryIdentifier(getTargetRegionName(gff), false));
 	syntenicRegion.setAttribute("length", String.valueOf(getTargetEnd(gff)-getTargetStart(gff)+1));
 	syntenicRegion.setAttribute("score", String.valueOf(gff.getScore()));
 	syntenicRegion.setReference("organism", organism);
@@ -348,6 +350,7 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
 	    Item chromosome = createItem("Chromosome");
 	    chromosome.setAttribute("primaryIdentifier", primaryIdentifier);
 	    chromosome.setAttribute("secondaryIdentifier", secondaryIdentifier);
+            chromosome.setAttribute("name", secondaryIdentifier);
             chromosome.setAttribute("assemblyVersion", assemblyVersion);
 	    chromosome.setReference("organism", organism);
 	    chromosome.setReference("strain", strain);
