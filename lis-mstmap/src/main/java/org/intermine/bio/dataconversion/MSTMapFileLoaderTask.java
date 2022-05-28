@@ -31,7 +31,6 @@ import org.intermine.model.bio.DataSource;
 import org.intermine.model.bio.Organism;
 import org.intermine.model.bio.Publication;
 
-import org.intermine.model.bio.GeneticMarker;
 import org.intermine.model.bio.Genotype;
 import org.intermine.model.bio.GenotypingStudy;
 import org.intermine.model.bio.GenotypingSample;
@@ -232,18 +231,12 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
                 study.setSamples(Set.copyOf(samples));
                 LOG.info("Loaded "+samples.size()+" samples from MSTMap genotyping file.");
             } else {
-                // GeneticMarker
+                // marker name
                 String markerName = fields[0];
-                GeneticMarker marker = getDirectDataLoader().createObject(org.intermine.model.bio.GeneticMarker.class);
-                marker.setName(markerName);
-                marker.setOrganism(organism);
-                marker.addDataSets(dataSet);
-                getDirectDataLoader().store(marker);
                 // GenotypingRecord
                 GenotypingRecord record = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingRecord.class);
-                record.setIdentifier(markerName);
+                record.setMarkerName(markerName);
                 record.setStudy(study);
-                record.setMarker(marker);
                 record.setDataSet(dataSet);
                 getDirectDataLoader().store(record);
                 // Genotype

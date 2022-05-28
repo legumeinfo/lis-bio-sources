@@ -14,27 +14,21 @@
     <collection name="samples" referenced-type="GenotypingSample" reverse-reference="study"/>
   </class>
 
-  <!-- sample1 sample2 sample3 ... -->
+  <!-- represents a column for a specific sample in the MSTmap genotype file -->
   <class name="GenotypingSample" extends="BioEntity" is-interface="true">
-    <reference name="organism" referenced-type="Organism"/>
     <reference name="study" referenced-type="GenotypingStudy" reverse-reference="samples"/>
   </class>
 
-  <!-- we just get marker.name here -->
-  <class name="GeneticMarker" is-interface="true">
-    <collection name="genotypingRecords" referenced-type="GenotypingRecord" reverse-reference="marker"/>
-  </class>
-
-  <!-- represents a row in the MSTmap genotype file here (more info when VCF record) -->
-  <!-- identifier allows VCF files that do not have markers -->
+  <!-- represents a row for a specific marker in the MSTmap genotype file -->
+  <!-- markers are populated by a post-processor matching markerName to GeneticMarker.name -->
   <class name="GenotypingRecord" is-interface="true">
-    <attribute name="identifier" type="java.lang.String"/>
+    <attribute name="markerName" type="java.lang.String"/>
     <reference name="study" referenced-type="GenotypingStudy"/>
-    <reference name="marker" referenced-type="GeneticMarker" reverse-reference="genotypingRecords"/>
     <reference name="dataSet" referenced-type="DataSet"/>
+    <collection name="markers" referenced-type="GeneticMarker" />
   </class>
 
-  <!-- simple object -->
+  <!-- simple object providing a value on the genotyping matrix -->
   <class name="Genotype" extends="java.lang.Object" is-interface="false">
     <attribute name="value" type="java.lang.String"/>
     <reference name="sample" referenced-type="GenotypingSample"/>
