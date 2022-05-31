@@ -188,6 +188,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         Item phylotree = createItem("Phylotree");
         phylotrees.add(phylotree);
         phylotree.setAttribute("name", name);
+        phylotree.setReference("dataSet", dataSet);
         Item geneFamily = createItem("GeneFamily");
         geneFamilies.add(geneFamily);
         geneFamily.setAttribute("name", name);
@@ -266,6 +267,11 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
      * Get/add a Protein Item, keyed by primaryIdentifier
      */
     Item getProtein(String primaryIdentifier) {
+        // check that we've got a full-yuck identifier
+        String[] parts = primaryIdentifier.split("\\.");
+        if (parts.length<5) {
+            throw new RuntimeException("Protein primary identifier in "+getCurrentFile().getName()+" is not LIS format:"+primaryIdentifier);
+        }
         if (proteins.containsKey(primaryIdentifier)) {
             return proteins.get(primaryIdentifier);
         } else {
