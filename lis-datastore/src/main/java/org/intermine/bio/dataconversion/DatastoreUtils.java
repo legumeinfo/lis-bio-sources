@@ -110,46 +110,55 @@ public class DatastoreUtils {
     }
 
     /**
-     * Get the gensp (like "phavu") for a taxon ID.
-     */
-    // public String getGensp(String taxonId) {
-    //     String gensp = taxonIdGensp.get(taxonId);
-    //     if (gensp==null) {
-    //         throw new RuntimeException("gensp value not available for Taxon ID "+gensp);
-    //     }
-    //     return gensp;
-    // }
-
-    /**
-     * Get the Genus for a gensp string like "phavu".
-     */
-    // public String getGenus(String gensp) {
-    //     String taxonId = getTaxonId(gensp);
-    //     if (taxonIdGenus.containsKey(taxonId)) {
-    //         return taxonIdGenus.get(taxonId);
-    //     } else {
-    //         throw new RuntimeException("Genus not available for taxon ID "+taxonId);
-    //     }
-    // }
-    
-    /**
-     * Get the species for a gensp string like "phavu".
-     */
-    // public String getSpecies(String gensp) {
-    //     String taxonId = genspTaxonId.get(gensp);
-    //     if (taxonIdSpecies.containsKey(taxonId)) {
-    //         return taxonIdSpecies.get(taxonId);
-    //     } else {
-    //         throw new RuntimeException("Species not available for taxon ID "+taxonId);
-    //     }
-    // }
-
-    /**
-     * Determine whether the given primaryIdentifier is for a Chromosome (based on the given matching strings).
+     * Determine whether the given primaryIdentifier is for a Supercontig based on entry in datastore_config.properties.
      *
      * datastore_config.properties:
      * supercontig.medtr.A17=MtrunA17Chr0c
      * chromosome.medtr.A17=MtrunA17Chr
+     *
+     * Supercontig match takes priority, as follows:
+     *
+     * 0     1   2    3=name
+     * medtr.A17.gnm1.MtrunA17Chr0c03 is a supercontig, its name "MtrunA17Chr0c03" starts with "MtrunA17Chr0c"
+     * medtr.A17.gnm5.MtrunA17Chr1 is a chromosome, its name "MtrunA17Chr1" starts with "MtrunA17Chr" and does NOT start with "MtrunA17Chr0"
+     *
+     * Default is to return false.
+     */
+    public boolean isSupercontig(String primaryIdentifier) {
+        String[] fields = primaryIdentifier.split("\\.");
+        try {
+            String gensp = fields[0];
+            String strainIdentifier = fields[1];
+            String assy = fields[2];
+            String name = fields[3];
+            String key = gensp+"."+strainIdentifier;
+            List<String> scPrefixes = supercontigPrefixes.get(key);
+            if (scPrefixes==null) {
+                // we don't know
+                return false;
+            } else {
+                for (String prefix : scPrefixes) {
+                    if (name.startsWith(prefix)) {
+                        // found match
+                        return true;
+                    }
+                }
+            }
+            // we don't know
+            return false;
+        } catch (ArrayIndexOutOfBoundsException ex) {
+            throw new RuntimeException(primaryIdentifier+" does not have enough dot-delimited parts!");
+        }
+    }
+
+    /**
+     * Determine whether the given primaryIdentifier is for a Chromosome based on entry in datastore_config.properties.
+     *
+     * datastore_config.properties:
+     * supercontig.medtr.A17=MtrunA17Chr0c
+     * chromosome.medtr.A17=MtrunA17Chr
+     *
+     * Supercontig match takes priority, as follows:
      *
      * 0     1   2    3=name
      * medtr.A17.gnm1.MtrunA17Chr0c03 is a supercontig, its name "MtrunA17Chr0c03" starts with "MtrunA17Chr0c"
@@ -158,6 +167,8 @@ public class DatastoreUtils {
      * Default is to return false.
      */
     public boolean isChromosome(String primaryIdentifier) {
+        // Supercontig takes priority
+        if (isSupercontig(primaryIdentifier)) return false;
         String[] fields = primaryIdentifier.split("\\.");
         try {
             String gensp = fields[0];
@@ -167,27 +178,24 @@ public class DatastoreUtils {
             String key = gensp+"."+strainIdentifier;
             List<String> chrPrefixes = chromosomePrefixes.get(key);
             List<String> scPrefixes = supercontigPrefixes.get(key);
-            // default
             if (chrPrefixes==null) {
+                // we don't know
                 return false;
             } else {
-                // supercontig prefix match takes precedence
-                if (scPrefixes!=null) {
-                    for (String prefix : scPrefixes) {
-                        if (name.startsWith(prefix)) return false;
+                for (String prefix : chrPrefixes) {
+                    if (name.startsWith(prefix)) {
+                        // found match
+                        return true;
                     }
                 }
-                // chromosome prefix match is required to return true
-                for (String prefix : chrPrefixes) {
-                    if (name.startsWith(prefix)) return true;
-                }
             }
+            // we don't know
+            return false;
         } catch (ArrayIndexOutOfBoundsException ex) {
             throw new RuntimeException(primaryIdentifier+" does not have enough dot-delimited parts!");
         }
-	return false;
     }
-
+    
     /**
      * Extract the gensp string from the given identifier.
      * glyma.Wm82.gnm1.Chr04
