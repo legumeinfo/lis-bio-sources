@@ -12,6 +12,7 @@ package org.intermine.bio.dataconversion;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.InputStream;
 import java.io.IOException;
 
 import java.util.Arrays;
@@ -27,8 +28,16 @@ import org.apache.tools.ant.BuildException;
 import org.biojava.nbio.core.exceptions.ParserException;
 import org.biojava.nbio.core.sequence.DNASequence;
 import org.biojava.nbio.core.sequence.ProteinSequence;
-import org.biojava.nbio.core.sequence.io.FastaReaderHelper;
+import org.biojava.nbio.core.sequence.compound.AminoAcidCompound;
+import org.biojava.nbio.core.sequence.compound.AminoAcidCompoundSet;
+import org.biojava.nbio.core.sequence.compound.NucleotideCompound;
+import org.biojava.nbio.core.sequence.compound.AmbiguityDNACompoundSet;
+import org.biojava.nbio.core.sequence.io.DNASequenceCreator;
+import org.biojava.nbio.core.sequence.io.FastaReader;
+import org.biojava.nbio.core.sequence.io.GenericFastaHeaderParser;
+import org.biojava.nbio.core.sequence.io.ProteinSequenceCreator;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
+import org.biojava.nbio.core.util.InputStreamProvider;
 
 import org.intermine.metadata.Util;
 import org.intermine.model.InterMineObject;
@@ -183,12 +192,13 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             } catch (ObjectStoreException ex) {
                 throw new BuildException(ex);
             }
-        } else if (file.getName().endsWith(".fna") || file.getName().endsWith(".faa")) {
+        } else if (file.getName().endsWith(".fna") || file.getName().endsWith(".fna.gz") ||
+                   file.getName().endsWith(".faa") || file.getName().endsWith(".faa.gz")) {
             // README must precede FASTA
             if (organism==null) {
                 throw new BuildException("ERROR: README missing or not read before FASTA file. Add to includes or switch order in project.xml.");
             }
-            if (file.getName().endsWith(".fna")) {
+            if (file.getName().endsWith(".fna") || file.getName().endsWith(".fna.gz")) {
                 sequenceType = "dna";
             } else {
                 sequenceType = "protein";
@@ -266,6 +276,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         // Organism
         organism = getDirectDataLoader().createObject(Organism.class);
         organism.setTaxonId(String.valueOf(readme.taxid));
+        organism.addDataSets(dataSet);
         // Strain
         String strainIdentifier = DatastoreUtils.extractStrainIdentifierFromCollection(collection);
         if (strainIdentifier==null) {
@@ -274,6 +285,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         strain = getDirectDataLoader().createObject(Strain.class);
         strain.setIdentifier(strainIdentifier);
         strain.setOrganism(organism);
+        strain.addDataSets(dataSet);
     }
     
     /**
@@ -282,12 +294,12 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     void processFasta(File file) throws BuildException {
         try {
             if (sequenceType.equals("dna")) {
-                LinkedHashMap<String,DNASequence> sequenceMap = FastaReaderHelper.readFastaDNASequence(file);
+                LinkedHashMap<String,DNASequence> sequenceMap = readFastaDNASequence(file);
                 for (DNASequence sequence : sequenceMap.values()) {
                     processSequence(sequence);
                 }
             } else if (sequenceType.equals("protein")) {
-                LinkedHashMap<String,ProteinSequence> sequenceMap = FastaReaderHelper.readFastaProteinSequence(file);
+                LinkedHashMap<String,ProteinSequence> sequenceMap = readFastaProteinSequence(file);
                 for (ProteinSequence sequence : sequenceMap.values()) {
                     processSequence(sequence);
                 }
@@ -298,12 +310,10 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             throw new BuildException("Sequence not in FASTA format or wrong alphabet for: "+file, e);
         } catch (NoSuchElementException e) {
             throw new BuildException("No FASTA sequences in: "+file, e);
-        } catch (FileNotFoundException e) {
-            throw new BuildException("Problem reading file - file not found: "+file, e);
         } catch (ObjectStoreException e) {
             throw new BuildException("ObjectStore problem while processing: "+file, e);
         } catch (IOException e) {
-            throw new BuildException("Error while closing FileReader for: "+file, e);
+            throw new BuildException("Problem reading FASTA: "+file, e);
         }
     }
 
@@ -337,9 +347,13 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             symbol = tabChunks[1];
         }
         // HACK: set the className to "Chromosome" or "Supercontig" based on matching identifier and chromosome/supercontig prefixes.
-        // anything that isn't explicitly a chromosome is stored as a supercontig
-        if (className.equals("org.intermine.model.bio.Chromosome") || className.equals("org.intermine.model.bio.Supercontig")) {
-            if (dsu.isChromosome(identifier)) {
+        // This is only for FASTAs that contain BOTH; if the FASTA only has Supercontigs, then set className="org.intermine.model.bio.Supercontig".
+        // Anything that isn't identified is stored as a supercontig
+        // Supercontig precedes Chromosome so that a Supercontig Chr0[stuff] is identified versus a Chromosome Chr[stuff].
+        if (className.equals("org.intermine.model.bio.Chromosome")) {
+            if (dsu.isSupercontig(identifier)) {
+                className = "org.intermine.model.bio.Supercontig";
+            } else if (dsu.isChromosome(identifier)) {
                 className = "org.intermine.model.bio.Chromosome";
             } else {
                 className = "org.intermine.model.bio.Supercontig";
@@ -363,7 +377,6 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         // do the work separately for each class since some objects have special attributes to assign from header data //
         /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         if (className.equals("org.intermine.model.bio.Chromosome")) {
-            // vigun.IT97K-499-35.gnm1.Vu01 (old4)
             Chromosome feature = (Chromosome) getDirectDataLoader().createObject(imClass);
             feature.setPrimaryIdentifier(identifier);
             setSecondaryIdentifier(feature, identifier, false);
@@ -371,7 +384,6 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             setAssemblyVersion(feature);
             storeSequenceFeature(feature, bioSequence);
         } else if (className.equals("org.intermine.model.bio.Supercontig")) {
-            // vigun.IT97K-499-35.gnm1.contig_700
             Supercontig feature = (Supercontig) getDirectDataLoader().createObject(imClass);
             feature.setPrimaryIdentifier(identifier);
             setSecondaryIdentifier(feature, identifier, false);
@@ -587,4 +599,39 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             throw new BuildException("Annotation version is not set from README.");
         }
     }
+
+    /**
+     * Use FastaReader to read DNA sequences from a file, using AmbiguityDNACompoundSet to handle non-ATCG symbols.
+     *
+     * @param the FASTA file, which may be gzipped
+     * @return a map of String identifiers to DNASequence objects
+     */
+    LinkedHashMap<String,DNASequence> readFastaDNASequence(File file) throws IOException {
+        // automatically uncompress files using InputStreamProvider
+        InputStreamProvider isp = new InputStreamProvider();
+        InputStream inStream = isp.getInputStream(file);
+        FastaReader<DNASequence, NucleotideCompound> fastaReader =
+            new FastaReader<DNASequence, NucleotideCompound>(inStream,
+                                                             new GenericFastaHeaderParser<DNASequence, NucleotideCompound>(),
+                                                             new DNASequenceCreator(AmbiguityDNACompoundSet.getDNACompoundSet()));
+        return fastaReader.process();
+    }
+
+    /**
+     * Use FastaReader to read Protein sequences from a file, using AmbiguityDNACompoundSet to handle non-ATCG symbols.
+     *
+     * @param the FASTA file, which may be gzipped
+     * @return a map of String identifiers to DNASequence objects
+     */
+    LinkedHashMap<String,ProteinSequence> readFastaProteinSequence(File file) throws IOException {
+        // automatically uncompress files using InputStreamProvider
+        InputStreamProvider isp = new InputStreamProvider();
+        InputStream inStream = isp.getInputStream(file);
+        FastaReader<ProteinSequence, AminoAcidCompound> fastaReader =
+            new FastaReader<ProteinSequence, AminoAcidCompound>(inStream,
+                                                                new GenericFastaHeaderParser<ProteinSequence, AminoAcidCompound>(),
+                                                                new ProteinSequenceCreator(AminoAcidCompoundSet.getAminoAcidCompoundSet()));
+        return fastaReader.process();
+    }
+
 }
