@@ -1,8 +1,10 @@
 package org.intermine.bio.dataconversion;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.Reader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -32,6 +34,8 @@ import org.biojava.nbio.genome.parsers.gff.FeatureList;
 import org.biojava.nbio.genome.parsers.gff.GFF3Reader;
 import org.biojava.nbio.genome.parsers.gff.Location;
 
+import org.ncgr.zip.GZIPBufferedReader;
+
 /**
  * Loads data from an LIS genetic marker GFF3 file.
  *
@@ -40,6 +44,7 @@ import org.biojava.nbio.genome.parsers.gff.Location;
 public class MarkerGFF3FileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(MarkerGFF3FileConverter.class);
+    private static final String TEMPFILE = "/tmp/marker.gff3";
 
     // all Items to be stored
     Map<String,Item> chromosomes = new HashMap<>();
@@ -72,7 +77,7 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
             }
             setStrain();
         } else if (getCurrentFile().getName().endsWith(".gff3")) {
-            System.out.println("Processing "+getCurrentFile().getName());
+            System.out.println("## Processing "+getCurrentFile().getName());
             processMarkerGFF3File();
 	}
     }
@@ -121,7 +126,19 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
         if (readme==null) {
             throw new RuntimeException("README not read before "+getCurrentFile().getName()+". Aborting.");
         }
-        FeatureList featureList = GFF3Reader.read(getCurrentFile().getPath());
+        // uncompress the gff3.gz file to a temp file
+        File tempfile = new File(TEMPFILE);
+        tempfile.delete();
+        BufferedWriter writer = new BufferedWriter(new FileWriter(tempfile));
+        BufferedReader reader = GZIPBufferedReader.getReader(getCurrentFile());
+        String line = null;
+        while ( (line=reader.readLine())!=null ) {
+            writer.write(line);
+            writer.newLine();
+        }
+        writer.close();
+        // now load the uncompressed GFF3
+        FeatureList featureList = GFF3Reader.read(TEMPFILE);
         for (FeatureI featureI : featureList) {
             String seqname = featureI.seqname();
             Location location = featureI.location();

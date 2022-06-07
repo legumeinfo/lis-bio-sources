@@ -132,7 +132,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
      * Note: we get strain from the collection identifier in setStrain(), not from the README.
      */
     void processReadme(Reader reader) throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
+        System.out.println("## Processing "+getCurrentFile().getName());
         readme = Readme.parse(reader);
         // check required stuff
         if (readme.identifier==null ||

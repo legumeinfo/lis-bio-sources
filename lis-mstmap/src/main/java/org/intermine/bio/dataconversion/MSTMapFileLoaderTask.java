@@ -40,6 +40,7 @@ import org.apache.log4j.Logger;
 import org.apache.tools.ant.BuildException;
 
 import org.ncgr.datastore.Readme;
+import org.ncgr.zip.GZIPBufferedReader;
 
 /**
  * Load genotyping study data from an MSTmap file (UC-Riverside).
@@ -130,7 +131,7 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
      */
     @Override
     public void processFile(File file) {
-        if (file.getName().endsWith("mstmap.tsv")) {
+        if (file.getName().endsWith("mstmap.tsv.gz")) {
             try {
                 System.err.println("Processing "+file.getName());
                 processMSTMapFile(file);
@@ -207,13 +208,13 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
     }
 
     /**
-     * Process a MSTMap file. We assume here that all MSTMaps in a directory are for the same organism
+     * Process a gzipped MSTMap file. We assume here that all MSTMaps in a directory are for the same organism
      */
     public void processMSTMapFile(File file) throws ObjectStoreException, IOException, FileNotFoundException {
         List<GenotypingSample> samples = new LinkedList<>(); // has to support get(i)
         // spin through the MSTMap file
         String line = null;
-        BufferedReader reader = new BufferedReader(new FileReader(file));
+        BufferedReader reader = GZIPBufferedReader.getReader(file);
         while ((line=reader.readLine())!=null) {
             if (line.length()==0 || line.startsWith("#")) continue;
             String[] fields = line.split("\t");

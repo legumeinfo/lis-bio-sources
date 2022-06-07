@@ -1,8 +1,8 @@
 package org.intermine.bio.dataconversion;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
-import java.io.BufferedReader;
 import java.io.Reader;
 import java.io.IOException;
 import java.util.List;
@@ -17,14 +17,15 @@ import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
 import org.ncgr.datastore.Readme;
+import org.ncgr.zip.GZIPBufferedReader;
 
 /**
  * DataConverter to create ExpressionSource, ExpressionSample and ExpressionValue items from a single set of datastore expression files.
  *
  * expression/G19833.gnm1.ann1.expr.4ZDQ/
- * ├── phavu.G19833.gnm1.ann1.expr.4ZDQ.obo.tsv
- * ├── phavu.G19833.gnm1.ann1.expr.4ZDQ.samples.tsv
- * ├── phavu.G19833.gnm1.ann1.expr.4ZDQ.values.tsv
+ * ├── phavu.G19833.gnm1.ann1.expr.4ZDQ.obo.tsv.gz
+ * ├── phavu.G19833.gnm1.ann1.expr.4ZDQ.samples.tsv.gz
+ * ├── phavu.G19833.gnm1.ann1.expr.4ZDQ.values.tsv.gz
  * └── README.G19833.gnm1.ann1.expr.4ZDQ.yml
  *
  * @author Sam Hokin
@@ -93,14 +94,17 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                 expressionSource.setReference("bioProject", bioProject);
             }
             if (publication!=null) expressionSource.addToCollection("publications", publication);
-        } else if (getCurrentFile().getName().endsWith("samples.tsv")) {
-	    processSamples(reader);
+        } else if (getCurrentFile().getName().endsWith("samples.tsv.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
+	    processSamples();
             samplesRead = true;
-        } else if (getCurrentFile().getName().endsWith("values.tsv")) {
-            processExpression(reader);
+        } else if (getCurrentFile().getName().endsWith("values.tsv.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
+            processExpression();
             valuesRead = true;
-        } else if (getCurrentFile().getName().endsWith("obo.tsv")) {
-            processOboFile(reader);
+        } else if (getCurrentFile().getName().endsWith("obo.tsv.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
+            processOboFile();
             oboRead = true;
         }
     }
@@ -111,7 +115,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     @Override
     public void close() throws ObjectStoreException {
         if (!samplesRead || !valuesRead || !oboRead) {
-            throw new RuntimeException("One of samples.tsv, values.tsv, and/or obo.tsv files not read. Aborting.");
+            throw new RuntimeException("One of samples.tsv.gz, values.tsv.gz, and/or obo.tsv.gz files not read. Aborting.");
         }
         // DatastoreFileConverter items
         storeCollectionItems();
@@ -140,7 +144,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     /**
      * Process the file which describes the samples.
      *
-     * cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv
+     * cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv.gz
      * 
      * 0sample_name                       1key       sample_uniquename                  description                                    treatment             tissue
      * Mature seed at reprod (SRR5199304) SRR5199304 Mature seed at reprod (SRR5199304) Mature seed at Reproductive stage (SRR5199304) Mature seed at reprod Mature seed 
@@ -148,11 +152,10 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * dev_stage          age      organism      infraspecies cultivar        other sra_run    biosample_accession sra_accession bioproject_accession sra_study
      * Reproductive stage          Cajanus cajan ICPL87119    Asha(ICPL87119)       SRR5199304 SAMN06264156        SRS1937936    PRJNA354681          SRP097728
      */
-    void processSamples(Reader reader) throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
+    void processSamples() throws IOException {
         String[] colnames = null;
         int num = 0;
-	BufferedReader br = new BufferedReader(reader);
+	BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
@@ -200,10 +203,9 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * geneID	SRR5199304	SRR5199305	SRR5199306	SRR5199307	...
      * cajca.ICPL87119.gnm1.ann1.C.cajan_00002	0	0	0	0	...
      */
-    void processExpression(Reader reader) throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
+    void processExpression() throws IOException {
         List<Item> sampleList = new LinkedList<>();
-	BufferedReader br = new BufferedReader(reader);
+	BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
@@ -244,9 +246,8 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     /**
      * Process a file relating samples to ontology terms.
      */
-    void processOboFile(Reader reader) throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
-	BufferedReader br = new BufferedReader(reader);
+    void processOboFile() throws IOException {
+	BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank

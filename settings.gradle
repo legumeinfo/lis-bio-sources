@@ -13,7 +13,8 @@ include ':bio-source-lis-datastore',
     ':bio-source-lis-mstmap',
     ':bio-source-lis-annotation',
     ':bio-source-lis-markers',
-    ':bio-source-lis-map'
+    ':bio-source-lis-map',
+    ':bio-source-lis-phytozome'
 
 project(':bio-source-lis-datastore').projectDir = new File(settingsDir, 'lis-datastore')
 project(':bio-source-lis-description').projectDir = new File(settingsDir, 'lis-description')
@@ -29,3 +30,4 @@ project(':bio-source-lis-mstmap').projectDir = new File(settingsDir, 'lis-mstmap
 project(':bio-source-lis-annotation').projectDir = new File(settingsDir, 'lis-annotation')
 project(':bio-source-lis-markers').projectDir = new File(settingsDir, 'lis-markers')
 project(':bio-source-lis-map').projectDir = new File(settingsDir, 'lis-map')
+project(':bio-source-lis-phytozome').projectDir = new File(settingsDir, 'lis-phytozome')

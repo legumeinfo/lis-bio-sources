@@ -16,6 +16,8 @@ import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
+import org.ncgr.zip.GZIPBufferedReader;
+
 /**
  * Read synteny blocks for two organisms from a DAGchainer synteny GFF file and store them as SyntenyBlock items,
  * each related to two SyntenicRegions. This is designed to use the GFF file produced by DAGchainer.
@@ -63,16 +65,16 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
     /**
      * {@inheritDoc}
      * Process each GFF file by creating SyntenyBlock and SyntenicRegion items.
-     * 0     1           2    3    4 5     6    7    8    (9)  (10)
-     * cicar.CDCFrontier.gnm1.ann1.x.lotja.MG20.gnm3.ann1.7Bqh.gff3
+     * 0     1           2    3    4 5     6    7    8    (9)  (10) (11)
+     * cicar.CDCFrontier.gnm1.ann1.x.lotja.MG20.gnm3.ann1.7Bqh.gff3.gz
      */
     @Override
     public void process(Reader reader) throws IOException {
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
             setStrain();
-        } else if (getCurrentFile().getName().endsWith("gff") || getCurrentFile().getName().endsWith("gff3")) {
-            processGFF(reader);
+        } else if (getCurrentFile().getName().endsWith("gff3.gz")) {
+            processGFF();
         }
     }
 
@@ -94,15 +96,15 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
 
     /**
      * Process a synteny GFF file. The filename must have 9 dot-separated parts as follows:
-     * 0     1           2    3 4     5    6    7    8
-     * cicar.CDCFrontier.gnm1.x.lotja.MG20.gnm3.7Bqh.gff3
+     * 0     1           2    3 4     5    6    7    8    9
+     * cicar.CDCFrontier.gnm1.x.lotja.MG20.gnm3.7Bqh.gff3.gz
      */
-    public void processGFF(Reader reader) throws IOException {
+    public void processGFF() throws IOException {
         System.out.println("Processing "+getCurrentFile().getName());
         dsu = new DatastoreUtils();
         String[] fileNameParts = getCurrentFile().getName().split("\\.");
-        if (fileNameParts.length!=9) {
-            throw new RuntimeException(getCurrentFile().getName()+" does not have 9 dot-separated parts.");
+        if (fileNameParts.length!=10) {
+            throw new RuntimeException(getCurrentFile().getName()+" does not have 10 dot-separated parts including .gz extension.");
         }
         // get the identifiers from the file name
         String sourceGensp = fileNameParts[0];
@@ -122,7 +124,8 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
         // -------------------------------------------------------------------------------------------------------
         // Load the GFF data into a map. Adds new chromosomes to chromosomeMap, keyed by primaryIdentifier.
         // -------------------------------------------------------------------------------------------------------
-        BufferedReader gffReader = new BufferedReader(reader);
+        // now read in the gzipped GFF3 file 
+        BufferedReader gffReader = GZIPBufferedReader.getReader(getCurrentFile());
         String line = null;
         while ((line=gffReader.readLine())!=null) {
             // comment

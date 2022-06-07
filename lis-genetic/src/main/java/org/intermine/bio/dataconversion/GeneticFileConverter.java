@@ -17,6 +17,7 @@ import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
 import org.ncgr.datastore.Readme;
+import org.ncgr.zip.GZIPBufferedReader;
 
 /**
  * Store GWAS or genetic map data from tab-delimited files in LIS Datastore /genetic/ collections.
@@ -103,21 +104,21 @@ public class GeneticFileConverter extends DatastoreFileConverter {
                 }
                 gwas.setAttribute("genotypes", genotypes);
             }
-	} else if (getCurrentFile().getName().endsWith("qtlmrk.tsv")) {
-            System.out.println("Processing "+getCurrentFile().getName());
-	    processQTLMrkFile(reader);
-        } else if (getCurrentFile().getName().endsWith("obo.tsv")) {
-            System.out.println("Processing "+getCurrentFile().getName());
-            processOboFile(reader);
-	} else if (getCurrentFile().getName().endsWith("qtl.tsv")) {
-            System.out.println("Processing "+getCurrentFile().getName());
-            processQTLFile(reader);
-	} else if (getCurrentFile().getName().endsWith("trait.tsv")) {
-            System.out.println("Processing "+getCurrentFile().getName());
-            processTraitFile(reader);
-	} else if (getCurrentFile().getName().endsWith("result.tsv")) {
-            System.out.println("Processing "+getCurrentFile().getName());
-            processResultFile(reader);
+	} else if (getCurrentFile().getName().endsWith("qtlmrk.tsv.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
+	    processQTLMrkFile();
+        } else if (getCurrentFile().getName().endsWith("obo.tsv.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
+            processOboFile();
+	} else if (getCurrentFile().getName().endsWith("qtl.tsv.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
+            processQTLFile();
+	} else if (getCurrentFile().getName().endsWith("trait.tsv.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
+            processTraitFile();
+	} else if (getCurrentFile().getName().endsWith("result.tsv.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
+            processResultFile();
 	}
     }
 
@@ -171,8 +172,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * Seed oleic 1-1     Seed oleic      A082_1      peak
      * Sprout yield 1-1   Sprout yield    A089_2      flanking
      */
-    void processQTLMrkFile(Reader reader) throws IOException {
-        BufferedReader br = new BufferedReader(reader);
+    void processQTLMrkFile() throws IOException {
+        BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
 	String line;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue;
@@ -211,8 +212,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * 0                    1                 2                            3         4          5         6                        7    8                 9          10        11
      * Early leaf spot 1-1  Early leaf spot   TT_Tifrunner_x_GT-C20_c-A08  100.7     102.9      102                                3.02 12.42             0.56                             
      */
-    void processQTLFile(Reader reader) throws IOException {
-        BufferedReader br = new BufferedReader(reader);
+    void processQTLFile() throws IOException {
+        BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
 	String line;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
@@ -253,8 +254,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * #trait_name                 description/method/etc.
      * Early leaf spot resistance  Leafs were photographed and spots were counted...
      */
-    void processTraitFile(Reader reader) throws IOException {
-        BufferedReader br = new BufferedReader(reader);
+    void processTraitFile() throws IOException {
+        BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
 	String line;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
@@ -277,8 +278,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * #trait       obo_term
      * Seed weight  TO:0000181
      */
-    void processOboFile(Reader reader) throws IOException {
-        BufferedReader br = new BufferedReader(reader);
+    void processOboFile() throws IOException {
+        BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
 	String line;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line
@@ -313,8 +314,8 @@ public class GeneticFileConverter extends DatastoreFileConverter {
      * 100 Seed weight from Florida-7 NAM	Affx-152042939	9.12e-9
      * 100 Pod weight from Florida-7 NAM	Affx-152042939	9.12e-9
      */
-    void processResultFile(Reader reader) throws IOException {
-        BufferedReader bufferedReader = new BufferedReader(reader);
+    void processResultFile() throws IOException {
+        BufferedReader bufferedReader = GZIPBufferedReader.getReader(getCurrentFile());
 	String line;
         while ((line=bufferedReader.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank line

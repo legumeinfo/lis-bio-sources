@@ -19,6 +19,7 @@ import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
 import org.ncgr.datastore.Readme;
+import org.ncgr.zip.GZIPBufferedReader;
 
 /**
  * Store genetic maps from tab-delimited files in LIS Datastore /maps/ collections.
@@ -51,8 +52,8 @@ public class MapFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      *
      * mixed.map.GmComposite2003/
-     * ├── glyma.mixed.map.GmComposite2003.lg.tsv
-     * ├── glyma.mixed.map.GmComposite2003.mrk.tsv
+     * ├── glyma.mixed.map.GmComposite2003.lg.tsv.gz
+     * ├── glyma.mixed.map.GmComposite2003.mrk.tsv.gz
      * └── README.mixed.map.GmComposite2003.yml
      */
     @Override
@@ -75,12 +76,12 @@ public class MapFileConverter extends DatastoreFileConverter {
                 genotypes += genotype;
             }
             geneticMap.setAttribute("genotypes", genotypes);
-        } else if (getCurrentFile().getName().endsWith("lg.tsv")) {
+        } else if (getCurrentFile().getName().endsWith("lg.tsv.gz")) {
             System.out.println("Processing "+getCurrentFile().getName());
-            processLgFile(reader);
-        } else if (getCurrentFile().getName().endsWith("mrk.tsv")) {
+            processLgFile();
+        } else if (getCurrentFile().getName().endsWith("mrk.tsv.gz")) {
             System.out.println("Processing "+getCurrentFile().getName());
-            processMrkFile(reader);
+            processMrkFile();
 	}
     }
 
@@ -105,15 +106,15 @@ public class MapFileConverter extends DatastoreFileConverter {
     }
     
     /**
-     * Process an lg.tsv file
+     * Process an lg.tsv.gz file
      * 0                            1       2
      * #linkage_group               length  chromosome number (optional)
      * TT_Tifrunner_x_GT-C20_c-A01  176.02  8
      * TT_Tifrunner_x_GT-C20_c-A02  185.70  10
      * TT_Tifrunner_x_GT-C20_c-A03  192.46  2
      */
-    void processLgFile(Reader reader) throws IOException {
-        BufferedReader br = new BufferedReader(reader);
+    void processLgFile() throws IOException {
+        BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
         Set<Integer> numbers = new HashSet<>(); // numbers already used
         String line = null;
         while ((line=br.readLine())!=null) {
@@ -148,14 +149,14 @@ public class MapFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Process a mrk.tsv file which gives marker positions on linkage groups.
+     * Process a mrk.tsv.gz file which gives marker positions on linkage groups.
      * #marker linkage_group       position
      * A053_2  GmComposite2003_A1  34.55
      * A064_3  GmComposite2003_A1  42.08
      * A082_1  GmComposite2003_A1  102.30
      */
-    void processMrkFile(Reader reader) throws IOException {
-        BufferedReader br = new BufferedReader(reader);
+    void processMrkFile() throws IOException {
+        BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue;

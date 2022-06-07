@@ -28,16 +28,7 @@ import org.apache.tools.ant.BuildException;
 import org.biojava.nbio.core.exceptions.ParserException;
 import org.biojava.nbio.core.sequence.DNASequence;
 import org.biojava.nbio.core.sequence.ProteinSequence;
-import org.biojava.nbio.core.sequence.compound.AminoAcidCompound;
-import org.biojava.nbio.core.sequence.compound.AminoAcidCompoundSet;
-import org.biojava.nbio.core.sequence.compound.NucleotideCompound;
-import org.biojava.nbio.core.sequence.compound.AmbiguityDNACompoundSet;
-import org.biojava.nbio.core.sequence.io.DNASequenceCreator;
-import org.biojava.nbio.core.sequence.io.FastaReader;
-import org.biojava.nbio.core.sequence.io.GenericFastaHeaderParser;
-import org.biojava.nbio.core.sequence.io.ProteinSequenceCreator;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
-import org.biojava.nbio.core.util.InputStreamProvider;
 
 import org.intermine.metadata.Util;
 import org.intermine.model.InterMineObject;
@@ -60,6 +51,7 @@ import org.intermine.model.bio.SequenceFeature;
 import org.intermine.model.bio.Supercontig;
 
 import org.ncgr.datastore.Readme;
+import org.ncgr.zip.GZIPFastaReader;
 
 /**
  * A task that can read a set of FASTA files and create the corresponding Sequence objects in an ObjectStore.
@@ -192,13 +184,12 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             } catch (ObjectStoreException ex) {
                 throw new BuildException(ex);
             }
-        } else if (file.getName().endsWith(".fna") || file.getName().endsWith(".fna.gz") ||
-                   file.getName().endsWith(".faa") || file.getName().endsWith(".faa.gz")) {
+        } else if (file.getName().endsWith(".fna.gz") || file.getName().endsWith(".faa.gz")) {
             // README must precede FASTA
             if (organism==null) {
                 throw new BuildException("ERROR: README missing or not read before FASTA file. Add to includes or switch order in project.xml.");
             }
-            if (file.getName().endsWith(".fna") || file.getName().endsWith(".fna.gz")) {
+            if (file.getName().endsWith(".fna.gz")) {
                 sequenceType = "dna";
             } else {
                 sequenceType = "protein";
@@ -294,12 +285,12 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
     void processFasta(File file) throws BuildException {
         try {
             if (sequenceType.equals("dna")) {
-                LinkedHashMap<String,DNASequence> sequenceMap = readFastaDNASequence(file);
+                LinkedHashMap<String,DNASequence> sequenceMap = GZIPFastaReader.readFastaDNASequence(file);
                 for (DNASequence sequence : sequenceMap.values()) {
                     processSequence(sequence);
                 }
             } else if (sequenceType.equals("protein")) {
-                LinkedHashMap<String,ProteinSequence> sequenceMap = readFastaProteinSequence(file);
+                LinkedHashMap<String,ProteinSequence> sequenceMap = GZIPFastaReader.readFastaProteinSequence(file);
                 for (ProteinSequence sequence : sequenceMap.values()) {
                     processSequence(sequence);
                 }
@@ -598,40 +589,6 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         } else {
             throw new BuildException("Annotation version is not set from README.");
         }
-    }
-
-    /**
-     * Use FastaReader to read DNA sequences from a file, using AmbiguityDNACompoundSet to handle non-ATCG symbols.
-     *
-     * @param the FASTA file, which may be gzipped
-     * @return a map of String identifiers to DNASequence objects
-     */
-    LinkedHashMap<String,DNASequence> readFastaDNASequence(File file) throws IOException {
-        // automatically uncompress files using InputStreamProvider
-        InputStreamProvider isp = new InputStreamProvider();
-        InputStream inStream = isp.getInputStream(file);
-        FastaReader<DNASequence, NucleotideCompound> fastaReader =
-            new FastaReader<DNASequence, NucleotideCompound>(inStream,
-                                                             new GenericFastaHeaderParser<DNASequence, NucleotideCompound>(),
-                                                             new DNASequenceCreator(AmbiguityDNACompoundSet.getDNACompoundSet()));
-        return fastaReader.process();
-    }
-
-    /**
-     * Use FastaReader to read Protein sequences from a file, using AmbiguityDNACompoundSet to handle non-ATCG symbols.
-     *
-     * @param the FASTA file, which may be gzipped
-     * @return a map of String identifiers to DNASequence objects
-     */
-    LinkedHashMap<String,ProteinSequence> readFastaProteinSequence(File file) throws IOException {
-        // automatically uncompress files using InputStreamProvider
-        InputStreamProvider isp = new InputStreamProvider();
-        InputStream inStream = isp.getInputStream(file);
-        FastaReader<ProteinSequence, AminoAcidCompound> fastaReader =
-            new FastaReader<ProteinSequence, AminoAcidCompound>(inStream,
-                                                                new GenericFastaHeaderParser<ProteinSequence, AminoAcidCompound>(),
-                                                                new ProteinSequenceCreator(AminoAcidCompoundSet.getAminoAcidCompoundSet()));
-        return fastaReader.process();
     }
 
 }

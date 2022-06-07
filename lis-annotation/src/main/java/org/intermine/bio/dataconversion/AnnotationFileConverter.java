@@ -1,9 +1,11 @@
 package org.intermine.bio.dataconversion;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.Reader;
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,8 +27,11 @@ import org.apache.log4j.Logger;
 import org.biojava.nbio.core.exceptions.ParserException;
 import org.biojava.nbio.core.sequence.DNASequence;
 import org.biojava.nbio.core.sequence.ProteinSequence;
-import org.biojava.nbio.core.sequence.io.FastaReaderHelper;
 import org.biojava.nbio.core.sequence.template.AbstractSequence;
+import org.biojava.nbio.genome.parsers.gff.FeatureI;
+import org.biojava.nbio.genome.parsers.gff.FeatureList;
+import org.biojava.nbio.genome.parsers.gff.GFF3Reader;
+import org.biojava.nbio.genome.parsers.gff.Location;
 
 import org.intermine.dataconversion.FileConverter;
 import org.intermine.dataconversion.ItemWriter;
@@ -35,29 +40,26 @@ import org.intermine.metadata.Util;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
-import org.biojava.nbio.genome.parsers.gff.FeatureI;
-import org.biojava.nbio.genome.parsers.gff.FeatureList;
-import org.biojava.nbio.genome.parsers.gff.GFF3Reader;
-import org.biojava.nbio.genome.parsers.gff.Location;
+import org.ncgr.zip.GZIPFastaReader;
+import org.ncgr.zip.GZIPBufferedReader;
 
 /**
  * Loads data from an LIS datastore annotations collection.
  * Files types loaded are:
- *   README
- *   gene_models_main.gff3
- *   protein.faa
- *   cds.fna
- *   mrna.fna
- *   gfa.tsv
- *   pathway.tsv
+ *   README.yaml
+ *   gene_models_main.gff3.gz
+ *   protein.faa.gz
+ *   cds.fna.gz
+ *   mrna.fna.gz
+ *   gfa.tsv.gz
+ *   pathway.tsv.gz
  *
  * @author Sam Hokin
  */
 public class AnnotationFileConverter extends DatastoreFileConverter {
 	
-    static final String DEFAULT_VERSION = "legfed_v1_0";
-
     private static final Logger LOG = Logger.getLogger(AnnotationFileConverter.class);
+    private static final String TEMPFILE = "/tmp/annotation.gff3";
 
     // GFF sourced
     Map<String,Item> chromosomes = new HashMap<>();
@@ -74,6 +76,9 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     Map<String,Item> geneFamilies = new HashMap<>();
     Map<String,Item> pathways = new HashMap<>();
 
+    // GFA sourced
+    List<Item> geneFamilyAssignments = new ArrayList<>();
+
     // FASTA sourced
     List<Item> sequences = new ArrayList<>();
     Map<String,Item> proteins = new HashMap<>(); // also GFA, etc.
@@ -81,6 +86,9 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
 
     // for distinguishing chromosomes from supercontigs
     DatastoreUtils dsu;
+
+    // count non-README files processed
+    int processedCount = 0;
 
     // map GFF types to InterMine classes; be sure to include extras in the additions file!
     Map<String,String> featureClasses = Map.ofEntries(entry("gene", "Gene"),
@@ -123,24 +131,32 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
             setStrain();
-        } else if (getCurrentFile().getName().endsWith(".gene_models_main.gff3")) {
-            System.out.println("Processing "+getCurrentFile().getName());
+        } else if (getCurrentFile().getName().endsWith(".gene_models_main.gff3.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
             processGFF3File();
-        } else if (getCurrentFile().getName().endsWith(".gfa.tsv")) {
-            System.out.println("Processing "+getCurrentFile().getName());
-            processGFAFile(reader);
-        } else if (getCurrentFile().getName().endsWith(".pathway.tsv")) {
-            System.out.println("Processing "+getCurrentFile().getName());
-            processPathwayFile(reader);
-	} else if (getCurrentFile().getName().endsWith(".protein.faa") || getCurrentFile().getName().endsWith(".protein_primary.faa")) {
-            System.out.println("Processing "+getCurrentFile().getName());
+            processedCount++;
+        } else if (getCurrentFile().getName().endsWith(".gfa.tsv.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
+            processGFAFile();
+            processedCount++;
+        } else if (getCurrentFile().getName().endsWith(".pathway.tsv.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
+            processPathwayFile();
+            processedCount++;
+	} else if (getCurrentFile().getName().endsWith(".protein.faa.gz") || getCurrentFile().getName().endsWith(".protein_primary.faa.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
             processProteinFasta();
-        } else if (getCurrentFile().getName().endsWith(".cds.fna") || getCurrentFile().getName().endsWith(".cds_primary.fna")) {
-            System.out.println("Processing "+getCurrentFile().getName());
+            processedCount++;
+        } else if (getCurrentFile().getName().endsWith(".cds.fna.gz") || getCurrentFile().getName().endsWith(".cds_primary.fna.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
             processCDSFasta();
-        } else if (getCurrentFile().getName().endsWith(".mrna.fna") || getCurrentFile().getName().endsWith(".mrna_primary.fna")) {
-            System.out.println("Processing "+getCurrentFile().getName());
+            processedCount++;
+        } else if (getCurrentFile().getName().endsWith(".mrna.fna.gz") || getCurrentFile().getName().endsWith(".mrna_primary.fna.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
             processMRNAFasta();
+            processedCount++;
+        } else {
+            System.out.println("## Skipping file "+getCurrentFile().getName());
         }
     }
 
@@ -152,69 +168,24 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         if (readme==null) {
             throw new RuntimeException("README file not read. Aborting.");
         }
-        // set Datastore collection attributes and references for annotation-specific objects
-        for (Item chromosome : chromosomes.values()) {
-            chromosome.setAttribute("assemblyVersion", assemblyVersion);
-            chromosome.setReference("organism", organism);
-            chromosome.setReference("strain", strain);
-        }
-        for (Item supercontig : supercontigs.values()) {
-            supercontig.setAttribute("assemblyVersion", assemblyVersion);
-            supercontig.setReference("organism", organism);
-            supercontig.setReference("strain", strain);
-        }
-        for (Item feature: features.values()) {
-            feature.setAttribute("assemblyVersion", assemblyVersion);
-            feature.setAttribute("annotationVersion", annotationVersion);
-            feature.setReference("organism", organism);
-            feature.setReference("strain", strain);
-        }            
-        for (Item cds : cdses.values()) {
-            cds.setAttribute("assemblyVersion", assemblyVersion);
-            cds.setAttribute("annotationVersion", annotationVersion);
-            cds.setReference("organism", organism);
-            cds.setReference("strain", strain);
-        }
-        for (Item gene : genes.values()) {
-            gene.setAttribute("assemblyVersion", assemblyVersion);
-            gene.setAttribute("annotationVersion", annotationVersion);
-            gene.setReference("organism", organism);
-            gene.setReference("strain", strain);
-        }
-        for (Item mrna : mRNAs.values()) {
-            mrna.setAttribute("assemblyVersion", assemblyVersion);
-            mrna.setAttribute("annotationVersion", annotationVersion);
-            mrna.setReference("organism", organism);
-            mrna.setReference("strain", strain);
-        }
-        for (Item protein : proteins.values()) {
-            protein.setAttribute("assemblyVersion", assemblyVersion);
-            protein.setAttribute("annotationVersion", annotationVersion);
-            protein.setReference("organism", organism);
-            protein.setReference("strain", strain);
+        if (processedCount==0) {
+            throw new RuntimeException("No non-README files were found. Aborting.");
         }
         // set references and collections for objects loaded from FASTAs based on matching identifiers
-        // Note: protein<->transcript is not in SO but set here given general practice
         for (String primaryIdentifier : cdses.keySet()) {
             Item cds = cdses.get(primaryIdentifier);
             if (mRNAs.containsKey(primaryIdentifier)) cds.setReference("transcript", mRNAs.get(primaryIdentifier));
             if (proteins.containsKey(primaryIdentifier)) cds.setReference("protein", proteins.get(primaryIdentifier));
-            String geneId = getGeneIdFromDotId(primaryIdentifier);
-            if (genes.containsKey(geneId)) cds.setReference("gene", genes.get(geneId));
         }
         for (String primaryIdentifier : mRNAs.keySet()) {
             Item mRNA = mRNAs.get(primaryIdentifier);
             if (cdses.containsKey(primaryIdentifier)) mRNA.addToCollection("CDSs", cdses.get(primaryIdentifier));
             if (proteins.containsKey(primaryIdentifier)) mRNA.setReference("protein", proteins.get(primaryIdentifier));
-            String geneId = getGeneIdFromDotId(primaryIdentifier);
-            if (genes.containsKey(geneId)) mRNA.setReference("gene", genes.get(geneId));
         }
         for (String primaryIdentifier : proteins.keySet()) {
             Item protein = proteins.get(primaryIdentifier);
             if (cdses.containsKey(primaryIdentifier)) protein.setReference("CDS", cdses.get(primaryIdentifier));
             if (mRNAs.containsKey(primaryIdentifier)) protein.setReference("transcript", mRNAs.get(primaryIdentifier));
-            String geneId = getGeneIdFromDotId(primaryIdentifier);
-            if (genes.containsKey(geneId)) protein.addToCollection("genes", genes.get(geneId));
         }
         // store
         storeCollectionItems();
@@ -232,14 +203,14 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         store(proteinDomains.values());
         store(locations);
         store(sequences);
+        store(geneFamilyAssignments);
     }
 
     /**
      * Process a protein FASTA faa file.
      */
     void processProteinFasta() throws IOException {
-        boolean isPrimary = getCurrentFile().getName().endsWith(".protein_primary.faa");
-        LinkedHashMap<String,ProteinSequence> sequenceMap = FastaReaderHelper.readFastaProteinSequence(getCurrentFile());
+        LinkedHashMap<String,ProteinSequence> sequenceMap = GZIPFastaReader.readFastaProteinSequence(getCurrentFile());
         for (ProteinSequence bioJavaSequence : sequenceMap.values()) {
             String residues = bioJavaSequence.getSequenceAsString();
             String md5checksum = Util.getMd5checksum(residues);
@@ -263,7 +234,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             }
             // Protein Item
             Item protein = getProtein(identifier);
-            if (isPrimary) protein.setAttribute("isPrimary", "true");
+            if (isPrimary()) protein.setAttribute("isPrimary", "true");
             protein.setReference("sequence", sequence);
             protein.setAttribute("length", String.valueOf(residues.length()));
             protein.setAttribute("md5checksum", md5checksum);
@@ -275,8 +246,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
      * Process a CDS nucleotide FASTA fna file
      */
     void processCDSFasta() throws IOException {
-        boolean isPrimary = getCurrentFile().getName().endsWith(".cds_primary.fna");
-        LinkedHashMap<String,DNASequence> sequenceMap = FastaReaderHelper.readFastaDNASequence(getCurrentFile());
+        LinkedHashMap<String,DNASequence> sequenceMap = GZIPFastaReader.readFastaDNASequence(getCurrentFile());
         for (DNASequence bioJavaSequence : sequenceMap.values()) {
             String residues = bioJavaSequence.getSequenceAsString();
             String md5checksum = Util.getMd5checksum(residues);
@@ -300,7 +270,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             }
             // CDS Item
             Item cds = getCDS(identifier);
-            if (isPrimary) cds.setAttribute("isPrimary", "true");
+            if (isPrimary()) cds.setAttribute("isPrimary", "true");
             cds.setReference("sequence", sequence);
             cds.setAttribute("length", String.valueOf(residues.length()));
             if (symbol!=null) cds.setAttribute("symbol", symbol);
@@ -311,8 +281,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
      * Process an mRNA nucleotide FASTA fna file
      */
     void processMRNAFasta() throws IOException {
-        boolean isPrimary = getCurrentFile().getName().endsWith(".mrna_primary.fna");
-        LinkedHashMap<String,DNASequence> sequenceMap = FastaReaderHelper.readFastaDNASequence(getCurrentFile());
+        LinkedHashMap<String,DNASequence> sequenceMap = GZIPFastaReader.readFastaDNASequence(getCurrentFile());
         for (DNASequence bioJavaSequence : sequenceMap.values()) {
             String residues = bioJavaSequence.getSequenceAsString();
             String md5checksum = Util.getMd5checksum(residues);
@@ -341,7 +310,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             }
             // MRNA Item
             Item mRNA = getMRNA(identifier);
-            if (isPrimary) mRNA.setAttribute("isPrimary", "true");
+            if (isPrimary()) mRNA.setAttribute("isPrimary", "true");
             mRNA.setReference("sequence", sequence);
             mRNA.setAttribute("length", String.valueOf(residues.length()));
             if (symbol!=null) mRNA.setAttribute("symbol", symbol);
@@ -350,69 +319,55 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     
     /**
      * Process a gfa.tsv file which contains relationships between gene families, genes and proteins, along with a score value.
+     * 0     1      2    3    4    5           6    7   8   9
+     * phavu.G19833.gnm2.ann1.PB8d.legfed_v1_0.M65K.gfa.tsv.gz
      *
-     * 0     1      2    3    4    5           6    7   8
-     * phalu.G27455.gnm1.ann1.JD7C.legfed_v1_0.M65K.gfa.tsv
-     * 0                1
-     * ScoreMeaning	e-value
-     *
-     * 0=gene                                 1=gene family        2=protein                                3=score
-     * phalu.G27455.gnm1.ann1.tig000546640010 legfed_v1_0.L_00CL8T phalu.G27455.gnm1.ann1.tig000546640010.1 2.4e-68
+     * gene                                    family                  protein                                   e-value   score  best-domain-score
+     * 0                                       1                       2                                         3         4      5
+     * vigun.CB5-2.gnm1.ann1.VuCB5-2.03G238200 legfed_v1_0.L_JSS52Z    vigun.CB5-2.gnm1.ann1.VuCB5-2.03G238200.1 5.3e-199  660.9  660.8
      */
-    void processGFAFile(Reader reader) throws IOException, RuntimeException {
+    void processGFAFile() throws IOException, RuntimeException {
         String[] fileParts = getCurrentFile().getName().split("\\.");
-        if (fileParts.length!=9) {
-            System.err.println("WARNING: GFA file does not have the required 9 dot-separated parts: "+getCurrentFile().getName());
+        if (fileParts.length!=10) {
+            System.err.println("WARNING: GFA file name does not have the required 10 dot-separated parts: "+getCurrentFile().getName());
         }
-        String version = DEFAULT_VERSION;
-        if (fileParts.length>5) version = fileParts[5];
-        String scoreMeaning = null;
         // spin through the file
-        BufferedReader br = new BufferedReader(reader);
+        BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
         String line = null;
         int linenumber = 0;
         while ((line=br.readLine())!=null) {
             linenumber++;
             if (line.startsWith("#")) continue;
             String[] fields = line.split("\t");
-            if (fields.length==2) {
-                // header
-                if (fields[0].equals("ScoreMeaning")) scoreMeaning = fields[1];
-            } else if (fields.length>2) {
-                String geneIdentifier = fields[0];
-                String geneFamilyIdentifier = fields[1];
-                String proteinIdentifier = fields[2];
-                double score = 0.0;
-                boolean hasScore = false;
-                if (fields.length>3) {
-                    hasScore = true;
-                    score = Double.parseDouble(fields[3]);
-                }
-                // validation
-                if (geneIdentifier==null || geneIdentifier.trim().length()==0) {
-                    throw new RuntimeException("ERROR: Gene.primaryIdentifier="+geneIdentifier+" at line "+linenumber);
-                }
-                if (proteinIdentifier==null || proteinIdentifier.trim().length()==0) {
-                    throw new RuntimeException("ERROR: Protein.primaryIdentifier="+proteinIdentifier+" at line "+linenumber);
-                }
-                // Gene Family
-                Item geneFamily = getGeneFamily(geneFamilyIdentifier);
-                geneFamily.setAttribute("version", version);
-                // Gene
-                Item gene = getGene(geneIdentifier);
-                gene.setReference("geneFamily", geneFamily);
-                if (hasScore) {
-                    if (scoreMeaning!=null) gene.setAttribute("geneFamilyScoreMeaning", scoreMeaning);
-                    gene.setAttribute("geneFamilyScore", String.valueOf(score));
-                }
-                // Protein - this is just the primary transcript; there are other proteins associated with this gene that don't get the geneFamily reference
-                Item protein = getProtein(proteinIdentifier);
-                protein.setReference("geneFamily", geneFamily);
-                if (hasScore) {
-                    if (scoreMeaning!=null) protein.setAttribute("geneFamilyScoreMeaning", scoreMeaning);
-                    protein.setAttribute("geneFamilyScore", String.valueOf(score));
-                }
-            }
+            if (fields.length==2) continue; // probably a second header with some item of non-interest
+            String geneIdentifier = fields[0];
+            String geneFamilyIdentifier = fields[1];
+            String proteinIdentifier = fields[2];
+            // data columns are optional
+            double evalue = 0.0;
+            double score = 0.0;
+            double bestDomainScore = 0.0;
+            if (fields.length>3) evalue = Double.parseDouble(fields[3]);
+            if (fields.length>4) score = Double.parseDouble(fields[4]);
+            if (fields.length>5) bestDomainScore = Double.parseDouble(fields[5]);
+            // Gene Family
+            Item geneFamily = getGeneFamily(geneFamilyIdentifier);
+            // scores go into GeneFamilyAssignment
+            Item gfa = createItem("GeneFamilyAssignment");
+            geneFamilyAssignments.add(gfa);
+            if (evalue>0.0) gfa.setAttribute("evalue", String.valueOf(evalue));
+            if (score>0.0) gfa.setAttribute("score", String.valueOf(score));
+            if (bestDomainScore>0.0) gfa.setAttribute("bestDomainScore", String.valueOf(bestDomainScore));
+            gfa.setReference("geneFamily", geneFamily);
+            // Gene
+            Item gene = getGene(geneIdentifier);
+            gene.addToCollection("geneFamilyAssignments", gfa);
+            // Protein - this is just the primary transcript; there are other proteins associated with this gene that don't get the geneFamily reference
+            Item protein = getProtein(proteinIdentifier);
+            protein.addToCollection("geneFamilyAssignments", gfa);
+            // GeneFamily collections
+            geneFamily.addToCollection("genes", gene);
+            geneFamily.addToCollection("proteins", protein);
         }
         br.close();
     }
@@ -420,9 +375,9 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     /**
      * Process a pathway.tsv file, associating genes with pathways.
      */
-    void processPathwayFile(Reader reader) throws IOException {
+    void processPathwayFile() throws IOException {
         // spin through the file
-        BufferedReader br = new BufferedReader(reader);
+        BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#")) continue;
@@ -440,14 +395,27 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Process a GFF3 file, referenced by filename because GFFReader doesn't have a method to parse a Reader.
-     * Assumes that ID=full-yuck-LIS-identifier and Name=name
+     * Process a gzipped GFF3 file.
+     * Because GFFReader does not handle gzipped files, we have to dump the file to /tmp first and then read that.
+     * Assumes that ID=gensp.strain.gnm.ann.identifier and Name=name.
      */
     void processGFF3File() throws IOException, RuntimeException {
         if (readme==null) {
             throw new RuntimeException("README not read before "+getCurrentFile().getName()+". Aborting.");
         }
-        FeatureList featureList = GFF3Reader.read(getCurrentFile().getPath());
+        // uncompress the gff3.gz file to a temp file
+        File tempfile = new File(TEMPFILE);
+        tempfile.delete();
+        BufferedWriter writer = new BufferedWriter(new FileWriter(tempfile));
+        BufferedReader reader = GZIPBufferedReader.getReader(getCurrentFile());
+        String line = null;
+        while ( (line=reader.readLine())!=null ) {
+            writer.write(line);
+            writer.newLine();
+        }
+        writer.close();
+        // now load the uncompressed GFF
+        FeatureList featureList = GFF3Reader.read(TEMPFILE);
         for (FeatureI featureI : featureList) {
             String seqname = featureI.seqname();
             Location location = featureI.location();
@@ -474,16 +442,16 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 throw new RuntimeException("GFF3 type "+type+" is not associated with a class in the featureClasses Map.");
             }
             // get the feature, e.g. ID=glyma.Lee.gnm1.ann1.GlymaLee.02G198600;
-            // Gene and MRNA Items are stored separately
+            // Gene and MRNA Items are stored separately for specific treatment
             Item feature = null;
             if (featureClass.equals("Gene")) {
                 feature = getGene(id);
                 placeFeatureOnSequence(feature, seqname, location);
                 feature.setAttribute("length", String.valueOf(location.length()));
             } else if (featureClass.equals("MRNA")) {
-                // don't set MRNA.length since that comes from FASTA
                 feature = getMRNA(id);
                 placeFeatureOnSequence(feature, seqname, location);
+                // don't set MRNA.length since that comes from FASTA
             } else {
                 feature = getFeature(id, featureClass);
                 placeFeatureOnSequence(feature, seqname, location);
@@ -523,12 +491,30 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                     parents.add(parent);
                 }
                 for (String p : parents) {
-                    Item parentItem = features.get(p);
-                    if (parentItem==null) parentItem = genes.get(p);
-                    if (parentItem==null) parentItem = mRNAs.get(p);
-                    if (parentItem==null) {
+                    Item parentItem = null;
+                    if (features.containsKey(p)) {
+                        // parent is not gene or mRNA
+                        parentItem = features.get(p);
+                    } else if (genes.containsKey(p)) {
+                        // parent is a gene
+                        parentItem = genes.get(p);
+                        if (featureClass.equals("MRNA")) {
+                            // set the MRNA's gene reference
+                            feature.setReference("gene", parentItem);
+                            // set the corresponding CDS's gene reference
+                            Item cds = getCDS(id);
+                            cds.setReference("gene", parentItem);
+                            // add the gene to the corresponding protein's genes collection
+                            Item protein = getProtein(id);
+                            protein.addToCollection("genes", parentItem);
+                        }
+                    } else if (mRNAs.containsKey(p)) {
+                        // parent is an mRNA, feature is probably an exon
+                        parentItem = mRNAs.get(p);
+                    } else {
                         throw new RuntimeException("Parent "+p+" not loaded before child "+id+". Is the GFF sorted?");
                     }
+                    // add this feature to the parent's children
                     parentItem.addToCollection("childFeatures", feature);
                 }
             }
@@ -580,9 +566,13 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             return features.get(primaryIdentifier);
         } else {
             Item feature = createItem(className);
+            features.put(primaryIdentifier, feature);
             feature.setAttribute("primaryIdentifier", primaryIdentifier);
             feature.setAttribute("secondaryIdentifier", getSecondaryIdentifier(primaryIdentifier));
-            features.put(primaryIdentifier, feature);
+            feature.setAttribute("assemblyVersion", assemblyVersion);
+            feature.setAttribute("annotationVersion", annotationVersion);
+            feature.setReference("organism", organism);
+            feature.setReference("strain", strain);
             return feature;
         }
     }
@@ -590,7 +580,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     /**
      * Place a feature on a sequence, determining whether it's a Chromosome or Supercontig from its name.
      */
-    void placeFeatureOnSequence(Item feature, String seqname, Location location) {
+    void placeFeatureOnSequence(Item feature, String seqname, Location location) throws RuntimeException {
         if (dsu.isChromosome(seqname)) {
             Item chromosome = getChromosome(seqname);
             // reference feature on chromosome
@@ -608,7 +598,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             chromosomeLocation.setReference("locatedOn", chromosome);
             locations.add(chromosomeLocation);
             feature.setReference("chromosomeLocation", chromosomeLocation);
-        } else {
+        } else if (dsu.isSupercontig(seqname)) {
             Item supercontig = getSupercontig(seqname);
             // reference feature on supercontig
             feature.setReference("supercontig", supercontig);
@@ -625,6 +615,8 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             supercontigLocation.setReference("locatedOn", supercontig);
             locations.add(supercontigLocation);
             feature.setReference("supercontigLocation", supercontigLocation);
+        } else {
+            throw new RuntimeException(seqname+" is neither Chromosome nor Supercontig according to DatastoreUtils.");
         }
     }
 
@@ -636,9 +628,13 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             return genes.get(primaryIdentifier);
         } else {
             Item gene = createItem("Gene");
+            genes.put(primaryIdentifier, gene);
             gene.setAttribute("primaryIdentifier", primaryIdentifier);
             gene.setAttribute("secondaryIdentifier", getSecondaryIdentifier(primaryIdentifier));
-            genes.put(primaryIdentifier, gene);
+            gene.setAttribute("assemblyVersion", assemblyVersion);
+            gene.setAttribute("annotationVersion", annotationVersion);
+            gene.setReference("organism", organism);
+            gene.setReference("strain", strain);
             return gene;
         }
     }
@@ -651,8 +647,8 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             return pathways.get(identifier);
         } else {
             Item pathway = createItem("Pathway");
-            pathway.setAttribute("identifier", identifier);
             pathways.put(identifier, pathway);
+            pathway.setAttribute("identifier", identifier);
             return pathway;
         }
     }
@@ -678,12 +674,15 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             return chromosomes.get(primaryIdentifier);
         } else {
             Item chromosome = createItem("Chromosome");
+            chromosomes.put(primaryIdentifier, chromosome);
             chromosome.setAttribute("primaryIdentifier", primaryIdentifier);
             String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, false);
             if (secondaryIdentifier==null) {
                 throw new RuntimeException("Could not get secondaryIdentifier for chromosome:"+primaryIdentifier);
             }
-            chromosomes.put(primaryIdentifier, chromosome);
+            chromosome.setAttribute("assemblyVersion", assemblyVersion);
+            chromosome.setReference("organism", organism);
+            chromosome.setReference("strain", strain);
             return chromosome;
         }
     }
@@ -696,12 +695,15 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             return supercontigs.get(primaryIdentifier);
         } else {
             Item supercontig = createItem("Supercontig");
+            supercontigs.put(primaryIdentifier, supercontig);
             supercontig.setAttribute("primaryIdentifier", primaryIdentifier);
             String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, false);
             if (secondaryIdentifier==null) {
                 throw new RuntimeException("Could not get secondaryIdentifier for supercontig:"+primaryIdentifier);
             }
-            supercontigs.put(primaryIdentifier, supercontig);
+            supercontig.setAttribute("assemblyVersion", assemblyVersion);
+            supercontig.setReference("organism", organism);
+            supercontig.setReference("strain", strain);
             return supercontig;
         }
     }
@@ -714,9 +716,13 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             return proteins.get(primaryIdentifier);
         } else {
             Item protein = createItem("Protein");
+            proteins.put(primaryIdentifier, protein);
             protein.setAttribute("primaryIdentifier", primaryIdentifier);
             protein.setAttribute("secondaryIdentifier", getSecondaryIdentifier(primaryIdentifier));
-            proteins.put(primaryIdentifier, protein);
+            protein.setAttribute("assemblyVersion", assemblyVersion);
+            protein.setAttribute("annotationVersion", annotationVersion);
+            protein.setReference("organism", organism);
+            protein.setReference("strain", strain);
             return protein;
         }
     }
@@ -729,8 +735,8 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             return proteinDomains.get(primaryIdentifier);
         } else {
             Item proteinDomain = createItem("ProteinDomain");
-            proteinDomain.setAttribute("primaryIdentifier", primaryIdentifier);
             proteinDomains.put(primaryIdentifier, proteinDomain);
+            proteinDomain.setAttribute("primaryIdentifier", primaryIdentifier);
             return proteinDomain;
         }
     }
@@ -743,9 +749,13 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             return cdses.get(primaryIdentifier);
         } else {
             Item cds = createItem("CDS");
+            cdses.put(primaryIdentifier, cds);
             cds.setAttribute("primaryIdentifier", primaryIdentifier);
             cds.setAttribute("secondaryIdentifier", getSecondaryIdentifier(primaryIdentifier));
-            cdses.put(primaryIdentifier, cds);
+            cds.setAttribute("assemblyVersion", assemblyVersion);
+            cds.setAttribute("annotationVersion", annotationVersion);
+            cds.setReference("organism", organism);
+            cds.setReference("strain", strain);
             return cds;
         }
     }
@@ -758,9 +768,13 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             return mRNAs.get(primaryIdentifier);
         } else {
             Item mRNA = createItem("MRNA");
+            mRNAs.put(primaryIdentifier, mRNA);
             mRNA.setAttribute("primaryIdentifier", primaryIdentifier);
             mRNA.setAttribute("secondaryIdentifier", getSecondaryIdentifier(primaryIdentifier));
-            mRNAs.put(primaryIdentifier, mRNA);
+            mRNA.setAttribute("assemblyVersion", assemblyVersion);
+            mRNA.setAttribute("annotationVersion", annotationVersion);
+            mRNA.setReference("organism", organism);
+            mRNA.setReference("strain", strain);
             return mRNA;
         }
     }
@@ -773,8 +787,8 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             return geneFamilies.get(identifier);
         } else {
             Item geneFamily = createItem("GeneFamily");
-            geneFamily.setAttribute("identifier", identifier);
             geneFamilies.put(identifier, geneFamily);
+            geneFamily.setAttribute("identifier", identifier);
             return geneFamily;
         }
     }
@@ -791,11 +805,18 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             return ontologyTerms.get(identifier);
         } else {
             Item ontologyTerm = createItem("OntologyTerm");
+            ontologyTerms.put(identifier, ontologyTerm);
             ontologyTerm.setAttribute("identifier", identifier);
             ontologyTerm.setReference("ontology", ontology);
-            ontologyTerms.put(identifier, ontologyTerm);
             return ontologyTerm;
         }
+    }
+
+    /**
+     * Return true if the current file contains only primary transcripts.
+     */
+    boolean isPrimary() {
+        return getCurrentFile().getName().contains("_primary");
     }
 
     /**
@@ -804,7 +825,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
      * @param bioJavaSequence the Sequence
      * @return an identifier
      */
-    protected String getFastaIdentifier(AbstractSequence bioJavaSequence) {
+    static String getFastaIdentifier(AbstractSequence bioJavaSequence) {
         String identifier = null;
         String header = bioJavaSequence.getAccession().getID();
         String[] bits = header.split(" ");
@@ -839,19 +860,6 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Return a gene ID as the portion of an ID with the .1, .2, etc. removed
-     *
-     * @param dotId the dot.number ID
-     * @return the corresponding gene ID
-     */
-    static String getGeneIdFromDotId(String dotId) {
-        String[] parts = dotId.split("\\.");
-        String geneId = parts[0];
-        for (int i=1; i<parts.length-1; i++) geneId += "."+parts[i];
-        return geneId;
-    }
-
-    /**
      * Return an attribute for the given name ignoring case
      */
     static String getAttribute(FeatureI featureI, String name) {
@@ -863,4 +871,5 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         }
         return null;
     }
+
 }
