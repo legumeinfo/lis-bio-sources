@@ -38,8 +38,7 @@ public class DatastoreUtils {
             // load the organism properties into maps
             InputStream orgPropsResource = getClass().getClassLoader().getResourceAsStream(ORGANISM_PROP_FILE);
             if (orgPropsResource == null) {
-                System.err.println("Did not find organism properties file:"+ORGANISM_PROP_FILE);
-                System.exit(1);
+                throw new RuntimeException("Did not find organism properties file:"+ORGANISM_PROP_FILE);
             }
             orgProps.load(orgPropsResource);
             for (Object obj : orgProps.keySet()) {
@@ -74,8 +73,7 @@ public class DatastoreUtils {
         try {
             InputStream datastorePropsResource = getClass().getClassLoader().getResourceAsStream(DATASTORE_PROP_FILE);
             if (datastorePropsResource == null) {
-                System.err.println("Did not find datastore properties file:"+DATASTORE_PROP_FILE);
-                System.exit(1);
+                throw new RuntimeException("Did not find datastore properties file:"+DATASTORE_PROP_FILE);
             }
             datastoreProps.load(datastorePropsResource);
             for (Object obj : datastoreProps.keySet()) {
@@ -377,4 +375,19 @@ public class DatastoreUtils {
 	}
 	return geneIdentifier;
     }
+
+
+    /**
+     * Unescape some URL escaped characters used in GFF notes, etc.
+     */
+    public static String unescape(String s) {
+        return s.
+            replaceAll("%09","\t").replaceAll("%26","&").
+            replaceAll("%2509","\t").replaceAll("%2526","&").
+            replaceAll("%2C",",").replaceAll("%3B",";").replaceAll("%3D","=").
+            replaceAll("%252C",",").replaceAll("%253B",";").replaceAll("%253D","=").
+            replaceAll("%2c",",").replaceAll("%3b",";").replaceAll("%3d","=").
+            replaceAll("%252c",",").replaceAll("%253b",";").replaceAll("%253d","=");
+    }
+
 }

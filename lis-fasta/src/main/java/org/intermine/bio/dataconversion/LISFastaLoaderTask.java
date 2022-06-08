@@ -194,7 +194,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             } else {
                 sequenceType = "protein";
             }
-            System.out.println("# Reading "+sequenceType+" sequences from: "+file.getName());
+            System.out.println("## Reading "+sequenceType+" sequences from: "+file.getName());
             processFasta(file);
             fastaProcessed = true;
         }
@@ -337,15 +337,12 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
             identifier = tabChunks[0];
             symbol = tabChunks[1];
         }
-        // HACK: set the className to "Chromosome" or "Supercontig" based on matching identifier and chromosome/supercontig prefixes.
-        // This is only for FASTAs that contain BOTH; if the FASTA only has Supercontigs, then set className="org.intermine.model.bio.Supercontig".
-        // Anything that isn't identified is stored as a supercontig
-        // Supercontig precedes Chromosome so that a Supercontig Chr0[stuff] is identified versus a Chromosome Chr[stuff].
-        if (className.equals("org.intermine.model.bio.Chromosome")) {
-            if (dsu.isSupercontig(identifier)) {
-                className = "org.intermine.model.bio.Supercontig";
-            } else if (dsu.isChromosome(identifier)) {
+        // HACK: set the className to "Chromosome" or "Supercontig" based on matching identifier and chromosome/supercontig prefixes in datastore_config.properties.
+        // Anything that isn't identified is stored as a Supercontig.
+        if (className.equals("org.intermine.model.bio.Chromosome") || className.equals("org.intermine.model.bio.Supercontig")) {
+            if (!dsu.isSupercontig(identifier) && dsu.isChromosome(identifier)) {
                 className = "org.intermine.model.bio.Chromosome";
+                System.out.println("## Loading chromosome:"+identifier);
             } else {
                 className = "org.intermine.model.bio.Supercontig";
             }
@@ -476,6 +473,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         if (bits.length>1) {
             description = bits[1];
             for (int i=2; i<bits.length; i++) description += " "+bits[i];
+            description = DatastoreUtils.unescape(description);
         }
         return description;
     }
@@ -498,7 +496,7 @@ public class LISFastaLoaderTask extends FileDirectDataLoaderTask {
         if (split.length==1) return null;
         String secondHalf = split[1];
         String[] parts = secondHalf.split(" ");
-        return parts[0];
+        return DatastoreUtils.unescape(parts[0]);
     }
 
     /**

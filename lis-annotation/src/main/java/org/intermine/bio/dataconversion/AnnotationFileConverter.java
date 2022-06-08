@@ -9,7 +9,6 @@ import java.io.FileWriter;
 import java.io.Reader;
 import java.io.IOException;
 import java.io.InputStream;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.ArrayList;
@@ -21,7 +20,7 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.Properties;
 import static java.util.Map.entry;
-
+    
 import org.apache.log4j.Logger;
 
 import org.biojava.nbio.core.exceptions.ParserException;
@@ -460,7 +459,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             // Name=GlymaLee.02G198600;
             if (name!=null) feature.setAttribute("name", name);
             // Note=Cytochrome P450 superfamily protein%3B IPR001128 (Cytochrome P450)%3B GO:0005506 (iron ion binding)%2C GO:0020037 (heme binding)%2C ...
-            if (note!=null) feature.setAttribute("description", note);
+            if (note!=null) feature.setAttribute("description", DatastoreUtils.unescape(note));
             // Symbol=RGB4
             if (symbol!=null) feature.setAttribute("symbol", symbol);
             // Dbxref=Gene3D:G3DSA:1.10.630.10,InterPro:IPR001128,InterPro:IPR002401,InterPro:IPR017972,PANTHER:PTHR24298,...
@@ -578,10 +577,10 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Place a feature on a sequence, determining whether it's a Chromosome or Supercontig from its name.
+     * Place a feature on a sequence, determining whether it's a Chromosome or Supercontig from its name and entries in datastore_config.properties.
      */
     void placeFeatureOnSequence(Item feature, String seqname, Location location) throws RuntimeException {
-        if (dsu.isChromosome(seqname)) {
+        if (!dsu.isSupercontig(seqname) && dsu.isChromosome(seqname)) {
             Item chromosome = getChromosome(seqname);
             // reference feature on chromosome
             feature.setReference("chromosome", chromosome);
@@ -598,7 +597,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             chromosomeLocation.setReference("locatedOn", chromosome);
             locations.add(chromosomeLocation);
             feature.setReference("chromosomeLocation", chromosomeLocation);
-        } else if (dsu.isSupercontig(seqname)) {
+        } else {
             Item supercontig = getSupercontig(seqname);
             // reference feature on supercontig
             feature.setReference("supercontig", supercontig);
@@ -615,8 +614,6 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             supercontigLocation.setReference("locatedOn", supercontig);
             locations.add(supercontigLocation);
             feature.setReference("supercontigLocation", supercontigLocation);
-        } else {
-            throw new RuntimeException(seqname+" is neither Chromosome nor Supercontig according to DatastoreUtils.");
         }
     }
 
