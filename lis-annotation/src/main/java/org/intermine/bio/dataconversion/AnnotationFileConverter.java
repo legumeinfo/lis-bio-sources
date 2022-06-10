@@ -86,8 +86,12 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     // for distinguishing chromosomes from supercontigs
     DatastoreUtils dsu;
 
-    // count non-README files processed
-    int processedCount = 0;
+    // we require the main six files to store anything (pathway file is optional)
+    boolean cdsFileExists = false;
+    boolean mrnaFileExists = false;
+    boolean proteinFileExists = false;
+    boolean gfaFileExists = false;
+    boolean gff3FileExists = false;
 
     // map GFF types to InterMine classes; be sure to include extras in the additions file!
     Map<String,String> featureClasses = Map.ofEntries(entry("gene", "Gene"),
@@ -133,27 +137,26 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         } else if (getCurrentFile().getName().endsWith(".gene_models_main.gff3.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processGFF3File();
-            processedCount++;
+            gff3FileExists = true;
         } else if (getCurrentFile().getName().endsWith(".gfa.tsv.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processGFAFile();
-            processedCount++;
+            gfaFileExists = true;            
         } else if (getCurrentFile().getName().endsWith(".pathway.tsv.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processPathwayFile();
-            processedCount++;
 	} else if (getCurrentFile().getName().endsWith(".protein.faa.gz") || getCurrentFile().getName().endsWith(".protein_primary.faa.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processProteinFasta();
-            processedCount++;
+            proteinFileExists = true;
         } else if (getCurrentFile().getName().endsWith(".cds.fna.gz") || getCurrentFile().getName().endsWith(".cds_primary.fna.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processCDSFasta();
-            processedCount++;
+            cdsFileExists = true;
         } else if (getCurrentFile().getName().endsWith(".mrna.fna.gz") || getCurrentFile().getName().endsWith(".mrna_primary.fna.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processMRNAFasta();
-            processedCount++;
+            mrnaFileExists = true;
         } else {
             System.out.println("## Skipping file "+getCurrentFile().getName());
         }
@@ -165,10 +168,15 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     @Override
     public void close() throws ObjectStoreException, RuntimeException {
         if (readme==null) {
-            throw new RuntimeException("README file not read. Aborting.");
+            throw new RuntimeException("README file not found. Aborting.");
         }
-        if (processedCount==0) {
-            throw new RuntimeException("No non-README files were found. Aborting.");
+        if (!cdsFileExists) System.err.println("ERROR: cds FASTA file is missing.");
+        if (!mrnaFileExists) System.err.println("ERROR: mrna FASTA file is missing.");
+        if (!proteinFileExists) System.err.println("ERROR: protein FASTA file is missing.");
+        if (!gfaFileExists) System.err.println("ERROR: gfa file is missing.");
+        if (!gff3FileExists) System.err.println("ERROR: GFF3 file is missing.");
+        if (!cdsFileExists || !mrnaFileExists || !proteinFileExists || !gfaFileExists || !gff3FileExists) {
+            throw new RuntimeException("Missing required annotation file(s). Aborting.");
         }
         // set references and collections for objects loaded from FASTAs based on matching identifiers
         for (String primaryIdentifier : cdses.keySet()) {
