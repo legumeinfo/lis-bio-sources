@@ -130,7 +130,11 @@ public class DatastoreUtils {
             String assy = fields[2];
             String name = fields[3];
             String key = gensp+"."+strainIdentifier;
+            List<String> chrPrefixes = chromosomePrefixes.get(key);
             List<String> scPrefixes = supercontigPrefixes.get(key);
+            if (chrPrefixes==null && scPrefixes==null) {
+                throw new RuntimeException(primaryIdentifier+": missing chromosome and supercontig prefixes in datastore_config.properties. One is required.");
+            }
             if (scPrefixes==null) {
                 // we don't know
                 return false;
@@ -176,6 +180,9 @@ public class DatastoreUtils {
             String key = gensp+"."+strainIdentifier;
             List<String> chrPrefixes = chromosomePrefixes.get(key);
             List<String> scPrefixes = supercontigPrefixes.get(key);
+            if (chrPrefixes==null && scPrefixes==null) {
+                throw new RuntimeException("Missing chromosome and supercontig prefixes in datastore_config.properties. One is required.");
+            }
             if (chrPrefixes==null) {
                 // we don't know
                 return false;
