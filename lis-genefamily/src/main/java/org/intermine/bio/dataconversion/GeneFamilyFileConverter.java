@@ -20,6 +20,8 @@ import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
+import org.ncgr.zip.GZIPBufferedReader;
+
 /**
  * Load gene family data from LIS datastore files.
  *
@@ -38,6 +40,8 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
     Map<String,Item> genes = new HashMap<>();
     Map<String,Item> proteinDomains = new HashMap<>();
     Map<String,Item> geneFamilies = new HashMap<>();
+
+    boolean ahrdFileFound = false;
 
     /**
      * Create a new GeneFamilyFileConverter
@@ -69,8 +73,9 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
         }
         dataSet.setReference("dataSource", dataSource);
         // process files
-        if (getCurrentFile().getName().endsWith(".info_annot_ahrd.tsv")) {
-            processInfoAnnotAhrdFile(reader);
+        if (getCurrentFile().getName().endsWith(".info_annot_ahrd.tsv.gz")) {
+            processInfoAnnotAhrdFile();
+            ahrdFileFound = true;
 	}
     }
 
@@ -79,6 +84,9 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws Exception {
+        if (!ahrdFileFound) {
+            throw new RuntimeException("File ending in .info_annot_ahrd.tsv.gz not found. Aborting");
+        }
         store(dataSource);
         store(dataSet);
 	store(geneFamilies.values());
@@ -164,9 +172,9 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Process an info_annot_ahrd.tsv file which contains gene families and semi-colon separated groups of ontology terms.
-     * 0      1       2    3    4               5
-     * lis.genefam.fam1.M65K.info_annot_ahrd.tsv
+     * Process an info_annot_ahrd.tsv.gz file which contains gene families and semi-colon separated groups of ontology terms.
+     * 0   1       2    3    4               5   6
+     * lis.genefam.fam1.M65K.info_annot_ahrd.tsv.gz
      * legfed_v1_0.L_LFXSXJ splicing factor 3B subunit 3-like isoform X2 [Glycine max];
      *                      IPR004871 (Cleavage/polyadenylation specificity factor, A subunit, C-terminal); 
      *                      GO:0003676 (nucleic acid binding), GO:0005634 (nucleus)
@@ -182,9 +190,9 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
      * SIASPGRGILAIDESNATCGKRLASIGLDNTEVNRQAYRQLLLTTPGLGEYISGAILFEE
      * ...
      */
-    void processInfoAnnotAhrdFile(Reader reader) throws IOException {
+    void processInfoAnnotAhrdFile() throws IOException {
         // spin through the AHRD file lines
-        BufferedReader br = new BufferedReader(reader);
+        BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment line

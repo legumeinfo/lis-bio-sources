@@ -58,7 +58,8 @@ import org.ncgr.zip.GZIPBufferedReader;
 public class AnnotationFileConverter extends DatastoreFileConverter {
 	
     private static final Logger LOG = Logger.getLogger(AnnotationFileConverter.class);
-    private static final String TEMPFILE = "/tmp/annotation.gff3";
+    private static final String TEMPGENEFILE = "/tmp/gene_models_main.gff3";
+    private static final String TEMPIPRSCANFILE = "/tmp/iprscan.gff3";
 
     // GFF sourced
     Map<String,Item> chromosomes = new HashMap<>();
@@ -142,9 +143,6 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             System.out.println("## Processing "+getCurrentFile().getName());
             processGFAFile();
             gfaFileExists = true;            
-        } else if (getCurrentFile().getName().endsWith(".pathway.tsv.gz")) {
-            System.out.println("## Processing "+getCurrentFile().getName());
-            processPathwayFile();
 	} else if (getCurrentFile().getName().endsWith(".protein.faa.gz") || getCurrentFile().getName().endsWith(".protein_primary.faa.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processProteinFasta();
@@ -157,8 +155,14 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             System.out.println("## Processing "+getCurrentFile().getName());
             processMRNAFasta();
             mrnaFileExists = true;
+        } else if (getCurrentFile().getName().endsWith(".pathway.tsv.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
+            processPathwayFile();
+        } else if (getCurrentFile().getName().endsWith(".iprscan.gff3.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
+            processIPRScanGFF3();
         } else {
-            System.out.println("## Skipping file "+getCurrentFile().getName());
+            System.out.println("## - Skipping "+getCurrentFile().getName());
         }
     }
 
@@ -170,12 +174,11 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         if (readme==null) {
             throw new RuntimeException("README file not found. Aborting.");
         }
-        if (!cdsFileExists) System.err.println("ERROR: cds FASTA file is missing.");
-        if (!mrnaFileExists) System.err.println("ERROR: mrna FASTA file is missing.");
+        if (!cdsFileExists && !mrnaFileExists) System.err.println("ERROR: neither mrna nor cds FASTA file is present. One must be.");
         if (!proteinFileExists) System.err.println("ERROR: protein FASTA file is missing.");
         if (!gfaFileExists) System.err.println("ERROR: gfa file is missing.");
         if (!gff3FileExists) System.err.println("ERROR: GFF3 file is missing.");
-        if (!cdsFileExists || !mrnaFileExists || !proteinFileExists || !gfaFileExists || !gff3FileExists) {
+        if ((!cdsFileExists && !mrnaFileExists) || !proteinFileExists || !gfaFileExists || !gff3FileExists) {
             throw new RuntimeException("Missing required annotation file(s). Aborting.");
         }
         // set references and collections for objects loaded from FASTAs based on matching identifiers
@@ -376,7 +379,6 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             geneFamily.addToCollection("genes", gene);
             geneFamily.addToCollection("proteins", protein);
         }
-        br.close();
     }
 
     /**
@@ -411,7 +413,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             throw new RuntimeException("README not read before "+getCurrentFile().getName()+". Aborting.");
         }
         // uncompress the gff3.gz file to a temp file
-        File tempfile = new File(TEMPFILE);
+        File tempfile = new File(TEMPGENEFILE);
         tempfile.delete();
         BufferedWriter writer = new BufferedWriter(new FileWriter(tempfile));
         BufferedReader reader = GZIPBufferedReader.getReader(getCurrentFile());
@@ -422,7 +424,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         }
         writer.close();
         // now load the uncompressed GFF
-        FeatureList featureList = GFF3Reader.read(TEMPFILE);
+        FeatureList featureList = GFF3Reader.read(TEMPGENEFILE);
         for (FeatureI featureI : featureList) {
             String seqname = featureI.seqname();
             Location location = featureI.location();
@@ -536,6 +538,61 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     }
 
     /**
+     * Process an IPRScan GFF file which has Proteins in the sequence column.
+     * 0     1            2    3    4    5       6    7
+     * medsa.XinJiangDaYe.gnm1.ann1.RKB9.iprscan.gff3.gz
+     *
+     * medsa.XinJiangDaYe.gnm1.ann1.MS_gene000000.t1 PANTHER protein_match 1 463 . + . Name=PTHR10178:SF14;status=T;ID=match$1047424_1_463;date=04-02-2021
+     * medsa.XinJiangDaYe.gnm1.ann1.MS_gene000008.t1 ProSiteProfiles protein_match  10 264   . + . Name=PS50294;status=T;ID=match$461640_10_264;date=03-02-2021;
+     *    signature_desc=Trp-Asp (WD) repeats circular profile.
+     * medsa.XinJiangDaYe.gnm1.ann1.MS_gene000000.t1 Pfam    protein_hmm_match 3 88 4.8E-11 + . Name=PF03732;status=T;ID=match$1047423_3_88;date=04-02-2021;
+     *    signature_desc=Retrotransposon gag protein;Target=PF03732 6 96;
+     */
+    void processIPRScanGFF3() throws IOException {
+        // uncompress the gff3.gz file to a temp file
+        File tempfile = new File(TEMPIPRSCANFILE);
+        tempfile.delete();
+        BufferedWriter writer = new BufferedWriter(new FileWriter(tempfile));
+        BufferedReader reader = GZIPBufferedReader.getReader(getCurrentFile());
+        String line = null;
+        while ( (line=reader.readLine())!=null ) {
+            writer.write(line);
+            writer.newLine();
+        }
+        writer.close();
+        // now load the uncompressed GFF
+        FeatureList featureList = GFF3Reader.read(TEMPIPRSCANFILE);
+        for (FeatureI featureI : featureList) {
+            String seqname = featureI.seqname();
+            Location location = featureI.location();
+            String type = featureI.type();
+            // feature
+            Item feature = getFeatureOnProtein(type, seqname, location);
+            String id = getAttribute(featureI, "ID");
+            feature.setAttribute("primaryIdentifier", id);
+            features.put(id, feature);
+            // source isn't supplied by FeatureI
+            // feature.setAttribute("source", rec.getSource());
+            // attributes
+            String name = getAttribute(featureI, "Name");
+            String status = getAttribute(featureI, "status");
+            String date = getAttribute(featureI, "date");
+            String target = getAttribute(featureI, "Target");
+            String signatureDesc = getAttribute(featureI, "signature_desc");
+            // accession=Name
+            feature.setAttribute("accession", name);
+            // status
+            if (status!=null) feature.setAttribute("status", status);
+            // date
+            if (date!=null) feature.setAttribute("date", date);
+            // target
+            if (target!=null) feature.setAttribute("target", target);
+            // signatureDesc
+            if (signatureDesc!=null) feature.setAttribute("signatureDesc", signatureDesc);
+        }
+    }
+
+    /**
      * Add an OntologyAnnotation with the given identifier to the given feature's collection
      * NOTE: GO terms are GOTerm objects.
      */
@@ -625,6 +682,31 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         }
     }
 
+    /**
+     * Place a feature on a protein.
+     */
+    Item getFeatureOnProtein(String type, String seqname, Location location) throws RuntimeException {
+        Item protein = getProtein(seqname);
+        Item feature = null;
+        if (type.equals("protein_match")) {
+            feature = createItem("ProteinMatch");
+        } else if (type.equals("protein_hmm_match")) {
+            feature = createItem("ProteinHmmMatch");
+        } else {
+            throw new RuntimeException("IPRSCAN GFF record type "+type+" is not supported by this loader.");
+        }
+        feature.setReference("protein", protein);
+        // reference feature on new IM Location
+        Item proteinLocation = createItem("Location");
+        proteinLocation.setReference("feature", feature);
+        proteinLocation.setAttribute("start", String.valueOf(location.bioStart()));
+        proteinLocation.setAttribute("end", String.valueOf(location.bioEnd()));
+        proteinLocation.setReference("locatedOn", protein);
+        locations.add(proteinLocation);
+        feature.setReference("location", proteinLocation);
+        return feature;
+    }
+    
     /**
      * Get/add a Gene Item, keyed by primaryIdentifier
      */

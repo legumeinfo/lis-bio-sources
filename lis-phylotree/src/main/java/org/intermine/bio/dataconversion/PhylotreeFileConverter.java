@@ -64,24 +64,25 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) {
-        // there is no README (yet)
-        // DataSet
-        if (dataSetName==null || dataSetUrl==null || dataSetDescription==null) {
-            throw new RuntimeException("ERROR: dataSetName, dataSetUrl, and dataSetDescription must be set in project.xml.");
+        // there is no README (yet) so hand-roll DataSet
+        if (dataSet==null) {
+            if (dataSetName==null || dataSetUrl==null || dataSetDescription==null) {
+                throw new RuntimeException("ERROR: dataSetName, dataSetUrl, and dataSetDescription must be set in project.xml.");
+            }
+            dataSet = createItem("DataSet");
+            dataSet.setAttribute("name", dataSetName);
+            dataSet.setAttribute("url", dataSetUrl);
+            dataSet.setAttribute("description", dataSetDescription);
+            if (dataSetLicence!=null) {
+                dataSet.setAttribute("licence", dataSetLicence);
+            } else {
+                dataSet.setAttribute("licence", DatastoreFileConverter.DEFAULT_DATASET_LICENCE);
+            }
+            dataSet.setReference("dataSource", dataSource);
         }
-        dataSet = createItem("DataSet");
-        dataSet.setAttribute("name", dataSetName);
-        dataSet.setAttribute("url", dataSetUrl);
-        dataSet.setAttribute("description", dataSetDescription);
-        if (dataSetLicence!=null) {
-            dataSet.setAttribute("licence", dataSetLicence);
-        } else {
-            dataSet.setAttribute("licence", DatastoreFileConverter.DEFAULT_DATASET_LICENCE);
-        }
-        dataSet.setReference("dataSource", dataSource);
         try {
             processTreeFile();
-        } catch (IOException ex) {
+        } catch (Exception ex) {
             throw new RuntimeException(ex);
         }
     }
@@ -125,9 +126,11 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         if (node.isFeature()) {
             phylonode.setAttribute("isLeaf", "true");
             phylonode.setAttribute("name", node.label);
-            // assume Proteins
-            Item protein = getProtein(node.label);
-            phylonode.setReference("protein", protein);
+            // some nodes hold proteins
+            if (isFullYuck(node.label)) {
+                Item protein = getProtein(node.label);
+                phylonode.setReference("protein", protein);
+            }
         }
         return phylonode;
     }
@@ -170,6 +173,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
 
     /**
      * Process a file in the phylotree subdirectory, in Newick format.
+     * legume.genefam.fam1.M65K.trees_ML_rooted/legfed_v1_0.L_6W30ML
      */
     void processTreeFile() throws IOException {
         JPhyloIOReaderWriterFactory factory = new JPhyloIOReaderWriterFactory();
@@ -184,13 +188,20 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
             throw new RuntimeException(ex);
         }
         // create this Phylotree and GeneFamily
-        String name = getCurrentFile().getName();
+        // 0           1
+        // legfed_v1_0.L_6W30ML
+        String identifier = getCurrentFile().getName();
+        String[] parts = identifier.split("\\.");
+        String name = parts[1];
         Item phylotree = createItem("Phylotree");
         phylotrees.add(phylotree);
+        // TODO: 5.0.7.3 switch to identifier
+        // phylotree.setAttribute("identifier", identifier);
         phylotree.setAttribute("name", name);
         phylotree.setReference("dataSet", dataSet);
         Item geneFamily = createItem("GeneFamily");
         geneFamilies.add(geneFamily);
+        // TODO: 5.0.7.3 switch to identifier
         geneFamily.setAttribute("name", name);
         geneFamily.setReference("phylotree", phylotree);
         phylotree.setReference("geneFamily", geneFamily);
@@ -225,6 +236,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
                     // Indicates a node in a phylogenetic tree or network.
                     Node n = new Node(event.asNodeEvent());
                     Item phylonode = getPhylonode(n, name);
+                    if (phylonode==null) return;
                     phylonode.setReference("tree", phylotree);
                     phylotree.addToCollection("nodes", phylonode);
                     if (n.isFeature()) numLeaves++;
@@ -264,14 +276,16 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
     }
 
     /**
+     * Return true if the given identifier is in LIS full yuck format.
+     */
+    boolean isFullYuck(String primaryIdentifier) {
+        return primaryIdentifier.split("\\.").length>=5;
+    }
+        
+    /**
      * Get/add a Protein Item, keyed by primaryIdentifier
      */
     Item getProtein(String primaryIdentifier) {
-        // check that we've got a full-yuck identifier
-        String[] parts = primaryIdentifier.split("\\.");
-        if (parts.length<5) {
-            throw new RuntimeException("Protein primary identifier in "+getCurrentFile().getName()+" is not LIS format:"+primaryIdentifier);
-        }
         if (proteins.containsKey(primaryIdentifier)) {
             return proteins.get(primaryIdentifier);
         } else {
