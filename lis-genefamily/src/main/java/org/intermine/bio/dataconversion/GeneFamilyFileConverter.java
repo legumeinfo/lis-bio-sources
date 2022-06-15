@@ -201,14 +201,6 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
             Item geneFamily = getGeneFamily(record.identifier);
             geneFamily.setAttribute("version", record.version);
             geneFamily.setAttribute("description", record.description);
-            // name is needed for merge with Phylotree
-            // legfed_v1_0.L_LFXSXJ name=L_LFXSXJ
-            String[] parts = record.identifier.split("\\.");
-            if (parts.length==2) {
-                geneFamily.setAttribute("name", parts[1]);
-            } else {
-                throw new RuntimeException("Gene family identifier "+record.identifier+" is not in dot-separated format.");
-            }
             // GO terms
             for (String identifier : record.go.keySet()) {
                 String description = record.go.get(identifier);

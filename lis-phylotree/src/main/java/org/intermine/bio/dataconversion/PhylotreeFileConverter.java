@@ -44,8 +44,8 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
 
     // local Items to store
     Map<String,Item> proteins = new HashMap<>();       // keyed by primaryIdentifier
-    Map<String,Item> phylonodes = new HashMap<>();     // key=(phylotree.name).(Node.id)
-    Map<String,Integer> childCounts = new HashMap<>(); // key=(phylotree.name).(Node.id)
+    Map<String,Item> phylonodes = new HashMap<>();     // key=(phylotree.identifier).(Node.id)
+    Map<String,Integer> childCounts = new HashMap<>(); // key=(phylotree.identifier).(Node.id)
     List<Item> geneFamilies = new LinkedList<>();      // unique per file
     List<Item> phylotrees = new LinkedList<>();        // unique per file
     List<Item> newicks = new LinkedList<>();           // unique per file
@@ -102,17 +102,17 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Get/add/update a Phylonode Item, keyed by name.id
+     * Get/add/update a Phylonode Item, keyed by identifier.id
      *
      * @param node the Node
-     * @param name the name of the PhyloTree
+     * @param identifier the identifier of the PhyloTree
      * @return the Phylonode Item
      */
-    Item getPhylonode(Node node, String name) {
+    Item getPhylonode(Node node, String identifier) {
         if (node==null) {
             throw new RuntimeException("null Node passed into getPhylonode.");
         }
-        String key = name+"."+node.id;
+        String key = identifier+"."+node.id;
         Item phylonode;
         if (phylonodes.containsKey(key)) {
             phylonode = phylonodes.get(key);
@@ -125,7 +125,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         }
         if (node.isFeature()) {
             phylonode.setAttribute("isLeaf", "true");
-            phylonode.setAttribute("name", node.label);
+            phylonode.setAttribute("identifier", node.label);
             // some nodes hold proteins
             if (isFullYuck(node.label)) {
                 Item protein = getProtein(node.label);
@@ -191,18 +191,13 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         // 0           1
         // legfed_v1_0.L_6W30ML
         String identifier = getCurrentFile().getName();
-        String[] parts = identifier.split("\\.");
-        String name = parts[1];
         Item phylotree = createItem("Phylotree");
         phylotrees.add(phylotree);
-        // TODO: 5.0.7.3 switch to identifier
-        // phylotree.setAttribute("identifier", identifier);
-        phylotree.setAttribute("name", name);
+        phylotree.setAttribute("identifier", identifier);
         phylotree.setReference("dataSet", dataSet);
         Item geneFamily = createItem("GeneFamily");
         geneFamilies.add(geneFamily);
-        // TODO: 5.0.7.3 switch to identifier
-        geneFamily.setAttribute("name", name);
+        geneFamily.setAttribute("identifier", identifier);
         geneFamily.setReference("phylotree", phylotree);
         phylotree.setReference("geneFamily", geneFamily);
         // keep track of the leaf nodes
@@ -230,12 +225,12 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
                 case EDGE:
                     // Indicates an edge in a phylogenetic tree or network.
                     Edge e = new Edge(event.asEdgeEvent());
-                    processEdge(e, name);
+                    processEdge(e, identifier);
                     break;
                 case NODE:
                     // Indicates a node in a phylogenetic tree or network.
                     Node n = new Node(event.asNodeEvent());
-                    Item phylonode = getPhylonode(n, name);
+                    Item phylonode = getPhylonode(n, identifier);
                     if (phylonode==null) return;
                     phylonode.setReference("tree", phylotree);
                     phylotree.addToCollection("nodes", phylonode);
@@ -262,7 +257,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         // now store the Newick file contents
         Item newick = createItem("Newick");
         newicks.add(newick);
-        newick.setAttribute("name", name);
+        newick.setAttribute("identifier", identifier);
         newick.setReference("phylotree", phylotree);
         newick.setReference("geneFamily", geneFamily);
         String contents = "";
