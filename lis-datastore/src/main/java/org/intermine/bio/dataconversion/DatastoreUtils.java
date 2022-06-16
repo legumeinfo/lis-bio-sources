@@ -369,21 +369,15 @@ public class DatastoreUtils {
     }
 
     /**
-     * Extract the gene identifier from a protein identifier, which is assumed to be [geneIdentifier].n.
-     * 
-     * @param proteinIdentifier the protein LIS identifier
-     * @returns the corresponding gene LIS identifier
+     * Extract the LIS prefix from an annotation filename.
+     * 0     1            2    3    4    5       6    7
+     * medsa.XinJiangDaYe.gnm1.ann1.RKB9.iprscan.gff3.gz
      */
-    public static String extractGeneIdentifierFromProteinIdentifier(String proteinIdentifier) {
-	String[] fields = proteinIdentifier.split("\\.");
-	String geneIdentifier = fields[0];
-	for (int i=1; i<(fields.length-1); i++) {
-	    geneIdentifier += "."+fields[i];
-	}
-	return geneIdentifier;
+    public static String extractPrefixFromAnnotationFilename(String filename) {
+        String[] pieces = filename.split("\\.");
+        return pieces[0]+"."+pieces[1]+"."+pieces[2]+"."+pieces[3];
     }
-
-
+    
     /**
      * Unescape some URL escaped characters used in GFF notes, etc.
      */
