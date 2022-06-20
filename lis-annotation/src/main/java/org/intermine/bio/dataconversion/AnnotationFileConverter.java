@@ -547,8 +547,14 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
      *    signature_desc=Trp-Asp (WD) repeats circular profile.
      * medsa.XinJiangDaYe.gnm1.ann1.MS_gene000000.t1 Pfam    protein_hmm_match 3 88 4.8E-11 + . Name=PF03732;status=T;ID=match$1047423_3_88;date=04-02-2021;
      *    signature_desc=Retrotransposon gag protein;Target=PF03732 6 96;
+     *
+     * NOTE: protein_match and protein_hmm_match IDs are non-unique between files for different species,
+     * therefore we prefix for primaryIdentifier and store plain ID as secondaryIdentifier.
+     *
      */
     void processIPRScanGFF3() throws IOException {
+        // get prefix for uniquefying ProteinMatch and ProteinHmmMatch primaryIdentifier
+        String prefix = DatastoreUtils.extractPrefixFromAnnotationFilename(getCurrentFile().getName());
         // uncompress the gff3.gz file to a temp file
         File tempfile = new File(TEMPIPRSCANFILE);
         tempfile.delete();
@@ -569,6 +575,11 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             // feature
             Item feature = getFeatureOnProtein(type, seqname, location);
             String id = getAttribute(featureI, "ID");
+            if (type.equals("protein_match") || type.equals("protein_hmm_match")) {
+                // prefix for unique primaryIdentifier
+                feature.setAttribute("name", id);
+                id = prefix + "." + id;
+            }
             feature.setAttribute("primaryIdentifier", id);
             features.put(id, feature);
             // source isn't supplied by FeatureI
