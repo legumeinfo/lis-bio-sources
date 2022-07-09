@@ -52,6 +52,7 @@ import org.ncgr.zip.GZIPBufferedReader;
  *   mrna.fna.gz
  *   gfa.tsv.gz
  *   pathway.tsv.gz
+ *   iprscan.gff3.gz
  *
  * @author Sam Hokin
  */
@@ -99,11 +100,12 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                                                       entry("mRNA", "MRNA"),
                                                       entry("CDS", "CDSRegion"),
                                                       entry("exon", "Exon"),
+                                                      entry("intron", "Intron"),
                                                       entry("three_prime_UTR", "ThreePrimeUTR"),
                                                       entry("five_prime_UTR", "FivePrimeUTR"),
                                                       entry("lnc_RNA", "LncRNA"),
                                                       entry("transcript", "Transcript"),
-                                                      entry("pseudogene", "Pseudogene"),
+                                                      entry("pseudogene", "Gene"),
                                                       entry("primary_transcript", "Transcript"),
                                                       entry("miRNA", "MiRNA"),
                                                       entry("miRNA_primary_transcript", "MiRNA"),
@@ -115,7 +117,9 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                                                       entry("snoRNA", "SnoRNA"),
                                                       entry("snRNA", "SnRNA"),
                                                       entry("rRNA", "RRNA"),
-                                                      entry("rRNA_primary_transcript", "RRNA"));
+                                                      entry("rRNA_primary_transcript", "RRNA"),
+                                                      entry("inverted_repeat", "InvertedRepeat"),
+                                                      entry("repeat_region", "RepeatRegion"));
 
     /**
      * Create a new AnnotationFileConverter
@@ -137,7 +141,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             setStrain();
         } else if (getCurrentFile().getName().endsWith(".gene_models_main.gff3.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
-            processGFF3File();
+            processGeneModelsMainGFF3File();
             gff3FileExists = true;
         } else if (getCurrentFile().getName().endsWith(".gfa.tsv.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
@@ -408,7 +412,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
      * Because GFFReader does not handle gzipped files, we have to dump the file to /tmp first and then read that.
      * Assumes that ID=gensp.strain.gnm.ann.identifier and Name=name.
      */
-    void processGFF3File() throws IOException, RuntimeException {
+    void processGeneModelsMainGFF3File() throws IOException, RuntimeException {
         if (readme==null) {
             throw new RuntimeException("README not read before "+getCurrentFile().getName()+". Aborting.");
         }
@@ -467,13 +471,13 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 feature.setAttribute("length", String.valueOf(location.length()));
             }
             // Name=GlymaLee.02G198600;
-            if (name!=null) feature.setAttribute("name", name);
+            if (name!=null && name.trim().length()>0) feature.setAttribute("name", name);
             // Note=Cytochrome P450 superfamily protein%3B IPR001128 (Cytochrome P450)%3B GO:0005506 (iron ion binding)%2C GO:0020037 (heme binding)%2C ...
-            if (note!=null) feature.setAttribute("description", DatastoreUtils.unescape(note));
+            if (note!=null && note.trim().length()>0) feature.setAttribute("description", DatastoreUtils.unescape(note));
             // Symbol=RGB4
-            if (symbol!=null) feature.setAttribute("symbol", symbol);
+            if (symbol!=null && symbol.trim().length()>0) feature.setAttribute("symbol", symbol);
             // Dbxref=Gene3D:G3DSA:1.10.630.10,InterPro:IPR001128,InterPro:IPR002401,InterPro:IPR017972,PANTHER:PTHR24298,...
-            if (dbxref!=null) {
+            if (dbxref!=null && dbxref.trim().length()>0) {
                 String[] terms = dbxref.split(",");
                 for (String term : terms) {
                     if (term.startsWith("InterPro:")) {
@@ -528,7 +532,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 }
             }
             // Ontology_term=GO:0005506,GO:0016705,GO:0020037,GO:0055114;
-            if (ontology_term!=null) {
+            if (ontology_term!=null && ontology_term.trim().length()>0) {
                 String[] terms = ontology_term.split(",");
                 for (String term : terms) {
                     createOntologyAnnotation(feature, term);

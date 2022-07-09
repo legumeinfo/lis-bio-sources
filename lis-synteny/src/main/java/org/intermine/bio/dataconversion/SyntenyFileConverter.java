@@ -100,7 +100,7 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
      * cicar.CDCFrontier.gnm1.x.lotja.MG20.gnm3.7Bqh.gff3.gz
      */
     public void processGFF() throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
+        System.out.println("## Processing "+getCurrentFile().getName());
         dsu = new DatastoreUtils();
         String[] fileNameParts = getCurrentFile().getName().split("\\.");
         if (fileNameParts.length!=10) {

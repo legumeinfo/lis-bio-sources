@@ -145,12 +145,12 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * Process the file which describes the samples.
      *
      * cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv.gz
-     * 
-     * 0sample_name                       1key       sample_uniquename                  description                                    treatment             tissue
-     * Mature seed at reprod (SRR5199304) SRR5199304 Mature seed at reprod (SRR5199304) Mature seed at Reproductive stage (SRR5199304) Mature seed at reprod Mature seed 
      *
-     * dev_stage          age      organism      infraspecies cultivar        other sra_run    biosample_accession sra_accession bioproject_accession sra_study
-     * Reproductive stage          Cajanus cajan ICPL87119    Asha(ICPL87119)       SRR5199304 SAMN06264156        SRS1937936    PRJNA354681          SRP097728
+     * Only the first two columns are required:
+     * 0             1           2                  3                   4         5       6                 7   8         9             
+     * #sample_name  sample_id  [sample_uniquename  sample_description  treatment tissue  development_stage age organism  infraspecies  
+     * 10        11          12      13                  14            15                    16
+     * cultivar  application sra_run biosample_accession sra_accession bioproject_accession  sra_study]
      */
     void processSamples() throws IOException {
         String[] colnames = null;
@@ -158,16 +158,15 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
 	BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
         String line = null;
         while ((line=br.readLine())!=null) {
-            if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
-            String[] parts = line.split("\t");
-            // header contains colnames
-            if (line.startsWith("sample_name")) {
-                colnames = parts;
+            if (line.startsWith("#sample_name") || line.startsWith("sample_name")) {
+                colnames = line.split("\t");
+            } else if (line.startsWith("#") || line.trim().length()==0) {
+                // comment or blank
+                continue;
             } else {
-                // increment sample number
+                // sample row
                 num++;
-                // 0sample_name = Sample.name
-                // 1key = Sample.primaryIdentifier
+                String[] parts = line.split("\t");
                 String name = parts[0];
                 String id = parts[1];
                 Item sample = samples.get(id);
@@ -181,7 +180,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
 		// sample-specific attributes
                 for (int i=0; i<colnames.length; i++) {
                     switch(colnames[i]) {
-                    case "description" :
+                    case "sample_description" :
                         sample.setAttribute("description", parts[i]);
                         break;
                     case "biosample_accession" :
