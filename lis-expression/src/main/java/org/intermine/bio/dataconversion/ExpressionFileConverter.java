@@ -5,6 +5,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.Reader;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
 import java.util.LinkedList;
 import java.util.Map;
@@ -144,13 +145,15 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     /**
      * Process the file which describes the samples.
      *
-     * cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv.gz
+     * Only the first two columns are required.
      *
-     * Only the first two columns are required:
-     * 0             1           2                  3                   4         5       6                 7   8         9             
-     * #sample_name  sample_id  [sample_uniquename  sample_description  treatment tissue  development_stage age organism  infraspecies  
-     * 10        11          12      13                  14            15                    16
-     * cultivar  application sra_run biosample_accession sra_accession bioproject_accession  sra_study]
+     * cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv.gz
+     * 0                                  1          2                                  3                                              4                     5
+     * #sample_name                       sample_id  sample_uniquename                  sample_description                             treatment             tissue
+     * Mature seed at reprod (SRR5199304) SRR5199304 Mature seed at reprod (SRR5199304) Mature seed at Reproductive stage (SRR5199304) Mature seed at reprod Mature seed
+     * 6                  7   8             9            10              11          12         13                  14            15                   16
+     * development_stage  age organism      infraspecies cultivar        application sra_run    biosample_accession sra_accession bioproject_accession sra_study
+     * Reproductive stage     Cajanus cajan ICPL87119    Asha(ICPL87119)             SRR5199304 SAMN06264156        SRS1937936    PRJNA354681          SRP097728
      */
     void processSamples() throws IOException {
         String[] colnames = null;
@@ -169,24 +172,22 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                 String[] parts = line.split("\t");
                 String name = parts[0];
                 String id = parts[1];
-                Item sample = samples.get(id);
-                if (sample==null) {
-                    sample = createItem("ExpressionSample");
-                    sample.setAttribute("primaryIdentifier", id);
-                    samples.put(id, sample);
-                }
+
+                Item sample = getSample(id);
                 sample.setAttribute("name", name);
                 sample.setAttribute("num", String.valueOf(num));
-		// sample-specific attributes
+                // other attributes
+                Map<String,String> attributes = new HashMap<>();
                 for (int i=0; i<colnames.length; i++) {
-                    switch(colnames[i]) {
-                    case "sample_description" :
-                        sample.setAttribute("description", parts[i]);
-                        break;
-                    case "biosample_accession" :
-                        // bioSample accession is all we need, everything else is on NCBI
-                        sample.setAttribute("bioSample", parts[i]);
-                        break;
+                    attributes.put(colnames[i], parts[i]);
+                }
+                // map the header attribute to the desired ExpresionSample attribute
+                HashMap<String,String> desired = new HashMap<>();
+                desired.put("sample_description", "description");
+                desired.put("biosample_accession", "bioSample");
+                for (String key : desired.keySet()) {
+                    if (attributes.get(key)!=null && attributes.get(key).trim().length()>0) {
+                        sample.setAttribute(desired.get(key), attributes.get(key));
                     }
                 }
             }
@@ -271,4 +272,20 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             annotations.add(annotation);
         }
     }
+
+
+    /**
+     * Get or create a Sample.
+     */
+    Item getSample(String id) {
+        if (samples.containsKey(id)) {
+            return samples.get(id);
+        } else {
+            Item sample = createItem("ExpressionSample");
+            sample.setAttribute("primaryIdentifier", id);
+            samples.put(id, sample);
+            return sample;
+        }
+    }
+
 }
