@@ -76,7 +76,7 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
                 throw new RuntimeException(getCurrentFile().getName()+" does not have genotyping_platform, which is required.");
             }
             setStrain();
-        } else if (getCurrentFile().getName().endsWith(".gff3")) {
+        } else if (getCurrentFile().getName().endsWith(".gff3.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processMarkerGFF3File();
 	}
