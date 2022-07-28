@@ -105,7 +105,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                                                       entry("five_prime_UTR", "FivePrimeUTR"),
                                                       entry("lnc_RNA", "LncRNA"),
                                                       entry("transcript", "Transcript"),
-                                                      entry("pseudogene", "Gene"),
+                                                      entry("pseudogene", "Pseudogene"),
                                                       entry("primary_transcript", "Transcript"),
                                                       entry("miRNA", "MiRNA"),
                                                       entry("miRNA_primary_transcript", "MiRNA"),
@@ -119,6 +119,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                                                       entry("rRNA", "RRNA"),
                                                       entry("rRNA_primary_transcript", "RRNA"),
                                                       entry("inverted_repeat", "InvertedRepeat"),
+                                                      entry("region", "Region"),
                                                       entry("repeat_region", "RepeatRegion"));
 
     /**
@@ -178,11 +179,24 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         if (readme==null) {
             throw new RuntimeException("README file not found. Aborting.");
         }
-        if (!cdsFileExists && !mrnaFileExists) System.err.println("ERROR: neither mrna nor cds FASTA file is present. One must be.");
-        if (!proteinFileExists) System.err.println("ERROR: protein FASTA file is missing.");
-        if (!gfaFileExists) System.err.println("ERROR: gfa file is missing.");
-        if (!gff3FileExists) System.err.println("ERROR: GFF3 file is missing.");
-        if ((!cdsFileExists && !mrnaFileExists) || !proteinFileExists || !gfaFileExists || !gff3FileExists) {
+        boolean filesMissing = false;
+        if (!cdsFileExists && !mrnaFileExists) {
+            filesMissing = true;
+            System.err.println("ERROR: neither mrna nor cds FASTA file is present. One must be.");
+        }
+        if (!proteinFileExists) {
+            filesMissing = true;
+            System.err.println("ERROR: protein FASTA file is missing.");
+        }
+        if (!gfaFileExists) {
+            filesMissing = true;
+            System.err.println("ERROR: gfa file is missing.");
+        }
+        if (!gff3FileExists) {
+            filesMissing = true;
+            System.err.println("ERROR: GFF3 file is missing.");
+        }
+        if (filesMissing) {
             throw new RuntimeException("Missing required annotation file(s). Aborting.");
         }
         // set references and collections for objects loaded from FASTAs based on matching identifiers
@@ -332,7 +346,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     }
     
     /**
-     * Process a gfa.tsv file which contains relationships between gene families, genes and proteins, along with a score value.
+     * Process a gfa.tsv file which contains relationships between gene families, genes and proteins, along with an e-value, score, and best-domain score.
      * 0     1      2    3    4    5           6    7   8   9
      * phavu.G19833.gnm2.ann1.PB8d.legfed_v1_0.M65K.gfa.tsv.gz
      *
@@ -433,13 +447,19 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             String seqname = featureI.seqname();
             Location location = featureI.location();
             String type = featureI.type();
-            // attributes
+            // spec attributes
             String id = getAttribute(featureI, "ID");
             String name = getAttribute(featureI, "Name");
+            String alias = getAttribute(featureI, "Alias");
             String parent = getAttribute(featureI, "Parent");
+            String target = getAttribute(featureI, "Target");
+            String gap = getAttribute(featureI, "Gap");
+            String derivesFrom = getAttribute(featureI, "Derives_from");
             String note = getAttribute(featureI, "Note");
             String dbxref = getAttribute(featureI, "Dbxref");
             String ontology_term = getAttribute(featureI, "Ontology_term");
+            String isCircular = getAttribute(featureI, "Is_circular");
+            // LIS attributes
             String alleles = getAttribute(featureI, "alleles");
             String symbol = getAttribute(featureI, "symbol");
             // check that id exists and matches collection
@@ -469,6 +489,14 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 feature = getFeature(id, featureClass);
                 placeFeatureOnSequence(feature, seqname, location);
                 feature.setAttribute("length", String.valueOf(location.length()));
+            }
+            // only Region has isCircular attribute
+            if (featureClass.equals("Region") && isCircular!=null) {
+                if (isCircular.equals("true")) {
+                    feature.setAttribute("isCircular", "true");
+                } else {
+                    feature.setAttribute("isCircular", "false");
+                }
             }
             // Name=GlymaLee.02G198600;
             if (name!=null && name.trim().length()>0) feature.setAttribute("name", name);

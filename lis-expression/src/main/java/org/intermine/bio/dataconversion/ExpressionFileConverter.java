@@ -97,11 +97,11 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             if (publication!=null) expressionSource.addToCollection("publications", publication);
         } else if (getCurrentFile().getName().endsWith("samples.tsv.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
-	    processSamples();
+	    processSamplesFile();
             samplesRead = true;
         } else if (getCurrentFile().getName().endsWith("values.tsv.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
-            processExpression();
+            processValuesFile();
             valuesRead = true;
         } else if (getCurrentFile().getName().endsWith("obo.tsv.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
@@ -122,10 +122,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
         storeCollectionItems();
         // add references to samples
         for (Item sample : samples.values()) {
-            sample.setReference("organism", organism);
-            sample.setReference("strain", strain);
             sample.setReference("source", expressionSource);
-            if (publication!=null) sample.addToCollection("publications", publication);
         }
         // add references to genes
         for (Item gene : genes.values()) {
@@ -147,21 +144,16 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      *
      * Only the first two columns are required.
      *
-     * cajca.ICPL87119.gnm1.ann1.expr.KEY4.samples.tsv.gz
-     * 0                                  1          2                                  3                                              4                     5
-     * #sample_name                       sample_id  sample_uniquename                  sample_description                             treatment             tissue
-     * Mature seed at reprod (SRR5199304) SRR5199304 Mature seed at reprod (SRR5199304) Mature seed at Reproductive stage (SRR5199304) Mature seed at reprod Mature seed
-     * 6                  7   8             9            10              11          12         13                  14            15                   16
-     * development_stage  age organism      infraspecies cultivar        application sra_run    biosample_accession sra_accession bioproject_accession sra_study
-     * Reproductive stage     Cajanus cajan ICPL87119    Asha(ICPL87119)             SRR5199304 SAMN06264156        SRS1937936    PRJNA354681          SRP097728
+     * #identifier  name  description  treatment  tissue  development_stage  species  genotype  replicate_group  biosample  sra_experiment
+     *
      */
-    void processSamples() throws IOException {
+    void processSamplesFile() throws IOException {
         String[] colnames = null;
         int num = 0;
 	BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
         String line = null;
         while ((line=br.readLine())!=null) {
-            if (line.startsWith("#sample_name") || line.startsWith("sample_name")) {
+            if (line.startsWith("#identifier")) {
                 colnames = line.split("\t");
             } else if (line.startsWith("#") || line.trim().length()==0) {
                 // comment or blank
@@ -170,9 +162,8 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                 // sample row
                 num++;
                 String[] parts = line.split("\t");
-                String name = parts[0];
-                String id = parts[1];
-
+                String id = parts[0];
+                String name = parts[1];
                 Item sample = getSample(id);
                 sample.setAttribute("name", name);
                 sample.setAttribute("num", String.valueOf(num));
@@ -181,10 +172,17 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                 for (int i=0; i<colnames.length; i++) {
                     attributes.put(colnames[i], parts[i]);
                 }
-                // map the header attribute to the desired ExpresionSample attribute
+                // map the header attribute to the desired ExpressionSample attribute
+                // identifier  name  description  treatment  tissue  development_stage  species  genotype  replicate_group  biosample  sra_experiment                
                 HashMap<String,String> desired = new HashMap<>();
-                desired.put("sample_description", "description");
-                desired.put("biosample_accession", "bioSample");
+                desired.put("description", "description");
+                desired.put("treatment", "treatment");
+                desired.put("development_stage", "developmentStage");
+                desired.put("species", "species");
+                desired.put("genotype", "genotype");
+                desired.put("replicate_group", "replicateGroup");
+                desired.put("biosample", "bioSample");
+                desired.put("sra_experiment", "sraExperiment");
                 for (String key : desired.keySet()) {
                     if (attributes.get(key)!=null && attributes.get(key).trim().length()>0) {
                         sample.setAttribute(desired.get(key), attributes.get(key));
@@ -198,36 +196,27 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     /**
      * Process a gene expression file. Each gene-sample entry creates an ExpressionValue.
      *
-     * cajca.ICPL87119.gnm1.ann1.expr.KEY4.values.tsv
-     * --------------------------------------------------
-     * geneID	SRR5199304	SRR5199305	SRR5199306	SRR5199307	...
+     * Header line must start with gene_id with tab-separated sample identifiers.
+     * (If not, NumberFormatException will occur to let you know!)
+     *
+     * gene_id	SRR5199304	SRR5199305	SRR5199306	SRR5199307	...
      * cajca.ICPL87119.gnm1.ann1.C.cajan_00002	0	0	0	0	...
      */
-    void processExpression() throws IOException {
+    void processValuesFile() throws IOException {
         List<Item> sampleList = new LinkedList<>();
 	BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue; // comment or blank
             String[] parts = line.split("\t");
-            if (parts[0].toLowerCase().equals("geneid")) {
+            if (parts[0].equals("gene_id")) {
                 // header line gives samples in order so add to list
                 for (int i=1; i<parts.length; i++) {
-                    String sampleId = parts[i];
-                    Item sample = samples.get(sampleId);
-                    if (sample==null) {
-                        sample = createItem("ExpressionSample");
-                        sample.setAttribute("primaryIdentifier", sampleId);
-                        samples.put(sampleId, sample);
-                    }
-                    sampleList.add(sample);
+                    sampleList.add(getSample(parts[i]));
                 }
             } else {
-                // a gene line
-                String geneId = parts[0];
-                Item gene = createItem("Gene");
-                gene.setAttribute("primaryIdentifier", geneId);
-                genes.put(geneId, gene);
+                // a gene expression values line
+                Item gene = getGene(parts[0]);
                 for (int i=1; i<parts.length; i++) {
                     double value = Double.parseDouble(parts[i]);
                     Item sample = sampleList.get(i-1);
@@ -254,12 +243,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             String[] parts = line.split("\t");
             String sampleId = parts[0];
             String termId = parts[1];
-            Item sample = samples.get(sampleId);
-            if (sample==null) {
-                sample = createItem("ExpressionSample");
-                sample.setAttribute("primaryIdentifier", sampleId);
-                samples.put(sampleId, sample);
-            }
+            Item sample = getSample(sampleId);
             Item term = terms.get(termId);
             if (term==null) {
                 term = createItem("OntologyTerm");
@@ -282,9 +266,37 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             return samples.get(id);
         } else {
             Item sample = createItem("ExpressionSample");
-            sample.setAttribute("primaryIdentifier", id);
+            sample.setAttribute("identifier", id);
             samples.put(id, sample);
             return sample;
+        }
+    }
+
+    /**
+     * Get or create an OntologyTerm.
+     */
+    Item getOboTerm(String id) {
+        if (terms.containsKey(id)) {
+            return terms.get(id);
+        } else {
+            Item term = createItem("OntologyTerm");
+            term.setAttribute("identifier", id);
+            terms.put(id, term);
+            return term;
+        }
+    }
+
+    /**
+     * Get or create a Gene.
+     */
+    Item getGene(String id) {
+        if (genes.containsKey(id)) {
+            return genes.get(id);
+        } else {
+            Item gene = createItem("Gene");
+            gene.setAttribute("primaryIdentifier", id);
+            genes.put(id, gene);
+            return gene;
         }
     }
 
