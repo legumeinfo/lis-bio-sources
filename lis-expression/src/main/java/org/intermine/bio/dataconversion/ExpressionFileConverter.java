@@ -18,6 +18,7 @@ import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
 import org.ncgr.datastore.Readme;
+import org.ncgr.datastore.validation.ExpressionCollectionValidator;
 import org.ncgr.zip.GZIPBufferedReader;
 
 /**
@@ -53,7 +54,10 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     boolean samplesRead = false;
     boolean valuesRead = false;
     boolean oboRead = false;
-        
+
+    // validate the collection first by storing a flag
+    boolean collectionValidated = false;
+
     /**
      * Constructor.
      *
@@ -71,6 +75,14 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     public void process(Reader reader) throws IOException {
+        if (!collectionValidated) {
+            ExpressionCollectionValidator validator = new ExpressionCollectionValidator(getCurrentFile().getParent());
+            validator.validate();
+            if (!validator.isValid()) {
+                throw new RuntimeException("Collection "+getCurrentFile().getParent()+" does not pass validation.");
+            }
+            collectionValidated = true;
+        }
 	if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
             setStrain();
@@ -107,9 +119,11 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             System.out.println("## Processing "+getCurrentFile().getName());
             processOboFile();
             oboRead = true;
+        } else {
+            System.out.println("## - Skipping "+getCurrentFile().getName());
         }
     }
-
+    
     /**
      * {@inheritDoc}
      */

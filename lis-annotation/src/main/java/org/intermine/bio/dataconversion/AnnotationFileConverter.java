@@ -39,6 +39,7 @@ import org.intermine.metadata.Util;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
+import org.ncgr.datastore.validation.AnnotationCollectionValidator;
 import org.ncgr.zip.GZIPFastaReader;
 import org.ncgr.zip.GZIPBufferedReader;
 
@@ -95,6 +96,9 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     boolean gfaFileExists = false;
     boolean gff3FileExists = false;
 
+    // validate the collection first by storing a flag
+    boolean collectionValidated = false;
+
     // map GFF types to InterMine classes; be sure to include extras in the additions file!
     Map<String,String> featureClasses = Map.ofEntries(entry("gene", "Gene"),
                                                       entry("mRNA", "MRNA"),
@@ -137,6 +141,14 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
+        if (!collectionValidated) {
+            AnnotationCollectionValidator validator = new AnnotationCollectionValidator(getCurrentFile().getParent());
+            validator.validate();
+            if (!validator.isValid()) {
+                throw new RuntimeException("Collection "+getCurrentFile().getParent()+" does not pass validation.");
+            }
+            collectionValidated = true;
+        }
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
             setStrain();

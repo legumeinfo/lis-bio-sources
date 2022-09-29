@@ -19,6 +19,7 @@ import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
 import org.ncgr.datastore.Readme;
+import org.ncgr.datastore.validation.MapCollectionValidator;
 import org.ncgr.zip.GZIPBufferedReader;
 
 /**
@@ -37,6 +38,9 @@ public class MapFileConverter extends DatastoreFileConverter {
     Item geneticMap;
     List<Item> linkageGroupPositions = new LinkedList<>();
     Map<String,Item> linkageGroups = new HashMap<>();
+ 
+    // validate the collection first by storing a flag
+    boolean collectionValidated = false;
 
     /**
      * Create a new MapFileConverter
@@ -45,7 +49,6 @@ public class MapFileConverter extends DatastoreFileConverter {
      */
     public MapFileConverter(ItemWriter writer, Model model) throws ObjectStoreException {
         super(writer, model);
-        geneticMap = createItem("GeneticMap");
     }
 
     /**
@@ -58,18 +61,25 @@ public class MapFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
+        if (!collectionValidated) {
+            MapCollectionValidator validator = new MapCollectionValidator(getCurrentFile().getParent());
+            validator.validate();
+            if (!validator.isValid()) {
+                throw new RuntimeException("Collection "+getCurrentFile().getParent()+" does not pass validation.");
+            }
+            collectionValidated = true;
+        }
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
-            if (readme.genetic_map==null) {
-                throw new RuntimeException("ERROR: README file must contain genetic_map attribute.");
-            }
+            // GeneticMap
+            geneticMap = createItem("GeneticMap");
             geneticMap.setReference("organism", organism);
             geneticMap.setAttribute("primaryIdentifier", readme.genetic_map);
             geneticMap.setAttribute("synopsis", readme.synopsis);
             geneticMap.setAttribute("description", readme.description);
             if (readme.genotyping_platform!=null) geneticMap.setAttribute("genotypingPlatform", readme.genotyping_platform);
             if (readme.genotyping_method!=null) geneticMap.setAttribute("genotypingMethod", readme.genotyping_method);
-            // form |-delimited list of genotypes
+            // store |-delimited list of genotypes
             String genotypes = "";
             for (String genotype : readme.genotype) {
                 if (genotypes.length()>0) genotypes += "|";
@@ -82,7 +92,9 @@ public class MapFileConverter extends DatastoreFileConverter {
         } else if (getCurrentFile().getName().endsWith("mrk.tsv.gz")) {
             System.out.println("Processing "+getCurrentFile().getName());
             processMrkFile();
-	}
+        } else {
+            System.out.println("## - Skipping "+getCurrentFile().getName());
+        }
     }
 
     /**
@@ -90,16 +102,18 @@ public class MapFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
+        // standard collection items
         if (readme==null) {
             throw new RuntimeException("README not read. Aborting.");
         }
         storeCollectionItems();
-        // Annotatable has publications
+        // add publication to Annotatables
         geneticMap.addToCollection("publications", publication);
+        // reference genetic map (in case README not read first)
         for (Item linkageGroup : linkageGroups.values()) {
-            linkageGroup.addToCollection("publications", publication);
+            linkageGroup.setReference("geneticMap", geneticMap);
         }
-        // local items
+        // store 'em
         store(geneticMap);
         store(linkageGroups.values());
         store(linkageGroupPositions);
@@ -127,7 +141,6 @@ public class MapFileConverter extends DatastoreFileConverter {
             String identifier = fields[0].trim();
             double length = Double.parseDouble(fields[1]);
             Item linkageGroup = getLinkageGroup(identifier);
-            linkageGroup.setReference("geneticMap", geneticMap);
             linkageGroup.setAttribute("length", String.valueOf(length));
             if (fields.length>2) {
                 int number = Integer.parseInt(fields[2]);
@@ -188,7 +201,7 @@ public class MapFileConverter extends DatastoreFileConverter {
         } else {
             Item linkageGroup = createItem("LinkageGroup");
             linkageGroups.put(identifier, linkageGroup);
-            linkageGroup.setAttribute("primaryIdentifier", identifier);
+            linkageGroup.setAttribute("identifier", identifier);
             return linkageGroup;
         }
     }

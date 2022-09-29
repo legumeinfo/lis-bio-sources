@@ -247,24 +247,20 @@ public class DatastoreUtils {
     /**
      * Extract the assembly version from the given collection identifier.
      * 0      1    2    3
-     * strain.assy.anno.key4
-     * 0      1    2   3
-     * strain.assy.mrk.markerset
-     * 0      1    2
-     * strain.assy.key4
+     * strain.gnmN.key4
+     * strain.gnmN.annN.key4.other
+     * strain.gnmN.syn.key4
+     * strain.gnmN.mrk.markerset
+     * strain.gnmN.annN.expr.samplestrain.author1_author2_year
      *
-     * Disregarded:
-     * -.qtl.-
-     * -.gwas.-
-     * -.gen.-
+     * Disregard any of these:
+     * strain.gwas.author1_author2_year
+     * strains.map.author1_author2_year
+     * strains.qtl.author1_author2_year
      */
     public static String extractAssemblyVersionFromCollection(String identifier) {
         String[] fields = identifier.split("\\.");
-        if (fields[1].equals("gen")) {
-            return null;
-        } else if (fields[1].equals("gwas")) {
-            return null;
-        } else if (fields[1].equals("qtl")) {
+        if (fields[1].equals("gwas") || fields[1].equals("map") || fields[1].equals("qtl")) {
             return null;
         } else {
             return fields[1];
@@ -290,15 +286,25 @@ public class DatastoreUtils {
     /**
      * Extract the annotation version from the given collection identifier.
      * 0      1    2    3
-     * strain.assy.anno.key4
+     * strain.assy.annN.key4.other
+     * G19833.gnm1.ann1.pScz
+     * G19833.gnm1.ann1.expr.Negro_jamapa.ORourke_Iniguez_2014
      *
-     * Disregard:
-     * 0      1    2   3
-     * strain.assy.mrk.markerset
+     * Disregard any with less than four fields:
+     * strain.gnmN.key4
+     * strain.gwas.author1_author2_year
+     * strains.map.author1_author2_year
+     * strains.qtl.author1_author2_year
+     *
+     * Disregard these with 4 fields:
+     * strain.gnmN.syn.key4
+     * strain.gnmN.mrk.markerset
      */
     public static String extractAnnotationVersionFromCollection(String identifier) {
         String[] fields = identifier.split("\\.");
-        if (fields[2].equals("mrk")) {
+        if (fields.length<4) {
+            return null;
+        } else if (fields[2].equals("syn") || fields[2].equals("mrk")) {
             return null;
         } else {
             return fields[2];

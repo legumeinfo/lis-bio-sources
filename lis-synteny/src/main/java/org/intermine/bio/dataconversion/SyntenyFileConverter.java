@@ -16,6 +16,7 @@ import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
+import org.ncgr.datastore.validation.SyntenyCollectionValidator;
 import org.ncgr.zip.GZIPBufferedReader;
 
 /**
@@ -53,6 +54,9 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
     // for getting taxonId from gensp, etc.
     DatastoreUtils dsu;
 
+    // validate the collection first by storing a flag
+    boolean collectionValidated = false;
+
     /**
      * Create a new SyntenyFileConverter
      * @param writer the ItemWriter to write out new items
@@ -70,11 +74,21 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
+        if (!collectionValidated) {
+            SyntenyCollectionValidator validator = new SyntenyCollectionValidator(getCurrentFile().getParent());
+            validator.validate();
+            if (!validator.isValid()) {
+                throw new RuntimeException("Collection "+getCurrentFile().getParent()+" does not pass validation.");
+            }
+            collectionValidated = true;
+        }
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
             setStrain();
         } else if (getCurrentFile().getName().endsWith("gff3.gz")) {
             processGFF();
+        } else {
+            System.out.println("## - Skipping "+getCurrentFile().getName());
         }
     }
 

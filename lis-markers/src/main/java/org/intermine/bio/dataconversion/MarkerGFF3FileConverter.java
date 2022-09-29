@@ -34,6 +34,7 @@ import org.biojava.nbio.genome.parsers.gff.FeatureList;
 import org.biojava.nbio.genome.parsers.gff.GFF3Reader;
 import org.biojava.nbio.genome.parsers.gff.Location;
 
+import org.ncgr.datastore.validation.MarkerCollectionValidator;
 import org.ncgr.zip.GZIPBufferedReader;
 
 /**
@@ -55,6 +56,9 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
     // for distinguishing chromosomes from supercontigs
     DatastoreUtils dsu;
 
+    // validate the collection first by storing a flag
+    boolean collectionValidated = false;
+
     /**
      * Create a new MarkerGFF3FileConverter
      * @param writer the ItemWriter to write out new items
@@ -70,16 +74,24 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
+        if (!collectionValidated) {
+            MarkerCollectionValidator validator = new MarkerCollectionValidator(getCurrentFile().getParent());
+            validator.validate();
+            if (!validator.isValid()) {
+                throw new RuntimeException("Collection "+getCurrentFile().getParent()+" does not pass validation.");
+            }
+            collectionValidated = true;
+        }
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
-            if (readme.genotyping_platform==null) {
-                throw new RuntimeException(getCurrentFile().getName()+" does not have genotyping_platform, which is required.");
-            }
+            // markers are mapped to a specific strain assembly
             setStrain();
         } else if (getCurrentFile().getName().endsWith(".gff3.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processMarkerGFF3File();
-	}
+        } else {
+            System.out.println("## - Skipping "+getCurrentFile().getName());
+        }
     }
 
     /**

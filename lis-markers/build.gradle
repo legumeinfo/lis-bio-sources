@@ -18,7 +18,7 @@ repositories {
 
 dependencies {
     bioModel group: 'org.intermine', name: 'bio-model', version: bioVersion, transitive: false //to read genomic_keyDefs.properties
-    compile group: 'org.intermine', name: 'intermine-integrate', version: imVersion
+    implementation group: 'org.intermine', name: 'intermine-integrate', version: imVersion
     // https://mvnrepository.com/artifact/org.biojava/biojava-genome
     implementation group: 'org.biojava', name: 'biojava-genome', version: '6.0.5'
     compile fileTree(dir: 'libs', include: '*.jar')

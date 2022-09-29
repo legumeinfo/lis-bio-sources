@@ -40,6 +40,7 @@ import org.apache.log4j.Logger;
 import org.apache.tools.ant.BuildException;
 
 import org.ncgr.datastore.Readme;
+import org.ncgr.datastore.validation.MSTMapCollectionValidator;
 import org.ncgr.zip.GZIPBufferedReader;
 
 /**
@@ -58,6 +59,9 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
     GenotypingStudy study;
 
     String dataSetUrl, dataSetVersion;
+
+    // validate the collection first by storing a flag
+    boolean collectionValidated = false;
 
     /**
      * Process the files. super.process() calls processFile for each one.
@@ -131,22 +135,30 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
      */
     @Override
     public void processFile(File file) {
-        if (file.getName().endsWith("mstmap.tsv.gz")) {
-            try {
-                System.err.println("Processing "+file.getName());
-                processMSTMapFile(file);
-            } catch (Exception ex) {
-                throw new BuildException(ex);
+        if (!collectionValidated) {
+            MSTMapCollectionValidator validator = new MSTMapCollectionValidator(file.getParent());
+            validator.validate();
+            if (!validator.isValid()) {
+                throw new RuntimeException("Collection "+file.getParent()+" does not pass validation.");
             }
-        } else if (file.getName().startsWith("README")) {
+            collectionValidated = true;
+        }
+        if (file.getName().startsWith("README")) {
             try {
-                System.err.println("Processing "+file.getName());
+                System.err.println("## Processing "+file.getName());
                 processREADME(file);
             } catch (Exception ex) {
                 throw new BuildException(ex);
             }
+        } else if (file.getName().endsWith("mstmap.tsv.gz")) {
+            try {
+                System.err.println("## Processing "+file.getName());
+                processMSTMapFile(file);
+            } catch (Exception ex) {
+                throw new BuildException(ex);
+            }
         } else {
-            System.err.println("Skipping "+file.getName());
+            System.err.println("## - Skipping "+file.getName());
         }
     }
 
