@@ -157,49 +157,50 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * Process the file which describes the samples.
      *
      * Only the first two columns are required.
-     *
+     * 0            1     2            3          4       5                  6        7         8                9          10
      * #identifier  name  description  treatment  tissue  development_stage  species  genotype  replicate_group  biosample  sra_experiment
-     *
      */
     void processSamplesFile() throws IOException {
+        // map the optional header attributes to the corresponding ExpressionSample attributes
+        // description  treatment  tissue  development_stage  species  genotype  replicate_group  biosample  sra_experiment
+        HashMap<String,String> optional = new HashMap<>();
+        optional.put("description", "description");
+        optional.put("treatment", "treatment");
+        optional.put("tissue", "tissue");
+        optional.put("development_stage", "developmentStage");
+        optional.put("species", "species");
+        optional.put("genotype", "genotype");
+        optional.put("replicate_group", "replicateGroup");
+        optional.put("biosample", "bioSample");
+        optional.put("sra_experiment", "sraExperiment");
         String[] colnames = null;
         int num = 0;
 	BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
         String line = null;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#identifier")) {
+                // use the column header names to identify column content
                 colnames = line.split("\t");
             } else if (line.startsWith("#") || line.trim().length()==0) {
                 // comment or blank
                 continue;
             } else {
-                // sample row
+                // sample data row, increment num as we go down the file
                 num++;
                 String[] parts = line.split("\t");
-                String id = parts[0];
+                String identifier = parts[0];
                 String name = parts[1];
-                Item sample = getSample(id);
+                Item sample = getSample(identifier);
                 sample.setAttribute("name", name);
                 sample.setAttribute("num", String.valueOf(num));
-                // other attributes
+                // optional attributes are given by column names
                 Map<String,String> attributes = new HashMap<>();
                 for (int i=0; i<colnames.length; i++) {
                     attributes.put(colnames[i], parts[i]);
                 }
-                // map the header attribute to the desired ExpressionSample attribute
-                // identifier  name  description  treatment  tissue  development_stage  species  genotype  replicate_group  biosample  sra_experiment                
-                HashMap<String,String> desired = new HashMap<>();
-                desired.put("description", "description");
-                desired.put("treatment", "treatment");
-                desired.put("development_stage", "developmentStage");
-                desired.put("species", "species");
-                desired.put("genotype", "genotype");
-                desired.put("replicate_group", "replicateGroup");
-                desired.put("biosample", "bioSample");
-                desired.put("sra_experiment", "sraExperiment");
-                for (String key : desired.keySet()) {
+                for (String key : optional.keySet()) {
                     if (attributes.get(key)!=null && attributes.get(key).trim().length()>0) {
-                        sample.setAttribute(desired.get(key), attributes.get(key));
+                        sample.setAttribute(optional.get(key), attributes.get(key));
                     }
                 }
             }
