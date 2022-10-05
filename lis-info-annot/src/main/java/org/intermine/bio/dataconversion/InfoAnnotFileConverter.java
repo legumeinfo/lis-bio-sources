@@ -100,6 +100,7 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
                 // README not yet processed, store this reader for processing after README
                 annotFileReader = reader;
             } else {
+                System.out.println("## Processing "+getCurrentFile().getName());
                 processInfoAnnotFile(reader);
             }
 	}
@@ -158,7 +159,6 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
      * 37170591 Phvul.001G000400 Phvul.001G000400.1 Phvul.001G000400.1.p PF00504 PTHR21649,PTHR21649:SF24 1.10.3.9 K14172 GO:0016020,GO:0009765 AT1G76570.1 Chlorophyll family protein
      */
     void processInfoAnnotFile(Reader reader) throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
         // spin through the file
         BufferedReader br = new BufferedReader(reader);
         String line = null;

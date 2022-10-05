@@ -60,6 +60,7 @@ public class HSHFileConverter extends DatastoreFileConverter {
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
         } else if (getCurrentFile().getName().endsWith(".hsh.tsv")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
             processHSHFile(reader);
 	}
     }
@@ -87,7 +88,6 @@ public class HSHFileConverter extends DatastoreFileConverter {
      * glysp.mixed.pan2.SoyPan000001   glyma.Lee.gnm1.ann1.GlymaLee.16G153800.1
      */
     void processHSHFile(Reader reader) throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
         String[] fileParts = getCurrentFile().getName().split("\\.");
         if (fileParts.length!=6) {
             throw new RuntimeException("HSH file does not have the required 6 dot-separated parts: "+getCurrentFile().getName());

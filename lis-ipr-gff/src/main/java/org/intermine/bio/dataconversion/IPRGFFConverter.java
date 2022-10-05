@@ -57,6 +57,7 @@ public class IPRGFFConverter extends DatastoreFileConverter {
             processReadme(reader);
             setStrain();
         } else if (getCurrentFile().getName().endsWith("iprscan.gff3")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
             processGFF(reader);
         }
     }
@@ -88,7 +89,6 @@ public class IPRGFFConverter extends DatastoreFileConverter {
      * medsa.XinJiangDaYe.gnm1.ann1.RKB9.iprscan.gff3
      */
     void processGFF(Reader reader) throws IOException {
-        System.out.println("Processing "+getCurrentFile().getName());
         // spin through the file
         String line = null;
         BufferedReader br = new BufferedReader(reader);

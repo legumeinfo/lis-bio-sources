@@ -87,10 +87,10 @@ public class MapFileConverter extends DatastoreFileConverter {
             }
             geneticMap.setAttribute("genotypes", genotypes);
         } else if (getCurrentFile().getName().endsWith("lg.tsv.gz")) {
-            System.out.println("Processing "+getCurrentFile().getName());
+            System.out.println("## Processing "+getCurrentFile().getName());
             processLgFile();
         } else if (getCurrentFile().getName().endsWith("mrk.tsv.gz")) {
-            System.out.println("Processing "+getCurrentFile().getName());
+            System.out.println("## Processing "+getCurrentFile().getName());
             processMrkFile();
         } else {
             System.out.println("## - Skipping "+getCurrentFile().getName());
