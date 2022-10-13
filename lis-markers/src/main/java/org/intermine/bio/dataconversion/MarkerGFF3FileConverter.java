@@ -40,6 +40,9 @@ import org.ncgr.zip.GZIPBufferedReader;
 /**
  * Loads data from an LIS genetic marker GFF3 file.
  *
+ * All features will be loaded as GeneticMarker. GeneticMarker.type will be set to the value in the GFF
+ * type column (e.g. SNP), and, if the marker is a single base it will be forced to type=SNP.
+ *
  * @author Sam Hokin
  */
 public class MarkerGFF3FileConverter extends DatastoreFileConverter {
@@ -167,13 +170,20 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
             if (id==null) {
                 throw new RuntimeException("GFF line does not include ID: "+featureI.toString());
             }
-            if (!type.equals("genetic_marker")) continue;
             // the following presumes that the README has already been read, which should be the case since capital R comes before lower case
             if (!matchesStrainAndAssembly(id)) {
                 throw new RuntimeException("ID "+id+" does not match strain.assembly from collection "+readme.identifier);
             }
             // GeneticMarker
             Item geneticMarker = getGeneticMarker(id, location, seqname);
+            // type
+            if (type.equals("genetic_marker")) {
+                // auto-set type to SNP if one base
+                if (location.length()==1) geneticMarker.setAttribute("type", "SNP");
+            } else {
+                // use the value in the type column
+                geneticMarker.setAttribute("type", type);
+            }
             // name
             if (name!=null) geneticMarker.setAttribute("name", name);
             // symbol
@@ -186,8 +196,6 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
             if (alleles!=null) geneticMarker.setAttribute("alleles", alleles);
             // motif
             if (motif!=null) geneticMarker.setAttribute("motif", motif);
-            // GeneticMarker gets type=SNP if length==1 as well as alleles
-            if (location.length()==1) geneticMarker.setAttribute("type", "SNP");
         }
     }
 
