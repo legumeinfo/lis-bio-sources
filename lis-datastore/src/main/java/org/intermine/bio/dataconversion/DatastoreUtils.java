@@ -119,6 +119,9 @@ public class DatastoreUtils {
      * 0     1   2    3=name
      * medtr.A17.gnm1.MtrunA17Chr0c03 is a supercontig, its name "MtrunA17Chr0c03" starts with "MtrunA17Chr0c"
      * medtr.A17.gnm5.MtrunA17Chr1 is a chromosome, its name "MtrunA17Chr1" starts with "MtrunA17Chr" and does NOT start with "MtrunA17Chr0"
+     * 0     1            2    3------------------
+     * lencu.CDC_Redberry.gnm2.Lcu.2RBY.unitig6060 is a supercontig, it contains "unitig" as well as extra dots!
+     * lencu.CDC_Redberry.gnm2.Lcu.2RBY.Chr2 is a chromosome is a chromosome, it contains "Chr" as well as extra dots!
      *
      * Default is to return false.
      */
@@ -129,6 +132,10 @@ public class DatastoreUtils {
             String strainIdentifier = fields[1];
             String assy = fields[2];
             String name = fields[3];
+            // handle extra dots
+            for (int i=4; i<fields.length; i++) {
+                name += "." + fields[i];
+            }
             String key = gensp+"."+strainIdentifier;
             List<String> chrPrefixes = chromosomePrefixes.get(key);
             List<String> scPrefixes = supercontigPrefixes.get(key);
@@ -165,6 +172,9 @@ public class DatastoreUtils {
      * 0     1   2    3=name
      * medtr.A17.gnm1.MtrunA17Chr0c03 is a supercontig, its name "MtrunA17Chr0c03" starts with "MtrunA17Chr0c"
      * medtr.A17.gnm5.MtrunA17Chr1 is a chromosome, its name "MtrunA17Chr1" starts with "MtrunA17Chr" and does NOT start with "MtrunA17Chr0"
+     * 0     1            2    3------------------
+     * lencu.CDC_Redberry.gnm2.Lcu.2RBY.unitig6060 is a supercontig, it contains "unitig" as well as extra dots!
+     * lencu.CDC_Redberry.gnm2.Lcu.2RBY.Chr2 is a chromosome is a chromosome, it contains "Chr" as well as extra dots!
      *
      * Default is to return false.
      */
@@ -177,6 +187,10 @@ public class DatastoreUtils {
             String strainIdentifier = fields[1];
             String assy = fields[2];
             String name = fields[3];
+            // handle extra dots
+            for (int i=4; i<fields.length; i++) {
+                name += "." + fields[i];
+            }
             String key = gensp+"."+strainIdentifier;
             List<String> chrPrefixes = chromosomePrefixes.get(key);
             List<String> scPrefixes = supercontigPrefixes.get(key);
