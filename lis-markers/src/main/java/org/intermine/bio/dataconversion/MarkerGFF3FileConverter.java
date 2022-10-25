@@ -245,6 +245,7 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
         } else {
             Item geneticMarker = createItem("GeneticMarker");
             geneticMarker.setAttribute("primaryIdentifier", primaryIdentifier);
+            geneticMarker.setAttribute("secondaryIdentifier", DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, false));
             geneticMarker.setAttribute("length", String.valueOf(location.length()));
             geneticMarkers.put(primaryIdentifier, geneticMarker);
             if (dsu.isChromosome(seqname)) {

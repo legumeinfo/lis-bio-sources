@@ -288,7 +288,19 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
             Item protein = createItem("Protein");
             proteins.put(primaryIdentifier, protein);
             protein.setAttribute("primaryIdentifier", primaryIdentifier);
+            protein.setAttribute("secondaryIdentifier", getSecondaryIdentifier(primaryIdentifier));
             return protein;
         }
+    }
+
+    /**
+     * Wrap DatastoreUtils.extractSecondaryIdentifier for an annotation identifier, throwing an Exception if none found.
+     */
+    String getSecondaryIdentifier(String primaryIdentifier) {
+        String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
+        if (secondaryIdentifier==null) {
+            throw new RuntimeException("secondaryIdentifier not found for primaryIdentifier="+primaryIdentifier);
+        }
+        return secondaryIdentifier;
     }
 }

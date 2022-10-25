@@ -135,8 +135,7 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
         } else {
             Item protein = createItem("Protein");
             protein.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
-	    if (secondaryIdentifier!=null) protein.setAttribute("secondaryIdentifier", secondaryIdentifier);
+            protein.setAttribute("secondaryIdentifier", getSecondaryIdentifier(primaryIdentifier));
             proteins.put(primaryIdentifier, protein);
             return protein;
         }
@@ -151,11 +150,21 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
         } else {
             Item gene = createItem("Gene");
             gene.setAttribute("primaryIdentifier", primaryIdentifier);
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
-	    if (secondaryIdentifier!=null) gene.setAttribute("secondaryIdentifier", secondaryIdentifier);
+            gene.setAttribute("secondaryIdentifier", getSecondaryIdentifier(primaryIdentifier));
             genes.put(primaryIdentifier, gene);
             return gene;
         }
+    }
+
+    /**
+     * Wrap DatastoreUtils.extractSecondaryIdentifier for an annotation identifier, throwing an Exception if none found.
+     */
+    String getSecondaryIdentifier(String primaryIdentifier) {
+        String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
+        if (secondaryIdentifier==null) {
+            throw new RuntimeException("secondaryIdentifier not found for primaryIdentifier="+primaryIdentifier);
+        }
+        return secondaryIdentifier;
     }
 
     /**
