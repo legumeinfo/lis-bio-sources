@@ -128,6 +128,10 @@ public class QTLFileConverter extends DatastoreFileConverter {
         for (Item qtl : qtls.values()) {
             qtl.setReference("qtlStudy", qtlStudy);
         }
+        // associate Traits with QTLStudy (in case README not read first)
+        for (Item trait : traits.values()) {
+            trait.setReference("qtlStudy", qtlStudy);
+        }
         // associate LinkageGroups with GeneticMap (in case README not read first)
         for (Item linkageGroup : linkageGroups.values()) {
             linkageGroup.setReference("geneticMap", geneticMap);
