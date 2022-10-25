@@ -66,6 +66,7 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
         dataSet.setAttribute("name", dataSetName);
         dataSet.setAttribute("url", dataSetUrl);
         dataSet.setAttribute("description", dataSetDescription);
+        dataSet.setAttribute("synopsis", dataSetDescription);
         if (dataSetLicence!=null) {
             dataSet.setAttribute("licence", dataSetLicence);
         } else {

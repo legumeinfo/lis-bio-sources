@@ -119,6 +119,7 @@ public class DescriptionFileConverter extends FileConverter {
         dataSet.setReference("dataSource", dataSource);
         dataSet.setAttribute("name", dataSetName);
         dataSet.setAttribute("description", dataSetDescription);
+        dataSet.setAttribute("synopsis", dataSetDescription);
         dataSet.setAttribute("url", dataSetUrl);
         // organism and strains
         organism.addToCollection("dataSets", dataSet);
