@@ -38,7 +38,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
 
     // README items
     Item expressionSource;
-    Item bioProject;
     String expressionUnit;
 
     // Lists
@@ -101,11 +100,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             expressionUnit = readme.expression_unit; // applied to ExpressionValue.unit in close()
             if (readme.geoseries!=null) expressionSource.setAttribute("geoSeries", readme.geoseries);
             if (readme.sraproject!=null) expressionSource.setAttribute("sra", readme.sraproject);
-            if (readme.bioproject!=null) {
-                bioProject = createItem("BioProject");
-                bioProject.setAttribute("accession", readme.bioproject);
-                expressionSource.setReference("bioProject", bioProject);
-            }
+            if (readme.bioproject!=null) expressionSource.setAttribute("bioProject", readme.bioproject);
             if (publication!=null) expressionSource.addToCollection("publications", publication);
         } else if (getCurrentFile().getName().endsWith("samples.tsv.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
@@ -145,7 +140,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
         }
         // local items
         store(expressionSource);
-        if (bioProject!=null) store(bioProject);
 	store(genes.values());
         store(samples.values());
         store(terms.values());

@@ -413,6 +413,8 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
 
     /**
      * Process a pathway.tsv file, associating genes with pathways.
+     * 0                1                               2
+     * R-1119260.1	Cardiolipin biosynthesis	lener.IG_72815.gnm1.ann1.Ler.1DRT.1g084550
      */
     void processPathwayFile() throws IOException {
         // spin through the file
@@ -425,9 +427,9 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 String pathwayIdentifier = fields[0];
                 String pathwayName = fields[1];
                 String geneIdentifier = fields[2];
-                Item gene = getGene(geneIdentifier);
                 Item pathway = getPathway(pathwayIdentifier);
                 pathway.setAttribute("name", pathwayName);
+                Item gene = getGene(geneIdentifier);
                 gene.addToCollection("pathways", pathway);
             }
         }
@@ -758,7 +760,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         proteinLocation.setAttribute("end", String.valueOf(location.bioEnd()));
         proteinLocation.setReference("locatedOn", protein);
         locations.add(proteinLocation);
-        feature.setReference("location", proteinLocation);
+        feature.addToCollection("locations", proteinLocation);
         return feature;
     }
     
@@ -782,15 +784,22 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Get/add a Pathway Item, keyed by primaryIdentifier
+     * Get/add a Pathway Item, keyed by primaryIdentifier like R-1119260.1.
+     * Also create a stable identifier like R-OSA-1119289.
      */
-    Item getPathway(String identifier) {
-        if (pathways.containsKey(identifier)) {
-            return pathways.get(identifier);
+    Item getPathway(String primaryIdentifier) {
+        if (pathways.containsKey(primaryIdentifier)) {
+            return pathways.get(primaryIdentifier);
         } else {
             Item pathway = createItem("Pathway");
-            pathways.put(identifier, pathway);
-            pathway.setAttribute("identifier", identifier);
+            pathways.put(primaryIdentifier, pathway);
+            pathway.setAttribute("primaryIdentifier", primaryIdentifier);
+            String[] dash = primaryIdentifier.split("-");
+            String suffix = dash[1];
+            String[] dot = suffix.split("\\.");
+            String number = dot[0];
+            String stableIdentifier = "R-OSA-"+number;
+            pathway.setAttribute("stableIdentifier", stableIdentifier);
             return pathway;
         }
     }
@@ -922,15 +931,15 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     }
     
     /**
-     * Get/add a GeneFamily, keyed by identifier
+     * Get/add a GeneFamily, keyed by primaryIdentifier
      */
-    Item getGeneFamily(String identifier) {
-        if (geneFamilies.containsKey(identifier)) {
-            return geneFamilies.get(identifier);
+    Item getGeneFamily(String primaryIdentifier) {
+        if (geneFamilies.containsKey(primaryIdentifier)) {
+            return geneFamilies.get(primaryIdentifier);
         } else {
             Item geneFamily = createItem("GeneFamily");
-            geneFamilies.put(identifier, geneFamily);
-            geneFamily.setAttribute("identifier", identifier);
+            geneFamilies.put(primaryIdentifier, geneFamily);
+            geneFamily.setAttribute("primaryIdentifier", primaryIdentifier);
             return geneFamily;
         }
     }

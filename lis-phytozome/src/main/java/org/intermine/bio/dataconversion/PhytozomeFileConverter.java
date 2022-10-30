@@ -132,13 +132,13 @@ public class PhytozomeFileConverter extends DatastoreFileConverter {
     /**
      * Get/add a GeneFamily Item.
      */
-    public Item getGeneFamily(String identifier) {
-        if (geneFamilies.containsKey(identifier)) {
-            return geneFamilies.get(identifier);
+    public Item getGeneFamily(String primaryIdentifier) {
+        if (geneFamilies.containsKey(primaryIdentifier)) {
+            return geneFamilies.get(primaryIdentifier);
         } else {
             Item geneFamily = createItem("GeneFamily");
-            geneFamily.setAttribute("identifier", identifier);
-            geneFamilies.put(identifier, geneFamily);
+            geneFamily.setAttribute("primaryIdentifier", primaryIdentifier);
+            geneFamilies.put(primaryIdentifier, geneFamily);
             return geneFamily;
         }
     }

@@ -99,89 +99,6 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Get/add a GeneFamily Item.
-     */
-    public Item getGeneFamily(String identifier) {
-        if (geneFamilies.containsKey(identifier)) {
-            return geneFamilies.get(identifier);
-        } else {
-            Item geneFamily = createItem("GeneFamily");
-            geneFamily.setAttribute("identifier", identifier);
-            geneFamilies.put(identifier, geneFamily);
-            return geneFamily;
-        }
-    }
-
-    /**
-     * Get/add an OntologyTerm Item, keyed by identifier
-     */
-    public Item getOntologyTerm(String identifier) {
-        if (ontologyTerms.containsKey(identifier)) {
-            return ontologyTerms.get(identifier);
-        } else {
-            Item ontologyTerm = createItem("OntologyTerm");
-            ontologyTerm.setAttribute("identifier", identifier);
-            ontologyTerms.put(identifier, ontologyTerm);
-            return ontologyTerm;
-        }
-    }
-
-    /**
-     * Get/add a Protein Item, keyed by primaryIdentifier
-     */
-    public Item getProtein(String primaryIdentifier) {
-        if (proteins.containsKey(primaryIdentifier)) {
-            return proteins.get(primaryIdentifier);
-        } else {
-            Item protein = createItem("Protein");
-            protein.setAttribute("primaryIdentifier", primaryIdentifier);
-            protein.setAttribute("secondaryIdentifier", getSecondaryIdentifier(primaryIdentifier));
-            proteins.put(primaryIdentifier, protein);
-            return protein;
-        }
-    }
-
-    /**
-     * Get/add a Gene Item, keyed by primaryIdentifier
-     */
-    public Item getGene(String primaryIdentifier) {
-        if (genes.containsKey(primaryIdentifier)) {
-            return genes.get(primaryIdentifier);
-        } else {
-            Item gene = createItem("Gene");
-            gene.setAttribute("primaryIdentifier", primaryIdentifier);
-            gene.setAttribute("secondaryIdentifier", getSecondaryIdentifier(primaryIdentifier));
-            genes.put(primaryIdentifier, gene);
-            return gene;
-        }
-    }
-
-    /**
-     * Wrap DatastoreUtils.extractSecondaryIdentifier for an annotation identifier, throwing an Exception if none found.
-     */
-    String getSecondaryIdentifier(String primaryIdentifier) {
-        String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, true);
-        if (secondaryIdentifier==null) {
-            throw new RuntimeException("secondaryIdentifier not found for primaryIdentifier="+primaryIdentifier);
-        }
-        return secondaryIdentifier;
-    }
-
-    /**
-     * Get/add a ProteinDomain Item.
-     */
-    public Item getProteinDomain(String identifier) {
-        if (proteinDomains.containsKey(identifier)) {
-            return proteinDomains.get(identifier);
-        } else {
-            Item proteinDomain = createItem("ProteinDomain");
-            proteinDomain.setAttribute("primaryIdentifier", identifier);
-	    proteinDomains.put(identifier, proteinDomain);
-            return proteinDomain;
-        }
-    }
-
-    /**
      * Process an info_annot_ahrd.tsv.gz file which contains gene families and semi-colon separated groups of ontology terms.
      * 0   1       2    3    4               5   6
      * lis.genefam.fam1.M65K.info_annot_ahrd.tsv.gz
@@ -211,24 +128,91 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
             Item geneFamily = getGeneFamily(record.identifier);
             geneFamily.setAttribute("version", record.version);
             geneFamily.setAttribute("description", record.description);
-            // GO terms
+            // GO terms - only store identifier
             for (String identifier : record.go.keySet()) {
-                String description = record.go.get(identifier);
                 Item goTerm = getOntologyTerm(identifier);
-                goTerm.setAttribute("description", description);
                 Item goAnnotation = createItem("OntologyAnnotation");
                 goAnnotation.setReference("subject", geneFamily);
                 goAnnotation.setReference("ontologyTerm", goTerm);
 		ontologyAnnotations.add(goAnnotation);
             }
-            // interpro protein domains
+            // InterPro protein domains - only store identifier
             for (String identifier : record.interpro.keySet()) {
                 Item proteinDomain = getProteinDomain(identifier);
-                String description = record.interpro.get(identifier);
-                proteinDomain.setAttribute("description", description);
-                proteinDomain.addToCollection("geneFamilies", geneFamily);
+                geneFamily.addToCollection("proteinDomains", proteinDomain);
             }
         }
         br.close();
     }
+
+    /**
+     * Get/add a GeneFamily Item.
+     */
+    public Item getGeneFamily(String primaryIdentifier) {
+        if (geneFamilies.containsKey(primaryIdentifier)) {
+            return geneFamilies.get(primaryIdentifier);
+        } else {
+            Item geneFamily = createItem("GeneFamily");
+            geneFamily.setAttribute("primaryIdentifier", primaryIdentifier);
+            geneFamilies.put(primaryIdentifier, geneFamily);
+            return geneFamily;
+        }
+    }
+
+    /**
+     * Get/add an OntologyTerm Item, keyed by identifier
+     */
+    public Item getOntologyTerm(String identifier) {
+        if (ontologyTerms.containsKey(identifier)) {
+            return ontologyTerms.get(identifier);
+        } else {
+            Item ontologyTerm = createItem("OntologyTerm");
+            ontologyTerm.setAttribute("identifier", identifier);
+            ontologyTerms.put(identifier, ontologyTerm);
+            return ontologyTerm;
+        }
+    }
+
+    /**
+     * Get/add a Protein Item, keyed by primaryIdentifier
+     */
+    public Item getProtein(String primaryIdentifier) {
+        if (proteins.containsKey(primaryIdentifier)) {
+            return proteins.get(primaryIdentifier);
+        } else {
+            Item protein = createItem("Protein");
+            protein.setAttribute("primaryIdentifier", primaryIdentifier);
+            proteins.put(primaryIdentifier, protein);
+            return protein;
+        }
+    }
+
+    /**
+     * Get/add a Gene Item, keyed by primaryIdentifier
+     */
+    public Item getGene(String primaryIdentifier) {
+        if (genes.containsKey(primaryIdentifier)) {
+            return genes.get(primaryIdentifier);
+        } else {
+            Item gene = createItem("Gene");
+            gene.setAttribute("primaryIdentifier", primaryIdentifier);
+            genes.put(primaryIdentifier, gene);
+            return gene;
+        }
+    }
+
+    /**
+     * Get/add a ProteinDomain Item.
+     */
+    public Item getProteinDomain(String primaryIdentifier) {
+        if (proteinDomains.containsKey(primaryIdentifier)) {
+            return proteinDomains.get(primaryIdentifier);
+        } else {
+            Item proteinDomain = createItem("ProteinDomain");
+            proteinDomain.setAttribute("primaryIdentifier", primaryIdentifier);
+	    proteinDomains.put(primaryIdentifier, proteinDomain);
+            return proteinDomain;
+        }
+    }
+
 }

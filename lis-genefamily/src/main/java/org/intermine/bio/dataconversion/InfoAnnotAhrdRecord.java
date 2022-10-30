@@ -23,10 +23,10 @@ import java.util.HashMap;
  * lis_v1_0 = GeneFamily.version
  * L_QQS5LC = GeneFamily.identifier, OntologyAnnotation.subject
  * glucan endo-1,3-beta-glucosidase 14-like [Glycine max] = GeneFamily.description
- * IPR000490 = ProteinDomain.primaryIdentifier, GeneFamily.proteinDomain
- * Glycoside hydrolase, family 17 = ProteinDomain.description *** handle comma inside parentheses! ***
+ * IPR000490 = ProteinDomain.primaryIdentifier, OntologyAnnotation.ontologyTerm
+ * Glycoside hydrolase, family 17 = ProteinDomain.name *** handle comma inside parentheses! ***
  * GO:0005975 = OntologyTerm.identifier, OntologyAnnotation.ontologyTerm
- * carbohydrate metabolic process = OntologyTerm.description  *** handle comma inside parentheses! ***
+ * carbohydrate metabolic process = OntologyTerm.name  *** handle comma inside parentheses! ***
  *
  * @author Sam Hokin
  */
@@ -60,8 +60,8 @@ public class InfoAnnotAhrdRecord {
                     while ((index=interproString.indexOf("IPR", index))>-1) {
                         String identifier = interproString.substring(index, index+9);
                         int paren = interproString.indexOf(')', index);
-                        String description = interproString.substring(index+11, paren);
-                        interpro.put(identifier,description);
+                        String name = interproString.substring(index+11, paren);
+                        interpro.put(identifier,name);
                         index++;
                     }
                 }
@@ -71,8 +71,8 @@ public class InfoAnnotAhrdRecord {
                     while ((index=goString.indexOf("GO:", index))>-1) {
                         String identifier = goString.substring(index, index+10);
                         int paren = goString.indexOf(')', index);
-                        String description = goString.substring(index+12, paren);
-                        go.put(identifier,description);
+                        String name = goString.substring(index+12, paren);
+                        go.put(identifier,name);
                         index++;
                     }
                 }
