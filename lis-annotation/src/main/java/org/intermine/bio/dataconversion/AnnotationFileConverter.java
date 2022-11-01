@@ -431,6 +431,8 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 pathway.setAttribute("name", pathwayName);
                 Item gene = getGene(geneIdentifier);
                 gene.addToCollection("pathways", pathway);
+            } else {
+                throw new RuntimeException("Pathway file "+getCurrentFile().getName()+" does not have three fields in this line:\n"+line);
             }
         }
     }
