@@ -25,8 +25,6 @@ import org.ncgr.zip.GZIPBufferedReader;
 /**
  * Load gene family data from LIS datastore files.
  *
- * There is no README, so we use project.xml properties to define the DataSet.
- *
  * @author Sam Hokin
  */
 public class GeneFamilyFileConverter extends DatastoreFileConverter {
@@ -57,24 +55,10 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void process(Reader reader) throws IOException {
-        // there is no README (yet)
-        // DataSet
-        if (dataSetName==null || dataSetUrl==null || dataSetDescription==null) {
-            throw new RuntimeException("ERROR: dataSetName, dataSetUrl, and dataSetDescription must be set in project.xml.");
-        }
-        dataSet = createItem("DataSet");
-        dataSet.setAttribute("name", dataSetName);
-        dataSet.setAttribute("url", dataSetUrl);
-        dataSet.setAttribute("description", dataSetDescription);
-        dataSet.setAttribute("synopsis", dataSetDescription);
-        if (dataSetLicence!=null) {
-            dataSet.setAttribute("licence", dataSetLicence);
-        } else {
-            dataSet.setAttribute("licence", DatastoreFileConverter.DEFAULT_DATASET_LICENCE);
-        }
-        dataSet.setReference("dataSource", dataSource);
-        // process files
-        if (getCurrentFile().getName().endsWith(".info_annot_ahrd.tsv.gz")) {
+        // README
+        if (getCurrentFile().getName().startsWith("README")) {
+            processReadme(reader);
+        } else if (getCurrentFile().getName().endsWith(".info_annot_ahrd.tsv.gz")) {
             processInfoAnnotAhrdFile();
             ahrdFileFound = true;
 	}
@@ -85,11 +69,13 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws Exception {
+        if (readme==null) {
+            throw new RuntimeException("README file not found. Aborting.");
+        }
         if (!ahrdFileFound) {
             throw new RuntimeException("File ending in .info_annot_ahrd.tsv.gz not found. Aborting");
         }
-        store(dataSource);
-        store(dataSet);
+        storeCollectionItems();
 	store(geneFamilies.values());
 	store(ontologyTerms.values());
 	store(ontologyAnnotations);
