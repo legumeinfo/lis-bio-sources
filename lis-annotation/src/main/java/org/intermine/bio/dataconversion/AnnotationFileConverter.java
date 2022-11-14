@@ -118,6 +118,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                                                       entry("transposable_element_gene", "Gene"),
                                                       entry("tRNA", "TRNA"),
                                                       entry("tRNA_primary_transcript", "TRNA"),
+                                                      entry("pseudogenic_tRNA", "TRNA"),
                                                       entry("snoRNA", "SnoRNA"),
                                                       entry("snRNA", "SnRNA"),
                                                       entry("rRNA", "RRNA"),
