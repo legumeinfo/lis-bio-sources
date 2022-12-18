@@ -208,6 +208,42 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
     }
         
     /**
+     * Process the source and target nodes of a given Edge.
+     */
+    void processEdge(Edge e, String identifier) {
+        String sourceKey = identifier+"."+e.sourceId;
+        String targetKey = identifier+"."+e.targetId;
+        Item sourcenode;
+        if (phylonodes.containsKey(sourceKey)) {
+            sourcenode = phylonodes.get(sourceKey);
+        } else {
+            sourcenode = createItem("Phylonode");
+            sourcenode.setAttribute("identifier", sourceKey);
+            phylonodes.put(sourceKey, sourcenode);
+        }
+        Item targetnode;
+        if (phylonodes.containsKey(targetKey)) {
+            targetnode = phylonodes.get(targetKey);
+        } else {
+            targetnode = createItem("Phylonode");
+            targetnode.setAttribute("identifier", targetKey);
+            phylonodes.put(targetKey, targetnode);
+        }
+        targetnode.setAttribute("isRoot", "false"); // we have a parent
+        if (e.hasLength()) {
+            targetnode.setAttribute("length", String.valueOf(e.length));
+        }
+        targetnode.setReference("parent", sourcenode);
+        sourcenode.addToCollection("children", targetnode);
+        int count = 1;
+        if (childCounts.containsKey(sourceKey)) {
+            count = childCounts.get(sourceKey) + 1;
+        }
+        childCounts.put(sourceKey, count);
+        sourcenode.setAttribute("numChildren", String.valueOf(count));
+    }
+    
+    /**
      * Get/add a Protein Item, keyed by primaryIdentifier
      */
     Item getProtein(String primaryIdentifier) {
@@ -244,51 +280,20 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
             phylonodes.put(key, phylonode);
         }
         if (node.isFeature()) {
+            // convert blanks to underscores
+            String label = node.label.replace(" ","_");
+            // DEBUG
+            System.out.println(node.label+"\t"+label);
+            //
             phylonode.setAttribute("isLeaf", "true");
-            phylonode.setAttribute("identifier", node.label);
+            phylonode.setAttribute("identifier", label);
             // some nodes hold proteins
-            if (isFullYuck(node.label)) {
-                Item protein = getProtein(node.label);
+            if (isFullYuck(label)) {
+                Item protein = getProtein(label);
                 phylonode.setReference("protein", protein);
             }
         }
         return phylonode;
     }
 
-    /**
-     * Process the source and target nodes of a given Edge.
-     */
-    void processEdge(Edge e, String identifier) {
-        String sourceKey = identifier+"."+e.sourceId;
-        String targetKey = identifier+"."+e.targetId;
-        Item sourcenode;
-        if (phylonodes.containsKey(sourceKey)) {
-            sourcenode = phylonodes.get(sourceKey);
-        } else {
-            sourcenode = createItem("Phylonode");
-            sourcenode.setAttribute("identifier", sourceKey);
-            phylonodes.put(sourceKey, sourcenode);
-        }
-        Item targetnode;
-        if (phylonodes.containsKey(targetKey)) {
-            targetnode = phylonodes.get(targetKey);
-        } else {
-            targetnode = createItem("Phylonode");
-            targetnode.setAttribute("identifier", targetKey);
-            phylonodes.put(targetKey, targetnode);
-        }
-        targetnode.setAttribute("isRoot", "false"); // we have a parent
-        if (e.hasLength()) {
-            targetnode.setAttribute("length", String.valueOf(e.length));
-        }
-        targetnode.setReference("parent", sourcenode);
-        sourcenode.addToCollection("children", targetnode);
-        int count = 1;
-        if (childCounts.containsKey(sourceKey)) {
-            count = childCounts.get(sourceKey) + 1;
-        }
-        childCounts.put(sourceKey, count);
-        sourcenode.setAttribute("numChildren", String.valueOf(count));
-    }
-    
 }
