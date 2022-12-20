@@ -34,7 +34,6 @@ public class QTLFileConverter extends DatastoreFileConverter {
 
     // local Items to store
     Item qtlStudy;
-    List<Item> ontologyAnnotations = new ArrayList<>();
     Map<String,Item> ontologyTerms = new HashMap<>();
     Map<String,Item> qtls = new HashMap<>();
     Map<String,Item> traits = new HashMap<>();
@@ -140,7 +139,6 @@ public class QTLFileConverter extends DatastoreFileConverter {
         store(linkageGroups.values());
         store(traits.values());
         store(ontologyTerms.values());
-        store(ontologyAnnotations);
     }
     
     /**
@@ -268,11 +266,8 @@ public class QTLFileConverter extends DatastoreFileConverter {
             Item trait = getTrait(traitName);
             // OntologyTerm
             Item ontologyTerm = getOntologyTerm(oboTerm);
-            // OntologyAnnotation
-            Item ontologyAnnotation = createItem("OntologyAnnotation");
-            ontologyAnnotation.setReference("subject", trait);
-            ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
-            ontologyAnnotations.add(ontologyAnnotation);
+            // add to collection
+            trait.addToCollection("ontologyTerms", ontologyTerm);
         }
         br.close();
     }
