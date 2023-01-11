@@ -97,6 +97,15 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
+        // add publication to Annotatables
+        if (publication!=null) {
+            for (Item sourceRegion : sourceRegions) {
+                sourceRegion.addToCollection("publications", publication);
+            }
+            for (Item targetRegion : targetRegions) {
+                targetRegion.addToCollection("publications", publication);
+            }
+        }
         storeCollectionItems();
         store(organisms.values());
         store(strains.values());

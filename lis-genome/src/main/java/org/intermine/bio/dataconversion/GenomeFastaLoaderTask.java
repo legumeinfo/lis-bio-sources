@@ -375,6 +375,7 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
         feature.setStrain(strain);
         feature.setSequence(bioSequence);
         feature.setLength(bioSequence.getLength());
+        if (publication!=null) feature.addPublications(publication);
         getDirectDataLoader().store(bioSequence);
         getDirectDataLoader().store(feature);
     }

@@ -130,6 +130,18 @@ public class InfoAnnotFileConverter extends DatastoreFileConverter {
             mRNA.setReference("organism", organism);
             mRNA.setReference("strain", strain);
         }
+        // add publication to Annotatables
+        if (publication!=null) {
+            for (Item gene : genes.values()) {
+                gene.addToCollection("publications", publication);
+            }
+            for (Item protein : proteins.values()) {
+                protein.addToCollection("publications", publication);
+            }
+            for (Item mRNA : mRNAs.values()) {
+                mRNA.addToCollection("publications", publication);
+            }
+        }
         // store standard collection Items
         storeCollectionItems();
         // store local items

@@ -228,6 +228,33 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             if (cdses.containsKey(primaryIdentifier)) protein.setReference("CDS", cdses.get(primaryIdentifier));
             if (mRNAs.containsKey(primaryIdentifier)) protein.setReference("transcript", mRNAs.get(primaryIdentifier));
         }
+        // add publication to all Annotatables
+        if (publication!=null) {
+            for (Item chromosome : chromosomes.values()) {
+                chromosome.addToCollection("publications", publication);
+            }
+            for (Item supercontig : supercontigs.values()) {
+                supercontig.addToCollection("publications", publication);
+            }
+            for (Item feature : features.values()) {
+                feature.addToCollection("publications", publication);
+            }
+            for (Item cds : cdses.values()) {
+                cds.addToCollection("publications", publication);
+            }
+            for (Item gene : genes.values()) {
+                gene.addToCollection("publications", publication);
+            }
+            for (Item mRNA : mRNAs.values()) {
+                mRNA.addToCollection("publications", publication);
+            }
+            for (Item protein : proteins.values()) {
+                protein.addToCollection("publications", publication);
+            }
+            for (Item proteinDomain : proteinDomains.values()) {
+                proteinDomain.addToCollection("publications", publication);
+            }
+        }
         // store
         storeCollectionItems();
         store(chromosomes.values());

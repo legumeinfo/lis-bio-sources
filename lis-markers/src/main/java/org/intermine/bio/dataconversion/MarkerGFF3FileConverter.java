@@ -125,6 +125,12 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
             supercontig.setReference("organism", organism);
             supercontig.setReference("strain", strain);
         }
+        // add publication to Annotatables (but not chromosome/supercontig)
+        if (publication!=null) {
+            for (Item geneticMarker : geneticMarkers.values()) {
+                geneticMarker.addToCollection("publications", publication);
+            }
+        }
         storeCollectionItems();
         // local items
         store(chromosomes.values());

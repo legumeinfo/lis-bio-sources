@@ -7,7 +7,7 @@ import java.io.Reader;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -38,21 +38,15 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
 
     // README items
     Item expressionSource;
-    String expressionUnit;
 
     // Lists
-    List<Item> expressionValues = new LinkedList<>();
-    List<Item> annotations = new LinkedList<>();
+    List<Item> expressionValues = new ArrayList<>();
+    List<Item> ontologyAnnotations = new ArrayList<>();
 
     // Maps
-    Map<String,Item> terms = new HashMap<>();
+    Map<String,Item> ontologyTerms = new HashMap<>();
     Map<String,Item> samples = new HashMap<>();
     Map<String,Item> genes = new HashMap<>();
-
-    // keep track of files read in case they're gzipped!
-    boolean samplesRead = false;
-    boolean valuesRead = false;
-    boolean oboRead = false;
 
     // validate the collection first by storing a flag
     boolean collectionValidated = false;
@@ -95,9 +89,9 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             expressionSource.setAttribute("primaryIdentifier", readme.identifier);
             expressionSource.setAttribute("synopsis", readme.synopsis);
             expressionSource.setAttribute("description", readme.description);
+            expressionSource.setAttribute("unit", readme.expression_unit);
             expressionSource.setReference("organism", organism);
             expressionSource.setReference("strain", strain);
-            expressionUnit = readme.expression_unit; // applied to ExpressionValue.unit in close()
             if (readme.geoseries!=null) expressionSource.setAttribute("geoSeries", readme.geoseries);
             if (readme.sraproject!=null) expressionSource.setAttribute("sra", readme.sraproject);
             if (readme.bioproject!=null) expressionSource.setAttribute("bioProject", readme.bioproject);
@@ -105,15 +99,12 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
         } else if (getCurrentFile().getName().endsWith("samples.tsv.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
 	    processSamplesFile();
-            samplesRead = true;
         } else if (getCurrentFile().getName().endsWith("values.tsv.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processValuesFile();
-            valuesRead = true;
         } else if (getCurrentFile().getName().endsWith("obo.tsv.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processOboFile();
-            oboRead = true;
         } else {
             System.out.println("## - Skipping "+getCurrentFile().getName());
         }
@@ -124,9 +115,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-        if (!samplesRead || !valuesRead || !oboRead) {
-            throw new RuntimeException("One of samples.tsv.gz, values.tsv.gz, and/or obo.tsv.gz files not read. Aborting.");
-        }
         // DatastoreFileConverter items
         storeCollectionItems();
         // add references to samples
@@ -142,8 +130,8 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
         store(expressionSource);
 	store(genes.values());
         store(samples.values());
-        store(terms.values());
-        store(annotations);
+        store(ontologyTerms.values());
+        store(ontologyAnnotations);
 	store(expressionValues);
     }
 
@@ -212,7 +200,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
      * cajca.ICPL87119.gnm1.ann1.C.cajan_00002	0	0	0	0	...
      */
     void processValuesFile() throws IOException {
-        List<Item> sampleList = new LinkedList<>();
+        List<Item> sampleList = new ArrayList<>();
 	BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
         String line = null;
         while ((line=br.readLine())!=null) {
@@ -230,7 +218,6 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
                     double value = Double.parseDouble(parts[i]);
                     Item sample = sampleList.get(i-1);
                     Item expressionValue = createItem("ExpressionValue");
-                    expressionValue.setAttribute("unit", expressionUnit);
                     expressionValue.setAttribute("value", String.valueOf(value));
                     expressionValue.setReference("feature", gene);
                     expressionValue.setReference("sample", sample);
@@ -253,19 +240,13 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             String sampleId = parts[0];
             String termId = parts[1];
             Item sample = getSample(sampleId);
-            Item term = terms.get(termId);
-            if (term==null) {
-                term = createItem("OntologyTerm");
-                term.setAttribute("identifier", termId);
-                terms.put(termId, term);
-            }
-            Item annotation = createItem("OntologyAnnotation");
-            annotation.setReference("subject", sample);
-            annotation.setReference("ontologyTerm", term);
-            annotations.add(annotation);
+            Item ontologyTerm = getOntologyTerm(termId);
+            Item ontologyAnnotation = createItem("OntologyAnnotation");
+            ontologyAnnotation.setReference("subject", sample);
+            ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
+            ontologyAnnotations.add(ontologyAnnotation);
         }
     }
-
 
     /**
      * Get or create a Sample.
@@ -275,7 +256,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             return samples.get(id);
         } else {
             Item sample = createItem("ExpressionSample");
-            sample.setAttribute("identifier", id);
+            sample.setAttribute("primaryIdentifier", id);
             samples.put(id, sample);
             return sample;
         }
@@ -284,14 +265,14 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
     /**
      * Get or create an OntologyTerm.
      */
-    Item getOboTerm(String id) {
-        if (terms.containsKey(id)) {
-            return terms.get(id);
+    Item getOntologyTerm(String id) {
+        if (ontologyTerms.containsKey(id)) {
+            return ontologyTerms.get(id);
         } else {
-            Item term = createItem("OntologyTerm");
-            term.setAttribute("identifier", id);
-            terms.put(id, term);
-            return term;
+            Item ontologyTerm = createItem("OntologyTerm");
+            ontologyTerm.setAttribute("identifier", id);
+            ontologyTerms.put(id, ontologyTerm);
+            return ontologyTerm;
         }
     }
 
@@ -308,5 +289,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             return gene;
         }
     }
+
+
 
 }

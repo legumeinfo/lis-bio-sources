@@ -35,12 +35,14 @@ public class QTLFileConverter extends DatastoreFileConverter {
     // local Items to store
     Item qtlStudy;
     Map<String,Item> ontologyTerms = new HashMap<>();
+    List<Item> ontologyAnnotations = new ArrayList<>();
     Map<String,Item> qtls = new HashMap<>();
     Map<String,Item> traits = new HashMap<>();
     Map<String,Item> geneticMaps = new HashMap<>();
     Map<String,Item> linkageGroups = new HashMap<>(); // keyed by geneticMapIdentifier_linkageGroupIdentifier
 
     // utility
+    String collectionIdentifier;
     Map<String,String> qtlMarkers = new HashMap<>();
 
     // validate the collection first by storing a flag
@@ -76,15 +78,13 @@ public class QTLFileConverter extends DatastoreFileConverter {
         }
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
+            collectionIdentifier = readme.identifier;
             // QTLStudy
             qtlStudy = createItem("QTLStudy");
             qtlStudy.setReference("organism", organism);
-            qtlStudy.setAttribute("primaryIdentifier", readme.identifier);
+            qtlStudy.setAttribute("primaryIdentifier", collectionIdentifier);
             qtlStudy.setAttribute("synopsis", readme.synopsis);
             qtlStudy.setAttribute("description", readme.description);
-	    // NEEDS MODEL UPDATE:
-            // Parse comma-delimited genetic maps, for each:
-            // qtlStudy.addToCollection("geneticMaps", geneticMap);
 	    // store |-delimited list of genotypes
             String genotypes = "";
             for (String genotype : readme.genotype) {
@@ -139,6 +139,7 @@ public class QTLFileConverter extends DatastoreFileConverter {
         store(linkageGroups.values());
         store(traits.values());
         store(ontologyTerms.values());
+        store(ontologyAnnotations);
     }
     
     /**
@@ -266,8 +267,11 @@ public class QTLFileConverter extends DatastoreFileConverter {
             Item trait = getTrait(traitName);
             // OntologyTerm
             Item ontologyTerm = getOntologyTerm(oboTerm);
-            // add to collection
-            trait.addToCollection("ontologyTerms", ontologyTerm);
+            // add OntologyAnnotation
+            Item ontologyAnnotation = createItem("OntologyAnnotation");
+            ontologyAnnotation.setReference("subject", trait);
+            ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
+            ontologyAnnotations.add(ontologyAnnotation);
         }
         br.close();
     }
@@ -318,7 +322,7 @@ public class QTLFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Return a new or existing Trait Item keyed by name.
+     * Return a new or existing Trait Item keyed by name, with primaryIdentifier concocted from collection identifier and name.
      */
     Item getTrait(String name) {
         if (traits.containsKey(name)) {
@@ -326,6 +330,7 @@ public class QTLFileConverter extends DatastoreFileConverter {
         } else {
             Item trait = createItem("Trait");
             trait.setAttribute("name", name);
+            trait.setAttribute("primaryIdentifier", collectionIdentifier+":"+name);
             traits.put(name, trait);
             return trait;
         }

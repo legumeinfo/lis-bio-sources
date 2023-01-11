@@ -63,28 +63,24 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
      * {@inheritDoc}
      */
     @Override
-    public void process(Reader reader) {
-        // there is no README (yet) so hand-roll DataSet
-        if (dataSet==null) {
-            if (dataSetName==null || dataSetUrl==null || dataSetDescription==null) {
-                throw new RuntimeException("ERROR: dataSetName, dataSetUrl, and dataSetDescription must be set in project.xml.");
+    public void process(Reader reader) throws IOException {
+        // collection contains tree files under the subdirectory [collection].trees_ML_rooted
+        // example:
+        // /data/v2/LEGUMES/Fabaceae/genefamilies/legume.genefam.fam1.M65K/
+        // /data/v2/LEGUMES/Fabaceae/genefamilies/legume.genefam.fam1.M65K/legume.genefam.fam1.M65K.trees_ML_rooted
+        if (getCurrentFile().getName().startsWith("README")) {
+            processReadme(reader);
+            // plow through tree subdirectory
+            try {
+                String collectionDir = getCurrentFile().getParent();
+                File treeDir = new File(collectionDir + "/" + readme.identifier + ".trees_ML_rooted");
+                System.out.println("## Loading trees from "+treeDir.getPath());
+                for (File file : treeDir.listFiles()) {
+                    processTreeFile(file);
+                }
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
             }
-            dataSet = createItem("DataSet");
-            dataSet.setAttribute("name", dataSetName);
-            dataSet.setAttribute("url", dataSetUrl);
-            dataSet.setAttribute("description", dataSetDescription);
-            dataSet.setAttribute("synopsis", dataSetDescription);
-            if (dataSetLicence!=null) {
-                dataSet.setAttribute("licence", dataSetLicence);
-            } else {
-                dataSet.setAttribute("licence", DatastoreFileConverter.DEFAULT_DATASET_LICENCE);
-            }
-            dataSet.setReference("dataSource", dataSource);
-        }
-        try {
-            processTreeFile();
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
         }
     }
 
@@ -93,8 +89,14 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws Exception {
-        store(dataSource);
-        store(dataSet);
+        // add publication to proteins
+        if (publication!=null) {
+            for (Item protein : proteins.values()) {
+                protein.addToCollection("publications", publication);
+            }
+        }
+        // store
+        storeCollectionItems();
 	store(geneFamilies);
         store(phylotrees);
         store(phylonodes.values());
@@ -106,14 +108,14 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
      * Process a file in the phylotree subdirectory, in Newick format.
      * legume.genefam.fam1.M65K.trees_ML_rooted/legfed_v1_0.L_6W30ML
      */
-    void processTreeFile() throws IOException {
+    void processTreeFile(File file) throws IOException {
         JPhyloIOReaderWriterFactory factory = new JPhyloIOReaderWriterFactory();
         try {
-            String formatID = factory.guessFormat(getCurrentFile());
+            String formatID = factory.guessFormat(file);
             if (formatID==null) {
-                throw new RuntimeException("File "+getCurrentFile().getName()+" format could not be determined.");
+                throw new RuntimeException("File "+file.getName()+" format could not be determined.");
             } else if (!formatID.equals("info.bioinfweb.jphyloio.newick")) {
-                throw new RuntimeException("File "+getCurrentFile().getName()+" format is not a Newick file: "+formatID);
+                throw new RuntimeException("File "+file.getName()+" format is not a Newick file: "+formatID);
             }
         } catch (Exception ex) {
             throw new RuntimeException(ex);
@@ -121,7 +123,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         // create this Phylotree and GeneFamily
         // 0           1
         // legfed_v1_0.L_6W30ML
-        String identifier = getCurrentFile().getName();
+        String identifier = file.getName();
         Item phylotree = createItem("Phylotree");
         phylotrees.add(phylotree);
         phylotree.setAttribute("primaryIdentifier", identifier);
@@ -145,7 +147,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         // and not network events.
         parameters.put(ReadWriteParameterNames.KEY_PHYLOXML_CONSIDER_PHYLOGENY_AS_TREE, true);
         // create the reader
-        NewickEventReader reader = new NewickEventReader(getCurrentFile(), parameters);
+        NewickEventReader reader = new NewickEventReader(file, parameters);
         // This loop will run until all events of the JPhyloIO reader are consumed (and the end of the document is reached). 
         while (reader.hasNextEvent()) {
             JPhyloIOEvent event = reader.next();
@@ -192,7 +194,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         newick.setReference("geneFamily", geneFamily);
         String contents = "";
         String line = null;
-        BufferedReader br = new BufferedReader(new FileReader(getCurrentFile()));
+        BufferedReader br = new BufferedReader(new FileReader(file));
         while ((line=br.readLine())!=null) {
             contents += line;
         }
@@ -282,14 +284,12 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
         if (node.isFeature()) {
             // convert blanks to underscores
             String label = node.label.replace(" ","_");
-            // DEBUG
-            System.out.println(node.label+"\t"+label);
-            //
             phylonode.setAttribute("isLeaf", "true");
             phylonode.setAttribute("identifier", label);
             // some nodes hold proteins
             if (isFullYuck(label)) {
                 Item protein = getProtein(label);
+                protein.setReference("phylonode", phylonode);
                 phylonode.setReference("protein", protein);
             }
         }

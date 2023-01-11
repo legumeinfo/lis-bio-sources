@@ -5,7 +5,7 @@ import java.io.IOException;
 import java.io.Reader;
 
 import java.util.List;
-import java.util.LinkedList;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 
@@ -34,10 +34,14 @@ public class GWASFileConverter extends DatastoreFileConverter {
 
     // local Items to store
     Item gwas;
-    List<Item> gwasResults = new LinkedList<>();
+    List<Item> gwasResults = new ArrayList<>();
+    List<Item> ontologyAnnotations = new ArrayList<>();
     Map<String,Item> ontologyTerms = new HashMap<>();
     Map<String,Item> traits = new HashMap<>();
 
+    // utility
+    String collectionIdentifier;
+    
     // validate the collection first by storing a flag
     boolean collectionValidated = false;
 
@@ -71,9 +75,10 @@ public class GWASFileConverter extends DatastoreFileConverter {
         }
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
+            collectionIdentifier = readme.identifier;
             gwas = createItem("GWAS");
             gwas.setReference("organism", organism);
-            gwas.setAttribute("primaryIdentifier", readme.identifier);
+            gwas.setAttribute("primaryIdentifier", collectionIdentifier);
             gwas.setAttribute("synopsis", readme.synopsis);
             gwas.setAttribute("description", readme.description);
             gwas.setAttribute("genotypingPlatform", readme.genotyping_platform);
@@ -125,6 +130,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
         store(gwasResults);
         store(traits.values());
         store(ontologyTerms.values());
+        store(ontologyAnnotations);
     }
     
     /**
@@ -178,8 +184,11 @@ public class GWASFileConverter extends DatastoreFileConverter {
             Item trait = getTrait(traitName);
             // 1:OntologyTerm
             Item ontologyTerm = getOntologyTerm(oboTerm);
-            // add ontology term
-            trait.addToCollection("ontologyTerms", ontologyTerm);
+            // add ontology annotation
+            Item ontologyAnnotation = createItem("OntologyAnnotation");
+            ontologyAnnotation.setReference("subject", trait);
+            ontologyAnnotation.setReference("ontologyTerm", ontologyTerm);
+            ontologyAnnotations.add(ontologyAnnotation);
         }
         br.close();
     }
@@ -222,7 +231,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Return a new or existing Trait Item keyed by name.
+     * Return a new or existing Trait Item keyed by name; primaryIdentifier is concocted from collection identifier and name.
      */
     Item getTrait(String name) {
         if (traits.containsKey(name)) {
@@ -230,6 +239,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
         } else {
             Item trait = createItem("Trait");
             trait.setAttribute("name", name);
+            trait.setAttribute("primaryIdentifier", collectionIdentifier+":"+name);
             traits.put(name, trait);
             return trait;
         }

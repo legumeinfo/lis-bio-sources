@@ -80,8 +80,7 @@ public class PhytozomeFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws Exception {
-        store(dataSource);
-        store(dataSet);
+        storeCollectionItems();
 	store(geneFamilies.values());
 	// store(ontologyTerms.values());
 	// store(ontologyAnnotations);

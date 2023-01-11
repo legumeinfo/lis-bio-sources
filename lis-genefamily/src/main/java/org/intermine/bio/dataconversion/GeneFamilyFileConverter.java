@@ -75,6 +75,18 @@ public class GeneFamilyFileConverter extends DatastoreFileConverter {
         if (!ahrdFileFound) {
             throw new RuntimeException("File ending in .info_annot_ahrd.tsv.gz not found. Aborting");
         }
+        // add publication to Annotatables
+        if (publication!=null) {
+            for (Item protein : proteins.values()) {
+                protein.addToCollection("publications", publication);
+            }
+            for (Item gene : genes.values()) {
+                gene.addToCollection("publications", publication);
+            }
+            for (Item proteinDomain : proteinDomains.values()) {
+                proteinDomain.addToCollection("publications", publication);
+            }
+        }
         storeCollectionItems();
 	store(geneFamilies.values());
 	store(ontologyTerms.values());

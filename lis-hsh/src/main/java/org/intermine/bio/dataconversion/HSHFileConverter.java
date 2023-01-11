@@ -72,6 +72,15 @@ public class HSHFileConverter extends DatastoreFileConverter {
     public void close() throws ObjectStoreException {
         // standard collection items
         storeCollectionItems();
+        // add publication to Annotatables
+        if (publication!=null) {
+            for (Item gene : genes.values()) {
+                gene.addToCollection("publications", publication);
+            }
+            for (Item protein : proteins.values()) {
+                protein.addToCollection("publications", publication);
+            }
+        }
         // local items
         store(panGeneSets.values());
         store(genes.values());
