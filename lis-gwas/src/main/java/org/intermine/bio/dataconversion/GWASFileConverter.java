@@ -219,7 +219,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
             try {
                 pValue = Double.parseDouble(pValueString);
             } catch (NumberFormatException ex) {
-                throw new RuntimeException("File "+getCurrentFile().getName()+" has a malformatted p-value in line:"+line);
+                throw new RuntimeException("File "+getCurrentFile().getName()+" has a malformatted p-value:"+pValueString+" in line:"+line);
             }                
             // 0:Trait.name
             Item trait = getTrait(traitName);
