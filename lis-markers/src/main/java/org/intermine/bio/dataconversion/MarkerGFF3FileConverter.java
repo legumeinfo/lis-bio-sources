@@ -56,9 +56,6 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
     Map<String,Item> geneticMarkers = new HashMap<>();
     List<Item> locations = new ArrayList<>();
 
-    // for distinguishing chromosomes from supercontigs
-    DatastoreUtils dsu;
-
     // validate the collection first by storing a flag
     boolean collectionValidated = false;
 
@@ -69,7 +66,6 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
      */
     public MarkerGFF3FileConverter(ItemWriter writer, Model model) throws ObjectStoreException {
         super(writer, model);
-        dsu = new DatastoreUtils();
     }
 
     /**
@@ -254,7 +250,7 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
             geneticMarker.setAttribute("secondaryIdentifier", DatastoreUtils.extractSecondaryIdentifier(primaryIdentifier, false));
             geneticMarker.setAttribute("length", String.valueOf(location.length()));
             geneticMarkers.put(primaryIdentifier, geneticMarker);
-            if (dsu.isChromosome(seqname)) {
+            if (isChromosome(seqname)) {
                 Item chromosome = getChromosome(seqname);
                 geneticMarker.setReference("chromosome", chromosome);
                 Item chromosomeLocation = createItem("Location");
@@ -269,7 +265,7 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
                 chromosomeLocation.setReference("locatedOn", chromosome);
                 locations.add(chromosomeLocation);
                 geneticMarker.setReference("chromosomeLocation", chromosomeLocation);
-            } else {
+            } else if (isSupercontig(seqname)) {
                 Item supercontig = getSupercontig(seqname);
                 geneticMarker.setReference("supercontig", supercontig);
                 Item supercontigLocation = createItem("Location");

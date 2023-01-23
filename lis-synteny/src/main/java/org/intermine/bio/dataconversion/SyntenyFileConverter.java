@@ -51,9 +51,6 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
     // keep to only one source/target pair
     Map<String,String> syntenyBlockIds = new HashMap<>();
 
-    // for getting taxonId from gensp, etc.
-    DatastoreUtils dsu;
-
     // validate the collection first by storing a flag
     boolean collectionValidated = false;
 
@@ -124,7 +121,6 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
      */
     public void processGFF() throws IOException {
         System.out.println("## Processing "+getCurrentFile().getName());
-        dsu = new DatastoreUtils();
         String[] fileNameParts = getCurrentFile().getName().split("\\.");
         if (fileNameParts.length!=10) {
             throw new RuntimeException(getCurrentFile().getName()+" does not have 10 dot-separated parts including .gz extension.");
@@ -162,8 +158,8 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
                     throw new RuntimeException("GFF syntenic_region record is missing target attribute:"+line);
                 }
                 // ignore this record if source or target are not on a chromosome
-                if (!dsu.isChromosome(sourceChrName)) continue;
-                if (!dsu.isChromosome(targetChrName)) continue;
+                if (!isChromosome(sourceChrName)) continue;
+                if (!isChromosome(targetChrName)) continue;
                 // get the source and target chromosomes
                 Item sourceChromosome = getChromosome(sourceChrName, sourceOrganism, sourceStrain);
                 Item targetChromosome = getChromosome(targetChrName, targetOrganism, targetStrain);
@@ -395,7 +391,7 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
             return organism;
         } else {
             // return a non-collection organism keyed by taxonId
-            String taxonId = dsu.getTaxonId(gs);
+            String taxonId = getTaxonId(gs);
             if (organisms.containsKey(taxonId)) {
                 return organisms.get(taxonId);
             } else {

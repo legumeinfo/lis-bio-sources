@@ -17,6 +17,7 @@ import java.io.IOException;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -62,7 +63,6 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
     static final Logger LOG = Logger.getLogger(GenomeFastaLoaderTask.class);
     static final String SEQUENCE_TYPE = "dna";
 
-    String className;
     boolean loadHeaderDescriptions = false;
 
     // project.xml setters
@@ -70,8 +70,12 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
     String dataSourceName, dataSourceUrl, dataSourceDescription;
     String dataSetUrl, dataSetLicence;
 
-    String assemblyVersion, annotationVersion;
+    Readme readme;
+    String gensp, strainIdentifier, assemblyVersion, annotationVersion;
 
+    List<String> chromosomePrefixes = new ArrayList<>();
+    List<String> supercontigPrefixes = new ArrayList<>();
+    
     // collection items
     Organism organism;
     Strain strain;
@@ -79,7 +83,6 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
     DataSet dataSet;
     Publication publication;
     
-    DatastoreUtils dsu; // for determining supercontigs vs chromosomes
     boolean fastaProcessed = false; // flag to indicate that we processed the FASTA
     boolean collectionValidated = false; // validate the collection first by storing a flag
 
@@ -121,7 +124,6 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
      */
     @Override
     public void process() {
-        dsu = new DatastoreUtils();
         // process files, which stores the features and sequences directly
         super.process();
         // bail if we haven't processed the FASTA
@@ -158,10 +160,6 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
         // don't configure dynamic attributes if this is a unit test!
         if (getProject()!=null) {
             configureDynamicAttributes(this);
-        }
-        // required project.xml parameters
-        if (className==null || className.trim().length()==0) {
-            throw new BuildException("className must be set in project.xml.");
         }
         // this will call processFile() for each file
         super.execute();
@@ -208,12 +206,27 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
      * Note: we get strain from the collection identifier, not the free-form genotype entries.
      */
     void processReadme(File file) throws IOException, ObjectStoreException {
-        Readme readme = Readme.parse(file);
+        readme = Readme.parse(file);
         // project.xml check
         if (dataSetUrl==null) {
             throw new BuildException("dataSetUrl must be set in project.xml.");
         }
-        String collection = DatastoreUtils.extractCollectionFromReadme(file);
+        // chromosome, supercontig prefixes
+        if (readme.chromosome_prefix!=null) {
+            for (String prefix : readme.chromosome_prefix.split(",")) {
+                chromosomePrefixes.add(prefix);
+            }
+        }
+        if (readme.supercontig_prefix!=null) {
+            for (String prefix : readme.supercontig_prefix.split(",")) {
+                supercontigPrefixes.add(prefix);
+            }
+        }
+        // local vars
+        gensp = readme.scientific_name_abbrev;
+        strainIdentifier = DatastoreUtils.extractStrainIdentifierFromCollection(readme.identifier);
+        assemblyVersion = DatastoreUtils.extractAssemblyVersionFromCollection(readme.identifier);
+        annotationVersion = DatastoreUtils.extractAnnotationVersionFromCollection(readme.identifier);
         // DataSource
         dataSource = getDirectDataLoader().createObject(DataSource.class);
         if (dataSourceName==null) {
@@ -238,8 +251,6 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
         dataSet.setSynopsis(readme.synopsis);
         dataSet.setDescription(readme.description);
         dataSet.setUrl(dataSetUrl); // required in project.xml
-        assemblyVersion = DatastoreUtils.extractAssemblyVersionFromCollection(readme.identifier);
-        annotationVersion = DatastoreUtils.extractAnnotationVersionFromCollection(readme.identifier);
         if (assemblyVersion!=null && annotationVersion!=null) {
             dataSet.setVersion(assemblyVersion+"."+annotationVersion);
         } else if (assemblyVersion!=null) {
@@ -262,9 +273,8 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
         organism.setTaxonId(String.valueOf(readme.taxid));
         organism.addDataSets(dataSet);
         // Strain
-        String strainIdentifier = DatastoreUtils.extractStrainIdentifierFromCollection(collection);
         if (strainIdentifier==null) {
-            throw new BuildException("ERROR: could not extract strain identifier from "+collection+".");
+            throw new BuildException("ERROR: could not extract strain identifier from "+readme.identifier+".");
         }
         strain = getDirectDataLoader().createObject(Strain.class);
         strain.setIdentifier(strainIdentifier);
@@ -295,7 +305,7 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
     }
 
     /**
-     * Create a Sequence and an object of type className for the given BioJava Sequence.
+     * Create a Sequence and an object for the given BioJava Sequence.
      *
      * @param bioJavaSequence the AbstractSequence object, either DNASequence or ProteinSequence
      * @throws ObjectStoreException if store() fails
@@ -323,46 +333,42 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
             identifier = tabChunks[0];
             symbol = tabChunks[1];
         }
-        // HACK: set the className to "Chromosome" or "Supercontig" based on matching identifier and chromosome/supercontig prefixes in datastore_config.properties.
-        // Anything that isn't identified is stored as a Supercontig.
-        if (className.equals("org.intermine.model.bio.Chromosome") || className.equals("org.intermine.model.bio.Supercontig")) {
-            if (!dsu.isSupercontig(identifier) && dsu.isChromosome(identifier)) {
-                className = "org.intermine.model.bio.Chromosome";
-                System.out.println("## Loading chromosome:"+identifier);
-            } else {
-                className = "org.intermine.model.bio.Supercontig";
-            }
-        }
-        // create the feature class
-        Class<? extends InterMineObject> imClass;
-        Class<?> c;
-        try {
-            c = Class.forName(className);
-            if (InterMineObject.class.isAssignableFrom(c)) {
+        // Use prefix match to identifier to set the class to Chromosome or Supercontig.
+        if (isChromosome(identifier)) {
+            // store Chromosome
+            Class<? extends InterMineObject> imClass;
+            Class<?> c;
+            try {
+                c = Class.forName("org.intermine.model.bio.Chromosome");
                 imClass = (Class<? extends InterMineObject>) c;
-            } else {
-                throw new BuildException("Feature className must be a valid class in the model that inherits from InterMineObject, but was "+className);
+                Chromosome feature = (Chromosome) getDirectDataLoader().createObject(imClass);
+                feature.setPrimaryIdentifier(identifier);
+                setSecondaryIdentifier(feature, identifier, false);
+                setName(feature, bioJavaSequence, idAttribute, identifier, false);
+                setAssemblyVersion(feature);
+                storeSequenceFeature(feature, bioSequence);
+            } catch (ClassNotFoundException ex) {
+                throw new BuildException(ex);
             }
-        } catch (ClassNotFoundException e1) {
-            throw new BuildException("Unknown class: "+className+" while creating new Sequence object");
-        }
-
-        if (className.equals("org.intermine.model.bio.Chromosome")) {
-            Chromosome feature = (Chromosome) getDirectDataLoader().createObject(imClass);
-            feature.setPrimaryIdentifier(identifier);
-            setSecondaryIdentifier(feature, identifier, false);
-            setName(feature, bioJavaSequence, idAttribute, identifier, false);
-            setAssemblyVersion(feature);
-            storeSequenceFeature(feature, bioSequence);
-        } else if (className.equals("org.intermine.model.bio.Supercontig")) {
-            Supercontig feature = (Supercontig) getDirectDataLoader().createObject(imClass);
-            feature.setPrimaryIdentifier(identifier);
-            setSecondaryIdentifier(feature, identifier, false);
-            setName(feature, bioJavaSequence, idAttribute, identifier, false);
-            setAssemblyVersion(feature);
-            storeSequenceFeature(feature, bioSequence);
+        } else if (isSupercontig(identifier)) {
+            // store Supercontig
+            Class<? extends InterMineObject> imClass;
+            Class<?> c;
+            try {
+                c = Class.forName("org.intermine.model.bio.Supercontig");
+                imClass = (Class<? extends InterMineObject>) c;
+                Supercontig feature = (Supercontig) getDirectDataLoader().createObject(imClass);
+                feature.setPrimaryIdentifier(identifier);
+                setSecondaryIdentifier(feature, identifier, false);
+                setName(feature, bioJavaSequence, idAttribute, identifier, false);
+                setAssemblyVersion(feature);
+                storeSequenceFeature(feature, bioSequence);
+            } catch (ClassNotFoundException ex) {
+                throw new BuildException(ex);
+            }
         } else {
-            throw new BuildException("Loading of "+className+" from genome FASTA isn't currently supported.");
+            System.out.println("## skipping non-matching sequence: "+identifier);
+            return;
         }
     }
     
@@ -434,23 +440,6 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
         String secondHalf = split[1];
         String[] parts = secondHalf.split(" ");
         return DatastoreUtils.unescape(parts[0]);
-    }
-
-    /**
-     * The default class name to use for objects created during load.  Generally this is
-     * "org.intermine.model.bio.Chromosome" or "org.intermine.model.bio.Protein"
-     * @param className the class name
-     */
-    public void setClassName(String className) {
-        this.className = className;
-    }
-
-    /**
-     * Return the class name set with setClassName().
-     * @return the class name
-     */
-    public String getClassName() {
-        return className;
     }
 
     /**
@@ -526,4 +515,27 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
         }
     }
 
+    /**
+     * Return true if the given primaryIdentifier is for a Chromosome based on chromosome_prefix in the README.
+     */
+    public boolean isChromosome(String primaryIdentifier) {
+        if (chromosomePrefixes.size()>0) {
+            for (String prefix : chromosomePrefixes) {
+                if (primaryIdentifier.startsWith(gensp+"."+strainIdentifier+"."+assemblyVersion+"."+prefix)) return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Return true if the given primaryIdentifier is for a Supercontig based on supercontig_prefix in the README.
+     */
+    public boolean isSupercontig(String primaryIdentifier) {
+        if (supercontigPrefixes.size()>0) {
+            for (String prefix : supercontigPrefixes) {
+                if (primaryIdentifier.startsWith(gensp+"."+strainIdentifier+"."+assemblyVersion+"."+prefix)) return true;
+            }
+        }
+        return false;
+    }
 }
