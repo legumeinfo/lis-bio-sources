@@ -148,7 +148,7 @@ public class QTLFileConverter extends DatastoreFileConverter {
      *
      * 0                    1                2                        3              4      5     6         7                        8    9                 10         11        12
      * #qtl_identifier      trait_name       genetic_map              linkage_group  start  end   qtl_peak  favorable_allele_source  lod  likelihood_ratio  marker_r2  total_r2  additivity
-     * Early leaf spot 1-1  Early leaf spot  TT_Tifrunner_x_GT-C20_c  A08            100.7  102.9 102                                3.02 12.42             0.56
+     * Early leaf spot 1-1  Early leaf spot  TT_Tifrunner_x_GT-C20_c  A08            100.7  102.9 102       GT-C20_c                 3.02 12.42             0.56       0.32      0.22
      */
     void processQTLFile() throws IOException {
         BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
@@ -176,11 +176,32 @@ public class QTLFileConverter extends DatastoreFileConverter {
             qtl.setAttribute("start", String.valueOf(left));
             // QTL.end
             qtl.setAttribute("end", String.valueOf(right));
-            // optional columns (skip 6, 10, 11)
-            if (fields.length>5) qtl.setAttribute("peak", String.valueOf(doubleOrZero(fields[5])));
-            if (fields.length>7) qtl.setAttribute("lod", String.valueOf(doubleOrZero(fields[7])));
-            if (fields.length>8) qtl.setAttribute("likelihoodRatio", String.valueOf(doubleOrZero(fields[8])));
-            if (fields.length>9) qtl.setAttribute("markerR2", String.valueOf(doubleOrZero(fields[9])));
+            // optional columns
+            try {
+                if (fields.length>6) qtl.setAttribute("peak", String.valueOf(doubleOrZero(fields[6])));
+                // 7 skip favorable_allele_source
+                if (fields.length>8) qtl.setAttribute("lod", String.valueOf(doubleOrZero(fields[8])));
+                if (fields.length>9) qtl.setAttribute("likelihoodRatio", String.valueOf(doubleOrZero(fields[9])));
+                if (fields.length>10) qtl.setAttribute("markerR2", String.valueOf(doubleOrZero(fields[10])));
+                // 11 skip total_r2
+                // 12 skip additivity
+            } catch (NumberFormatException ex) {
+                // informative error message
+                System.err.println("qtl:"+fields[0]);
+                System.err.println("trait:"+fields[1]);
+                System.err.println("genetic_map:"+fields[2]);
+                System.err.println("linkage_group:"+fields[3]);
+                System.err.println("start:"+fields[4]);
+                System.err.println("end:"+fields[5]);
+                if (fields.length>6) System.err.println("peak:"+fields[6]);
+                if (fields.length>7) System.err.println("favorable_allele_source:"+fields[7]);
+                if (fields.length>8) System.err.println("lod:"+fields[8]);
+                if (fields.length>9) System.err.println("likelihood_ratio:"+fields[9]);
+                if (fields.length>10) System.err.println("marker_r2"+fields[10]);
+                if (fields.length>11) System.err.println("total_r2:"+fields[11]);
+                if (fields.length>12) System.err.println("addititivity:"+fields[12]);
+                throw new RuntimeException(ex);
+            }
         }
         br.close();
     }
