@@ -4,6 +4,9 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.Reader;
+import java.io.UnsupportedEncodingException;
+
+import java.net.MalformedURLException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -12,6 +15,8 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.Properties;
 
+import javax.xml.parsers.ParserConfigurationException;
+
 import org.intermine.bio.util.BioConverterUtil;
 import org.intermine.dataconversion.FileConverter;
 import org.intermine.dataconversion.ItemWriter;
@@ -19,7 +24,15 @@ import org.intermine.metadata.Model;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
+import org.json.simple.parser.ParseException;
+
+import org.xml.sax.SAXException;
+
 import org.ncgr.datastore.Readme;
+import org.ncgr.crossref.WorksQuery;
 
 /**
  * Class providing standard objects and methods for Datastore file converters. Extend for your specific converter.
@@ -56,6 +69,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
     Item organism;
     Item strain;
     Item publication;
+    List<Item> authors = new ArrayList<>();
 
     // There is only one DataSource, set in project.xml, or default
     String dataSourceName;         // required
@@ -187,12 +201,26 @@ public abstract class DatastoreFileConverter extends FileConverter {
                 supercontigPrefixes.add(prefix);
             }
         }
+        // Organism
+        organism = createItem("Organism");
+        organism.setAttribute("taxonId", String.valueOf(taxonId));
+        // Publication
+        if (readme.publication_doi==null) {
+            throw new RuntimeException("README is missing required publication_doi.");
+        }
+        publication = createItem("Publication");
+        try {
+            populatePublication(readme.publication_doi);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
         // DataSet
         dataSet = createItem("DataSet");
         dataSet.setReference("dataSource", dataSource);
         dataSet.setAttribute("name", dataSetName);
         dataSet.setAttribute("description", dataSetDescription);
         dataSet.setAttribute("synopsis", readme.synopsis);
+        dataSet.setReference("publication", publication);
         if (assemblyVersion!=null && annotationVersion!=null) {
             dataSet.setAttribute("version", assemblyVersion+"."+annotationVersion);
         } else if (assemblyVersion!=null) {
@@ -204,16 +232,6 @@ public abstract class DatastoreFileConverter extends FileConverter {
             dataSet.setAttribute("licence", DEFAULT_DATASET_LICENCE);
         }
         dataSet.setAttribute("url", dataSetUrl);
-        // Organism
-        organism = createItem("Organism");
-        organism.setAttribute("taxonId", String.valueOf(taxonId));
-        // Publication
-        if (readme.publication_doi!=null) {
-            publication = createItem("Publication");
-            publication.setAttribute("doi", readme.publication_doi);
-            if (readme.publication_title!=null) publication.setAttribute("title", readme.publication_title);
-            dataSet.setReference("publication", publication);
-        }
         // set BioStoreHook
         setStoreHook(new BioStoreHook(getModel(), dataSet.getIdentifier(), dataSource.getIdentifier(), BioConverterUtil.getOntology(this)));
     }
@@ -274,6 +292,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
         store(organism);
         if (strain!=null) store(strain);
         if (publication!=null) store(publication);
+        if (authors.size()>0) store(authors);
     }
 
     /**
@@ -476,4 +495,115 @@ public abstract class DatastoreFileConverter extends FileConverter {
         }
     }
 
+    /**
+     * Populate the instance publication from CrossRef.
+     *
+     * @param doi the publication's DOI
+     */
+    void populatePublication(String doi) throws UnsupportedEncodingException, MalformedURLException, ParseException, IOException, ParserConfigurationException, SAXException {
+        // query CrossRef entry from DOI
+        WorksQuery wq = new WorksQuery(doi);
+        if (wq.getStatus()!=null && wq.getStatus().equals("ok")) {
+            String title = wq.getTitle();
+            int year = 0;
+            try { year = wq.getJournalIssueYear(); } catch (Exception ex) { }
+            if (year==0) {
+                try { year = wq.getIssuedYear(); } catch (Exception ex) { }
+            }
+            String month = null;
+            try { month = String.valueOf(wq.getJournalIssueMonth()); } catch (Exception ex) { }
+            if (month==null) {
+                try { month = String.valueOf(wq.getIssuedMonth()); } catch (Exception ex) { }
+            }
+            String journal = null;
+            if (wq.getShortContainerTitle()!=null) {
+                journal = wq.getShortContainerTitle();
+            } else if (wq.getContainerTitle()!=null) {
+                journal = wq.getContainerTitle();
+            }
+            String volume = wq.getVolume();
+            String issue = wq.getIssue();
+            String pages = wq.getPage();
+            doi = wq.getDOI();
+            JSONArray authorsJSON = wq.getAuthors();
+            String firstAuthor = null;
+            if (authorsJSON!=null && authorsJSON.size()>0) {
+                JSONObject firstAuthorObject = (JSONObject) authorsJSON.get(0);
+                firstAuthor = (String) firstAuthorObject.get("family");
+                if (firstAuthorObject.get("given")!=null) firstAuthor += ", " + (String) firstAuthorObject.get("given");
+            }
+            // get PubMed ID from PubMed API
+            int pubMedId = DatastoreUtils.getPubMedId(doi);
+            // core IM model does not contain lastAuthor
+            // if (authorsJSON.size()>1) {
+            //     JSONObject lastAuthorObject = (JSONObject) authorsJSON.get(authorsJSON.size()-1);
+            //     lastAuthor = lastAuthorObject.get("family")+", "+lastAuthorObject.get("given");
+            // }
+            // update publication object
+            if (title!=null) publication.setAttribute("title", title);
+            if (firstAuthor!=null) publication.setAttribute("firstAuthor", firstAuthor);
+            if (month!=null && !month.equals("0")) publication.setAttribute("month", month);
+            if (journal!=null) publication.setAttribute("journal", journal);
+            if (volume!=null) publication.setAttribute("volume", volume);
+            if (issue!=null) publication.setAttribute("issue", issue);
+            if (pages!=null) publication.setAttribute("pages", pages);
+            if (doi!=null) publication.setAttribute("doi", doi);
+            if (year>0) publication.setAttribute("year", String.valueOf(year));
+            if (pubMedId>0) publication.setAttribute("pubMedId", String.valueOf(pubMedId));
+            // core IM model does not contain lastAuthor
+            // if (lastAuthor!=null) publication.setAttribute("lastAuthor", lastAuthor);
+                
+            // populate publication.authors
+            if (authorsJSON!=null) {
+                for (Object authorObject : authorsJSON)  {
+                    JSONObject authorJSON = (JSONObject) authorObject;
+                    // IM Author attributes from CrossRef fields
+                    String firstName = null; // there are rare occasions when firstName is missing, so we'll fill that in with a placeholder "X"
+                    if (authorJSON.get("given")==null) {
+                        firstName = "X";
+                    } else {
+                        firstName = (String) authorJSON.get("given");
+                    }
+                    // we require lastName, so if it's missing then bail on this author
+                    if (authorJSON.get("family")==null) continue;
+                    String lastName = (String) authorJSON.get("family");
+                    // split out initials if present
+                    // R. K. => R K
+                    // R.K.  => R K
+                    // Douglas R => Douglas R
+                    // Douglas R. => Douglas R
+                    String initials = null;
+                    // deal with space
+                    String[] parts = firstName.split(" ");
+                    if (parts.length==2) {
+                        if (parts[1].length()==1) {
+                            firstName = parts[0];
+                            initials = parts[1];
+                        } else if (parts[1].length()==2 && parts[1].endsWith(".")) {
+                            firstName = parts[0];
+                            initials = parts[1].substring(0,1);
+                        }
+                    }
+                    // pull initial out if it's an R.K. style first name (but not M.V.K.)
+                    if (initials==null && firstName.length()==4 && firstName.charAt(1)=='.' && firstName.charAt(3)=='.') {
+                        initials = String.valueOf(firstName.charAt(2));
+                        firstName = String.valueOf(firstName.charAt(0));
+                    }
+                    // remove trailing period from a remaining R. style first name
+                    if (firstName.length()==2 && firstName.charAt(1)=='.') {
+                        firstName = String.valueOf(firstName.charAt(0));
+                    }
+                    String name = firstName+" "+lastName;
+                    Item author = createItem("Author");
+                    author.setAttribute("firstName", firstName);
+                    author.setAttribute("lastName", lastName);
+                    author.setAttribute("name", name);
+                    if (initials!=null) author.setAttribute("initials", initials);
+                    author.addToCollection("publications", publication);
+                    authors.add(author);
+                }
+            }
+        }
+    }
+    
 }

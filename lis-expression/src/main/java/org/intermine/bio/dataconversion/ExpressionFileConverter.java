@@ -106,7 +106,7 @@ public class ExpressionFileConverter extends DatastoreFileConverter {
             System.out.println("## Processing "+getCurrentFile().getName());
             processOboFile();
         } else {
-            System.out.println("## - Skipping "+getCurrentFile().getName());
+            System.out.println(" x skipping "+getCurrentFile().getName());
         }
     }
     

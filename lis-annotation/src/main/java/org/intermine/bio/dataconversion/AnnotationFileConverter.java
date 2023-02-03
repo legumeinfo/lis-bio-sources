@@ -176,7 +176,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             System.out.println("## Processing "+getCurrentFile().getName());
             processIPRScanGFF3();
         } else if (getCurrentFile().getName().endsWith(".gz")) {
-            System.out.println("## - Skipping "+getCurrentFile().getName());
+            System.out.println(" x skipping "+getCurrentFile().getName());
         }
     }
 

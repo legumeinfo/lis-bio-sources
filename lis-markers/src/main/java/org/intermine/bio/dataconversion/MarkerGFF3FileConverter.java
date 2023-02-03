@@ -89,7 +89,7 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
             System.out.println("## Processing "+getCurrentFile().getName());
             processMarkerGFF3File();
         } else {
-            System.out.println("## - Skipping "+getCurrentFile().getName());
+            System.out.println(" x skipping "+getCurrentFile().getName());
         }
     }
 

@@ -101,7 +101,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
             System.out.println("## Processing "+getCurrentFile().getName());
             processResultFile();
 	} else {
-            System.out.println("## - Skipping "+getCurrentFile().getName());
+            System.out.println(" x skipping "+getCurrentFile().getName());
         }
     }
 

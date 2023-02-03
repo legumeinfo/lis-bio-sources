@@ -93,7 +93,7 @@ public class MapFileConverter extends DatastoreFileConverter {
             System.out.println("## Processing "+getCurrentFile().getName());
             processMrkFile();
         } else {
-            System.out.println("## - Skipping "+getCurrentFile().getName());
+            System.out.println(" x skipping "+getCurrentFile().getName());
         }
     }
 

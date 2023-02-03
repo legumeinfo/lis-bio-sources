@@ -20,6 +20,8 @@ sourceSets {
 dependencies {
     implementation group: 'org.intermine', name: 'bio-model', version: bioVersion //to read genomic_keyDefs.properties
     bioModel group: 'org.intermine', name: 'bio-model', version: bioVersion, transitive: false
+    // https://mvnrepository.com/artifact/com.googlecode.json-simple/json-simple
+    compile group: 'com.googlecode.json-simple', name: 'json-simple', version: '1.1.1'
     compile fileTree(dir: 'libs', include: '*.jar')
 }
 

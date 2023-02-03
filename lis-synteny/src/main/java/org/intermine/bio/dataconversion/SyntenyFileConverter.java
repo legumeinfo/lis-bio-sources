@@ -83,9 +83,10 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
             processReadme(reader);
             setStrain();
         } else if (getCurrentFile().getName().endsWith("gff3.gz")) {
+            System.out.println("## Processing "+getCurrentFile().getName());
             processGFF();
         } else {
-            System.out.println("## - Skipping "+getCurrentFile().getName());
+            System.out.println(" x skipping "+getCurrentFile().getName());
         }
     }
 

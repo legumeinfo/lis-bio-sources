@@ -158,7 +158,7 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
                 throw new BuildException(ex);
             }
         } else {
-            System.err.println("## - Skipping "+file.getName());
+            System.err.println(" x skipping "+file.getName());
         }
     }
 

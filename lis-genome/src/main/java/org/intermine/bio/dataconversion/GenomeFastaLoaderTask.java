@@ -14,6 +14,9 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.InputStream;
 import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+
+import java.net.MalformedURLException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -22,6 +25,8 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.NoSuchElementException;
+
+import javax.xml.parsers.ParserConfigurationException;
 
 import org.apache.log4j.Logger;
 import org.apache.tools.ant.BuildException;
@@ -36,6 +41,7 @@ import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.objectstore.query.PendingClob;
 import org.intermine.task.FileDirectDataLoaderTask;
 
+import org.intermine.model.bio.Author;
 import org.intermine.model.bio.BioEntity;
 import org.intermine.model.bio.Chromosome;
 import org.intermine.model.bio.DataSet;
@@ -47,8 +53,16 @@ import org.intermine.model.bio.Sequence;
 import org.intermine.model.bio.SequenceFeature;
 import org.intermine.model.bio.Supercontig;
 
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
+import org.json.simple.JSONValue;
+import org.json.simple.parser.ParseException;
+
+import org.xml.sax.SAXException;
+
 import org.ncgr.datastore.Readme;
 import org.ncgr.datastore.validation.GenomeCollectionValidator;
+import org.ncgr.crossref.WorksQuery;
 import org.ncgr.zip.GZIPFastaReader;
 
 /**
@@ -82,6 +96,7 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
     DataSource dataSource;
     DataSet dataSet;
     Publication publication;
+    List<Author> authors = new ArrayList<>();
     
     boolean fastaProcessed = false; // flag to indicate that we processed the FASTA
     boolean collectionValidated = false; // validate the collection first by storing a flag
@@ -137,7 +152,10 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
             getDirectDataLoader().store(strain);
             getDirectDataLoader().store(dataSource);
             getDirectDataLoader().store(dataSet);
-            if (publication!=null) getDirectDataLoader().store(publication);
+            getDirectDataLoader().store(publication);
+            for (Author author : authors) {
+                getDirectDataLoader().store(author);
+            }
         } catch (ObjectStoreException ex) {
             throw new BuildException("Failed to store object", ex);
         }
@@ -197,7 +215,7 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
             System.out.println("## Reading "+SEQUENCE_TYPE+" sequences from: "+file.getName());
             processFasta(file);
         } else {
-            System.out.println("## - Skipping "+file.getName());
+            System.out.println(" x skipping "+file.getName());
 	}
     }
 
@@ -244,6 +262,13 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
         } else {
             dataSource.setDescription(dataSourceDescription);
         }
+        // Publication
+        publication = getDirectDataLoader().createObject(Publication.class);
+        try {
+            populatePublication(readme.publication_doi);
+        } catch (Exception ex) {
+            throw new BuildException(ex);
+        }
         // DataSet
         dataSet = getDirectDataLoader().createObject(DataSet.class);
         dataSet.setDataSource(dataSource);
@@ -251,6 +276,7 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
         dataSet.setSynopsis(readme.synopsis);
         dataSet.setDescription(readme.description);
         dataSet.setUrl(dataSetUrl); // required in project.xml
+        dataSet.setPublication(publication);
         if (assemblyVersion!=null && annotationVersion!=null) {
             dataSet.setVersion(assemblyVersion+"."+annotationVersion);
         } else if (assemblyVersion!=null) {
@@ -260,13 +286,6 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
             dataSet.setLicence(DatastoreFileConverter.DEFAULT_DATASET_LICENCE);
         } else {
             dataSet.setLicence(dataSetLicence);
-        }
-        // Publication
-        if (readme.publication_doi!=null) {
-            publication = getDirectDataLoader().createObject(Publication.class);
-            publication.setDoi(readme.publication_doi);
-            if (readme.publication_title!=null) publication.setTitle(readme.publication_title);
-            dataSet.setPublication(publication);
         }
         // Organism
         organism = getDirectDataLoader().createObject(Organism.class);
@@ -538,4 +557,117 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
         }
         return false;
     }
+
+    /**
+     * Populate the instance Publication from CrossRef.
+     *
+     * @param doi the publication's DOI
+     */
+    void populatePublication(String doi) throws UnsupportedEncodingException, MalformedURLException, ParseException,
+                                                IOException, ParserConfigurationException, SAXException, ObjectStoreException {
+        // query CrossRef entry from DOI
+        WorksQuery wq = new WorksQuery(doi);
+        if (wq.getStatus()!=null && wq.getStatus().equals("ok")) {
+            String title = wq.getTitle();
+            int year = 0;
+            try { year = wq.getJournalIssueYear(); } catch (Exception ex) { }
+            if (year==0) {
+                try { year = wq.getIssuedYear(); } catch (Exception ex) { }
+            }
+            String month = null;
+            try { month = String.valueOf(wq.getJournalIssueMonth()); } catch (Exception ex) { }
+            if (month==null) {
+                try { month = String.valueOf(wq.getIssuedMonth()); } catch (Exception ex) { }
+            }
+            String journal = null;
+            if (wq.getShortContainerTitle()!=null) {
+                journal = wq.getShortContainerTitle();
+            } else if (wq.getContainerTitle()!=null) {
+                journal = wq.getContainerTitle();
+            }
+            String volume = wq.getVolume();
+            String issue = wq.getIssue();
+            String pages = wq.getPage();
+            doi = wq.getDOI();
+            JSONArray authorsJSON = wq.getAuthors();
+            String firstAuthor = null;
+            if (authorsJSON!=null && authorsJSON.size()>0) {
+                JSONObject firstAuthorObject = (JSONObject) authorsJSON.get(0);
+                firstAuthor = (String) firstAuthorObject.get("family");
+                if (firstAuthorObject.get("given")!=null) firstAuthor += ", " + (String) firstAuthorObject.get("given");
+            }
+            // get PubMed ID from PubMed API
+            int pubMedId = DatastoreUtils.getPubMedId(doi);
+            // core IM model does not contain lastAuthor
+            // if (authorsJSON.size()>1) {
+            //     JSONObject lastAuthorObject = (JSONObject) authorsJSON.get(authorsJSON.size()-1);
+            //     lastAuthor = lastAuthorObject.get("family")+", "+lastAuthorObject.get("given");
+            // }
+            // update publication object
+            if (title!=null) publication.setTitle(title);
+            if (firstAuthor!=null) publication.setFirstAuthor(firstAuthor);
+            if (month!=null && !month.equals("0")) publication.setMonth(month);
+            if (journal!=null) publication.setJournal(journal);
+            if (volume!=null) publication.setVolume(volume);
+            if (issue!=null) publication.setIssue(issue);
+            if (pages!=null) publication.setPages(pages);
+            if (doi!=null) publication.setDoi(doi);
+            if (year>0) publication.setYear(year);
+            if (pubMedId>0) publication.setPubMedId(String.valueOf(pubMedId));
+            // core IM model does not contain lastAuthor
+            // if (lastAuthor!=null) publication.setLastAuthor(lastAuthor);
+                
+            // populate publication.authors
+            if (authorsJSON!=null) {
+                for (Object authorObject : authorsJSON)  {
+                    JSONObject authorJSON = (JSONObject) authorObject;
+                    // IM Author attributes from CrossRef fields
+                    String firstName = null; // there are rare occasions when firstName is missing, so we'll fill that in with a placeholder "X"
+                    if (authorJSON.get("given")==null) {
+                        firstName = "X";
+                    } else {
+                        firstName = (String) authorJSON.get("given");
+                    }
+                    // we require lastName, so if it's missing then bail on this author
+                    if (authorJSON.get("family")==null) continue;
+                    String lastName = (String) authorJSON.get("family");
+                    // split out initials if present
+                    // R. K. => R K
+                    // R.K.  => R K
+                    // Douglas R => Douglas R
+                    // Douglas R. => Douglas R
+                    String initials = null;
+                    // deal with space
+                    String[] parts = firstName.split(" ");
+                    if (parts.length==2) {
+                        if (parts[1].length()==1) {
+                            firstName = parts[0];
+                            initials = parts[1];
+                        } else if (parts[1].length()==2 && parts[1].endsWith(".")) {
+                            firstName = parts[0];
+                            initials = parts[1].substring(0,1);
+                        }
+                    }
+                    // pull initial out if it's an R.K. style first name (but not M.V.K.)
+                    if (initials==null && firstName.length()==4 && firstName.charAt(1)=='.' && firstName.charAt(3)=='.') {
+                        initials = String.valueOf(firstName.charAt(2));
+                        firstName = String.valueOf(firstName.charAt(0));
+                    }
+                    // remove trailing period from a remaining R. style first name
+                    if (firstName.length()==2 && firstName.charAt(1)=='.') {
+                        firstName = String.valueOf(firstName.charAt(0));
+                    }
+                    String name = firstName+" "+lastName;
+                    Author author = getDirectDataLoader().createObject(Author.class);
+                    author.setFirstName(firstName);
+                    author.setLastName(lastName);
+                    author.setName(name);
+                    if (initials!=null) author.setInitials(initials);
+                    author.addPublications(publication);
+                    authors.add(author);
+                }
+            }
+        }
+    }
+    
 }

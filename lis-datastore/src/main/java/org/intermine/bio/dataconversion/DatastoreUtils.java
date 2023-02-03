@@ -1,11 +1,22 @@
 package org.intermine.bio.dataconversion;
 
+import java.io.IOException;
+
+import javax.xml.parsers.ParserConfigurationException;
+
+import org.xml.sax.SAXException;
+
+import org.ncgr.datastore.Readme;
+import org.ncgr.pubmed.PubMedSummary;
+
 /**
  * Static utility methods for datastore loaders. 
  *
  * @author Sam Hokin
  */
 public class DatastoreUtils {
+
+    private static final String PUBMED_API_KEY = "48cb39fb23bf1190394ccbae4e1d35c5c809";
     
     /**
      * Extract the gensp string from the given identifier.
@@ -193,4 +204,20 @@ public class DatastoreUtils {
             replaceAll("%252c",",").replaceAll("%253b",";").replaceAll("%253d","=");
     }
 
+    /**
+     * Retrieve the PubMed ID from PubMed for a given DOI.
+     *
+     * @param doi the DOI of the publication
+     * @return the PubMed ID, or 0 if not found 
+     */
+    public static int getPubMedId(String doi) throws IOException, ParserConfigurationException, SAXException {
+        PubMedSummary summary = new PubMedSummary();
+        summary.searchDOI(doi, PUBMED_API_KEY);
+        if (summary.id!=0) {
+            return summary.id;
+        } else {
+            return 0;
+        }
+    }
+    
 }
