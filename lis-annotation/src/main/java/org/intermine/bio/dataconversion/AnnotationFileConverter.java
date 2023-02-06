@@ -39,6 +39,7 @@ import org.intermine.metadata.Util;
 import org.intermine.objectstore.ObjectStoreException;
 import org.intermine.xml.full.Item;
 
+import org.ncgr.datastore.Readme;
 import org.ncgr.datastore.validation.AnnotationCollectionValidator;
 import org.ncgr.zip.GZIPFastaReader;
 import org.ncgr.zip.GZIPBufferedReader;
@@ -149,6 +150,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
             setStrain();
+            processGenomeReadme(getCurrentFile());
         } else if (getCurrentFile().getName().endsWith(".gene_models_main.gff3.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processGeneModelsMainGFF3File();

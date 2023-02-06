@@ -82,6 +82,7 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
             setStrain();
+            processGenomeReadme(getCurrentFile());
         } else if (getCurrentFile().getName().endsWith("gff3.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processGFF();

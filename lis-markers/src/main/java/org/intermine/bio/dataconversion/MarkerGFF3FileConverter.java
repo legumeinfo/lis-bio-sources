@@ -83,8 +83,8 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
         }
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
-            // markers are mapped to a specific strain assembly
             setStrain();
+            processGenomeReadme(getCurrentFile());
         } else if (getCurrentFile().getName().endsWith(".gff3.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processMarkerGFF3File();

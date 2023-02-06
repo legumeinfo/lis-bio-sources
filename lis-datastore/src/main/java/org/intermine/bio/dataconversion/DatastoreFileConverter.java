@@ -58,7 +58,6 @@ public abstract class DatastoreFileConverter extends FileConverter {
     public static final String DEFAULT_DATASET_LICENCE = "ODC Public Domain Dedication and Licence (PDDL)";
 	
     static final String ORGANISM_PROP_FILE = "organism_config.properties";
-    static final String DATASTORE_PROP_FILE = "datastore_config.properties";
 
     // the README file content
     Readme readme;
@@ -95,9 +94,6 @@ public abstract class DatastoreFileConverter extends FileConverter {
     Map<String,String> genspTaxonId = new HashMap<>();
     Map<String,String> genusSpeciesTaxonId = new HashMap<>();
 
-    Map<String,List<String>> chromosomePrefixMap = new HashMap<>();   // from datastore_config.properties
-    Map<String,List<String>> supercontigPrefixMap = new HashMap<>();  // from datastore_config.properties
-    
     List<String> chromosomePrefixes = new ArrayList<>();              // from README
     List<String> supercontigPrefixes = new ArrayList<>();             // from README
 
@@ -112,7 +108,6 @@ public abstract class DatastoreFileConverter extends FileConverter {
         super(writer, model);
         setDataSource();
         loadOrganismProperties();
-        loadDatastoreProperties();
     }
 
     /**
@@ -353,57 +348,27 @@ public abstract class DatastoreFileConverter extends FileConverter {
     }
 
     /**
-     * Return true if the given primaryIdentifier is for a Chromosome based on chromosome_prefix in README or, if missing, entry in datastore_config.properties.
+     * Return true if the given primaryIdentifier is for a Chromosome based on chromosome_prefix in genome README.
      *
      * README:
      * chromosome_prefix: chr
-     *
-     * datastore_config.properties:
-     * chromosome.gensp.Strain.gnm=chr
      */
     public boolean isChromosome(String primaryIdentifier) {
-        if (chromosomePrefixes.size()>0) {
-            // use README.chromosome_prefix
-            for (String prefix : chromosomePrefixes) {
-                if (primaryIdentifier.startsWith(gensp+"."+strainIdentifier+"."+assemblyVersion+"."+prefix)) return true;
-            }
-        } else {
-            // use datastore_config.properties 
-            String genspStrainGnm = gensp + "." + strainIdentifier + "." + assemblyVersion;
-            List<String> prefixes = chromosomePrefixMap.get(genspStrainGnm);
-            if (prefixes!=null) {
-                for (String prefix : prefixes) {
-                    if (primaryIdentifier.startsWith(genspStrainGnm + "." + prefix)) return true;
-                }
-            }
+        for (String prefix : chromosomePrefixes) {
+            if (primaryIdentifier.startsWith(gensp+"."+strainIdentifier+"."+assemblyVersion+"."+prefix)) return true;
         }
         return false;
     }
 
     /**
-     * Return true if the given primaryIdentifier is for a Supercontig based on supercontig_prefix in README or, if missing, entry in datastore_config.properties.
+     * Return true if the given primaryIdentifier is for a Supercontig based on supercontig_prefix in genome README.
      *
      * README:
      * supercontig_prefix: chr
-     *
-     * datastore_config.properties:
-     * supercontig.gensp.Strain.gnm=chr
      */
     public boolean isSupercontig(String primaryIdentifier) {
-        if (supercontigPrefixes.size()>0) {
-            // use README.supercontig_prefix
-            for (String prefix : supercontigPrefixes) {
-                if (primaryIdentifier.startsWith(gensp+"."+strainIdentifier+"."+assemblyVersion+"."+prefix)) return true;
-            }
-        } else {
-            // use datastore_config.properties 
-            String genspStrainGnm = gensp + "." + strainIdentifier + "." + assemblyVersion;
-            List<String> prefixes = supercontigPrefixMap.get(genspStrainGnm);
-            if (prefixes!=null) {
-                for (String prefix : prefixes) {
-                    if (primaryIdentifier.startsWith(genspStrainGnm + "." + prefix)) return true;
-                }
-            }
+        for (String prefix : supercontigPrefixes) {
+            if (primaryIdentifier.startsWith(gensp+"."+strainIdentifier+"."+assemblyVersion+"."+prefix)) return true;
         }
         return false;
     }
@@ -460,41 +425,6 @@ public abstract class DatastoreFileConverter extends FileConverter {
         
     }
     
-    /**
-     * Load the properties from the mine's datastore properties file.
-     * 0          1     2      3
-     * chromosome.gensp.Strain.gnm=prefix
-     * supercontig.gensp.Strain.gnm=prefix
-     */
-    void loadDatastoreProperties() {
-        // load datastore properties, like chromosome and supercontig prefixes
-        Properties datastoreProps = new Properties();
-        try {
-            InputStream datastorePropsResource = getClass().getClassLoader().getResourceAsStream(DATASTORE_PROP_FILE);
-            if (datastorePropsResource == null) {
-                throw new RuntimeException("Did not find datastore properties file:"+DATASTORE_PROP_FILE);
-            }
-            datastoreProps.load(datastorePropsResource);
-            for (Object obj : datastoreProps.keySet()) {
-                String key = (String) obj;
-                String[] dotparts = key.split("\\.");
-                String type = dotparts[0];
-                String gensp = dotparts[1];
-                String strainId = dotparts[2];
-                String gnm = dotparts[3];
-                String value = datastoreProps.getProperty(key);
-                List<String> prefixes = Arrays.asList(value.split(","));
-                if (type.equals("chromosome")) {
-                    chromosomePrefixMap.put(gensp+"."+strainId+"."+gnm, prefixes);
-                } else if (type.equals("supercontig")) {
-                    supercontigPrefixMap.put(gensp+"."+strainId+"."+gnm, prefixes);
-                }
-            }
-        } catch (IOException e) {
-            throw new RuntimeException("Problem loading properties from:"+DATASTORE_PROP_FILE, e);
-        }
-    }
-
     /**
      * Populate the instance publication from CrossRef.
      *
@@ -601,6 +531,40 @@ public abstract class DatastoreFileConverter extends FileConverter {
                     if (initials!=null) author.setAttribute("initials", initials);
                     author.addToCollection("publications", publication);
                     authors.add(author);
+                }
+            }
+        }
+    }
+
+    /**
+     * Grab chromosome/supercontig prefixes from corresponding genome collection Strain.gnm.KEY4.
+     *
+     * @param currentFile the current README file being processed (e.g. in an annotation collection)
+     */
+    void processGenomeReadme(File currentFile) throws IOException {
+        File strainDir = currentFile.getParentFile().getParentFile().getParentFile();
+        File genomesDir = new File(strainDir, "genomes");
+        String[] genomes = genomesDir.list();
+        String genomePrefix = strainIdentifier + "." + assemblyVersion;
+        for (String genome : genomes) {
+            if (genome.startsWith(genomePrefix)) {
+                File genomeDir = new File(genomesDir, genome);
+                String genomeReadmeFilename = "README." + genome + ".yml";
+                File genomeReadmeFile = new File(genomeDir, genomeReadmeFilename);
+                System.out.println("## Processing " + genomeReadmeFilename);
+                Readme genomeReadme = Readme.parse(genomeReadmeFile);
+                if (genomeReadme.chromosome_prefix==null && genomeReadme.supercontig_prefix==null) {
+                    throw new RuntimeException("Genome README "+genomeReadmeFilename+" has neither chromosome_prefix or supercontig_prefix.");
+                }
+                if (genomeReadme.chromosome_prefix!=null) {
+                    for (String prefix : genomeReadme.chromosome_prefix.split(",")) {
+                        chromosomePrefixes.add(prefix);
+                    }
+                }
+                if (genomeReadme.supercontig_prefix!=null) {
+                    for (String prefix : genomeReadme.supercontig_prefix.split(",")) {
+                        supercontigPrefixes.add(prefix);
+                    }
                 }
             }
         }
