@@ -188,12 +188,12 @@ public abstract class DatastoreFileConverter extends FileConverter {
         annotationVersion = DatastoreUtils.extractAnnotationVersionFromCollection(readme.identifier);
         if (readme.chromosome_prefix!=null) {
             for (String prefix : readme.chromosome_prefix.split(",")) {
-                chromosomePrefixes.add(prefix);
+                chromosomePrefixes.add(prefix.trim());
             }
         }
         if (readme.supercontig_prefix!=null) {
             for (String prefix : readme.supercontig_prefix.split(",")) {
-                supercontigPrefixes.add(prefix);
+                supercontigPrefixes.add(prefix.trim());
             }
         }
         // Organism
@@ -558,12 +558,12 @@ public abstract class DatastoreFileConverter extends FileConverter {
                 }
                 if (genomeReadme.chromosome_prefix!=null) {
                     for (String prefix : genomeReadme.chromosome_prefix.split(",")) {
-                        chromosomePrefixes.add(prefix);
+                        chromosomePrefixes.add(prefix.trim());
                     }
                 }
                 if (genomeReadme.supercontig_prefix!=null) {
                     for (String prefix : genomeReadme.supercontig_prefix.split(",")) {
-                        supercontigPrefixes.add(prefix);
+                        supercontigPrefixes.add(prefix.trim());
                     }
                 }
             }
