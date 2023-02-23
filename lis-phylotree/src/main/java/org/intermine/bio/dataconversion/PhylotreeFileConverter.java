@@ -282,12 +282,12 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
             phylonodes.put(key, phylonode);
         }
         if (node.isFeature()) {
-            // convert blanks to underscores
-            String label = node.label.replace(" ","_");
             phylonode.setAttribute("isLeaf", "true");
-            phylonode.setAttribute("identifier", label);
+            // HACK: convert blanks to underscores
+            String label = node.label.replace(" ","_");
             // some nodes hold proteins
             if (isFullYuck(label)) {
+                phylonode.setAttribute("identifier", label);
                 Item protein = getProtein(label);
                 protein.setReference("phylonode", phylonode);
                 phylonode.setReference("protein", protein);
