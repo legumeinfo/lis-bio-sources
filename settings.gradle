@@ -9,7 +9,7 @@ include ':bio-source-lis-datastore',
     ':bio-source-lis-gwas',
     ':bio-source-lis-qtl',
     ':bio-source-lis-phylotree',
-    ':bio-source-lis-hsh',
+    ':bio-source-lis-pangene',
     ':bio-source-lis-mstmap',
     ':bio-source-lis-annotation',
     ':bio-source-lis-markers',
@@ -25,7 +25,7 @@ project(':bio-source-lis-genefamily').projectDir = new File(settingsDir, 'lis-ge
 project(':bio-source-lis-gwas').projectDir = new File(settingsDir, 'lis-gwas')
 project(':bio-source-lis-qtl').projectDir = new File(settingsDir, 'lis-qtl')
 project(':bio-source-lis-phylotree').projectDir = new File(settingsDir, 'lis-phylotree')
-project(':bio-source-lis-hsh').projectDir = new File(settingsDir, 'lis-hsh')
+project(':bio-source-lis-pangene').projectDir = new File(settingsDir, 'lis-pangene')
 project(':bio-source-lis-mstmap').projectDir = new File(settingsDir, 'lis-mstmap')
 project(':bio-source-lis-annotation').projectDir = new File(settingsDir, 'lis-annotation')
 project(':bio-source-lis-markers').projectDir = new File(settingsDir, 'lis-markers')

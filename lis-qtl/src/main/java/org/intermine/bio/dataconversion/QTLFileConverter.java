@@ -42,7 +42,6 @@ public class QTLFileConverter extends DatastoreFileConverter {
     Map<String,Item> linkageGroups = new HashMap<>(); // keyed by geneticMapIdentifier_linkageGroupIdentifier
 
     // utility
-    String collectionIdentifier;
     Map<String,String> qtlMarkers = new HashMap<>();
 
     // validate the collection first by storing a flag
@@ -78,11 +77,11 @@ public class QTLFileConverter extends DatastoreFileConverter {
         }
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
-            collectionIdentifier = readme.identifier;
+            readme.identifier = readme.identifier;
             // QTLStudy
             qtlStudy = createItem("QTLStudy");
             qtlStudy.setReference("organism", organism);
-            qtlStudy.setAttribute("primaryIdentifier", collectionIdentifier);
+            qtlStudy.setAttribute("primaryIdentifier", readme.identifier);
             qtlStudy.setAttribute("synopsis", readme.synopsis);
             qtlStudy.setAttribute("description", readme.description);
 	    // store |-delimited list of genotypes
@@ -121,9 +120,10 @@ public class QTLFileConverter extends DatastoreFileConverter {
         storeCollectionItems();
         // add publication to Annotatables
         qtlStudy.addToCollection("publications", publication);
-        for (Item geneticMap : geneticMaps.values()) {
-            geneticMap.addToCollection("publications", publication);
-        }
+        for (Item geneticMap : geneticMaps.values()) geneticMap.addToCollection("publications", publication);
+        for (Item linkageGroup : linkageGroups.values()) linkageGroup.addToCollection("publications", publication);
+        for (Item qtl : qtls.values()) qtl.addToCollection("publications", publication);
+        for (Item trait : traits.values()) trait.addToCollection("publications", publication);
         // associate QTLs with QTLStudy (in case README not read first)
         for (Item qtl : qtls.values()) {
             qtl.setReference("qtlStudy", qtlStudy);
@@ -301,12 +301,14 @@ public class QTLFileConverter extends DatastoreFileConverter {
      * Return a new or existing QTL Item keyed by identifier
      */
     Item getQTL(String identifier) {
-        if (qtls.containsKey(identifier)) {
-            return qtls.get(identifier);
+        String primaryIdentifier = readme.identifier + ":" + identifier.replace(' ', '_').replace(',', '_');
+        if (qtls.containsKey(primaryIdentifier)) {
+            return qtls.get(primaryIdentifier);
         } else {
-            Item qtl = createItem("QTL");
+            Item qtl = createItem("QTL"); 
+            qtls.put(primaryIdentifier, qtl);
             qtl.setAttribute("identifier", identifier);
-            qtls.put(identifier, qtl);
+            qtl.setAttribute("primaryIdentifier", primaryIdentifier);
             return qtl;
         }
     }
@@ -314,16 +316,17 @@ public class QTLFileConverter extends DatastoreFileConverter {
     /**
      * Return a new or existing LinkageGroup Item
      */
-    Item getLinkageGroup(String linkageGroupIdentifier, String geneticMapIdentifier) {
-        String key = geneticMapIdentifier+"_"+linkageGroupIdentifier;
-        if (linkageGroups.containsKey(key)) {
-            return linkageGroups.get(key);
+    Item getLinkageGroup(String identifier, String geneticMapIdentifier) {
+        String primaryIdentifier = geneticMapIdentifier+":"+identifier;
+        if (linkageGroups.containsKey(primaryIdentifier)) {
+            return linkageGroups.get(primaryIdentifier);
         } else {
             Item geneticMap = getGeneticMap(geneticMapIdentifier);
             Item linkageGroup = createItem("LinkageGroup");
-            linkageGroup.setAttribute("identifier", linkageGroupIdentifier);
+            linkageGroups.put(primaryIdentifier, linkageGroup);
+            linkageGroup.setAttribute("identifier", identifier);
+            linkageGroup.setAttribute("primaryIdentifier", primaryIdentifier);
             linkageGroup.setReference("geneticMap", geneticMap);
-            linkageGroups.put(key, linkageGroup);
             return linkageGroup;
         }
     }
@@ -346,13 +349,14 @@ public class QTLFileConverter extends DatastoreFileConverter {
      * Return a new or existing Trait Item keyed by name, with primaryIdentifier concocted from collection identifier and name.
      */
     Item getTrait(String name) {
-        if (traits.containsKey(name)) {
-            return traits.get(name);
+        String primaryIdentifier = readme.identifier + ":" + name.replace(' ', '_').replace(',', '_');
+        if (traits.containsKey(primaryIdentifier)) {
+            return traits.get(primaryIdentifier);
         } else {
             Item trait = createItem("Trait");
+            traits.put(primaryIdentifier, trait);
+            trait.setAttribute("primaryIdentifier", primaryIdentifier);
             trait.setAttribute("name", name);
-            trait.setAttribute("primaryIdentifier", collectionIdentifier+":"+name);
-            traits.put(name, trait);
             return trait;
         }
     }

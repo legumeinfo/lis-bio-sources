@@ -39,9 +39,6 @@ public class GWASFileConverter extends DatastoreFileConverter {
     Map<String,Item> ontologyTerms = new HashMap<>();
     Map<String,Item> traits = new HashMap<>();
 
-    // utility
-    String collectionIdentifier;
-    
     // validate the collection first by storing a flag
     boolean collectionValidated = false;
 
@@ -75,10 +72,9 @@ public class GWASFileConverter extends DatastoreFileConverter {
         }
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
-            collectionIdentifier = readme.identifier;
             gwas = createItem("GWAS");
             gwas.setReference("organism", organism);
-            gwas.setAttribute("primaryIdentifier", collectionIdentifier);
+            gwas.setAttribute("primaryIdentifier", readme.identifier);
             gwas.setAttribute("synopsis", readme.synopsis);
             gwas.setAttribute("description", readme.description);
             gwas.setAttribute("genotypingPlatform", readme.genotyping_platform);
@@ -117,6 +113,8 @@ public class GWASFileConverter extends DatastoreFileConverter {
         storeCollectionItems();
         // add publication to Annotatables
         gwas.addToCollection("publications", publication);
+        for (Item gwasResult : gwasResults) gwasResult.addToCollection("publications", publication);
+        for (Item trait : traits.values()) trait.addToCollection("publications", publication);
         // associate GWAS with results (in case README not read first)
         for (Item gwasResult : gwasResults) {
             gwasResult.setReference("gwas", gwas);
@@ -234,13 +232,14 @@ public class GWASFileConverter extends DatastoreFileConverter {
      * Return a new or existing Trait Item keyed by name; primaryIdentifier is concocted from collection identifier and name.
      */
     Item getTrait(String name) {
-        if (traits.containsKey(name)) {
-            return traits.get(name);
+        String primaryIdentifier = readme.identifier + ":" + name.replace(' ', '_').replace(',', '_');
+        if (traits.containsKey(primaryIdentifier)) {
+            return traits.get(primaryIdentifier);
         } else {
             Item trait = createItem("Trait");
+            traits.put(primaryIdentifier, trait);
+            trait.setAttribute("primaryIdentifier", primaryIdentifier);
             trait.setAttribute("name", name);
-            trait.setAttribute("primaryIdentifier", collectionIdentifier+":"+name);
-            traits.put(name, trait);
             return trait;
         }
     }
@@ -263,32 +262,17 @@ public class GWASFileConverter extends DatastoreFileConverter {
      * Return a GWASResult with the given trait, marker name, and p-value.
      */
     Item getGWASResult(Item trait, String markerName, double pValue) {
+        String primaryIdentifier = readme.identifier + ":" +
+            trait.getAttribute("name").getValue().replace(' ', '_').replace(',', '_') +
+            ":" +
+            markerName;
         Item gwasResult = createItem("GWASResult");
-        gwasResult.setReference("trait", trait);
+        gwasResult.setAttribute("primaryIdentifier", primaryIdentifier);
         gwasResult.setAttribute("markerName", markerName);
         gwasResult.setAttribute("pValue", String.valueOf(pValue));
+        gwasResult.setReference("trait", trait);
         gwasResults.add(gwasResult);
         return gwasResult;
     }
 
-    /**
-     * Return the collection identifier portion of the current file.
-     *     0     1          2   3                 4   5
-     * └── vigun.MAGIC-2017.gwas.Huynh_Ehlers_2018.qtl.tsv
-     */
-    String getCollectionIdentifier() {
-        String[] parts = getCurrentFile().getName().split("\\.");
-        return parts[1]+"."+parts[2]+"."+parts[3];
-    }
-
-    /**
-     * Return double if length>0 else 0.00.
-     */
-    static double doubleOrZero(String field) throws NumberFormatException {
-        if (field.length()>0) {
-            return Double.parseDouble(field);
-        } else {
-            return 0.00;
-        }
-    }
 }

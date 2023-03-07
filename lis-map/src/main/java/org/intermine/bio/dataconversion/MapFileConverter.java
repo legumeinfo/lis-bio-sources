@@ -102,18 +102,19 @@ public class MapFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-        // standard collection items
+        // store standard collection items
         if (readme==null) {
             throw new RuntimeException("README not read. Aborting.");
         }
         storeCollectionItems();
-        // add publication to Annotatables
+        // add publication to Annotatables 
         geneticMap.addToCollection("publications", publication);
-        // reference genetic map (in case README not read first)
+        for (Item linkageGroup : linkageGroups.values()) linkageGroup.addToCollection("publications", publication);
+        // Set geneticMap reference (just in case)
         for (Item linkageGroup : linkageGroups.values()) {
             linkageGroup.setReference("geneticMap", geneticMap);
         }
-        // store 'em
+        // store local items
         store(geneticMap);
         store(linkageGroups.values());
         store(linkageGroupPositions);
@@ -196,12 +197,14 @@ public class MapFileConverter extends DatastoreFileConverter {
      * Return a new or existing LinkageGroup
      */
     Item getLinkageGroup(String identifier) {
-        if (linkageGroups.containsKey(identifier)) {
-            return linkageGroups.get(identifier);
+        String primaryIdentifier = readme.identifier+":"+identifier;
+        if (linkageGroups.containsKey(primaryIdentifier)) {
+            return linkageGroups.get(primaryIdentifier);
         } else {
             Item linkageGroup = createItem("LinkageGroup");
-            linkageGroups.put(identifier, linkageGroup);
+            linkageGroups.put(primaryIdentifier, linkageGroup);
             linkageGroup.setAttribute("identifier", identifier);
+            linkageGroup.setAttribute("primaryIdentifier", primaryIdentifier);
             return linkageGroup;
         }
     }
