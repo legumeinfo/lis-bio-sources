@@ -104,12 +104,15 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
         if (geneticMarkers.size()==0) {
             throw new RuntimeException("No genetic markers loaded. Aborting.");
         }
+        // create GenotypingPlatform for marker collection
+        Item genotypingPlatform = createItem("GenotypingPlatform");
+        genotypingPlatform.setAttribute("primaryIdentifier", readme.genotyping_platform);
         // set collection attributes and references
         for (Item geneticMarker : geneticMarkers.values()) {
-            geneticMarker.setAttribute("genotypingPlatform", readme.genotyping_platform);
             geneticMarker.setAttribute("assemblyVersion", assemblyVersion);
             geneticMarker.setReference("organism", organism);
             geneticMarker.setReference("strain", strain);
+            geneticMarker.addToCollection("genotypingPlatforms", genotypingPlatform);
         }
         for (Item chromosome : chromosomes.values()) {
             chromosome.setAttribute("assemblyVersion", assemblyVersion);
@@ -123,12 +126,15 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
         }
         // add publication to Annotatables (but not chromosome/supercontig)
         if (publication!=null) {
+            genotypingPlatform.addToCollection("publications", publication);
             for (Item geneticMarker : geneticMarkers.values()) {
                 geneticMarker.addToCollection("publications", publication);
             }
         }
+        // collection items
         storeCollectionItems();
         // local items
+        store(genotypingPlatform);
         store(chromosomes.values());
         store(supercontigs.values());
         store(geneticMarkers.values());

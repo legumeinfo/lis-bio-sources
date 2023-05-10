@@ -32,6 +32,7 @@ import org.intermine.model.bio.Organism;
 import org.intermine.model.bio.Publication;
 
 import org.intermine.model.bio.Genotype;
+import org.intermine.model.bio.GenotypingPlatform;
 import org.intermine.model.bio.GenotypingStudy;
 import org.intermine.model.bio.GenotypingSample;
 import org.intermine.model.bio.GenotypingRecord;
@@ -57,6 +58,7 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
     DataSet dataSet;
     Publication publication;
     GenotypingStudy study;
+    GenotypingPlatform platform;
 
     String dataSetUrl, dataSetVersion;
 
@@ -100,6 +102,9 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
             getDirectDataLoader().store(dataSource);
             getDirectDataLoader().store(dataSet);
             getDirectDataLoader().store(publication);
+            if (platform != null) {
+                getDirectDataLoader().store(platform);
+            }
         } catch (ObjectStoreException e) {
             throw new BuildException("Failed to store object", e);
         }
@@ -210,7 +215,12 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
         study.setPrimaryIdentifier(readme.identifier);
         study.setSynopsis(readme.synopsis);
         study.setDescription(readme.description);
-        if (readme.genotyping_platform!=null) study.setGenotypingPlatform(readme.genotyping_platform);
+        if (readme.genotyping_platform!=null) {
+            platform = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingPlatform.class);
+            platform.setPrimaryIdentifier(readme.genotyping_platform);
+            platform.addPublications(publication);
+            study.setGenotypingPlatform(platform);
+        }
         if (readme.genotyping_method!=null) study.setGenotypingMethod(readme.genotyping_method);
         if (readme.genbank_accession!=null) study.setGenbank(readme.genbank_accession);
         // references

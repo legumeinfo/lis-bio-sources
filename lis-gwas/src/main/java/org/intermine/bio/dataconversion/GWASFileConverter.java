@@ -34,6 +34,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
 
     // local Items to store
     Item gwas;
+    Item genotypingPlatform;
     List<Item> gwasResults = new ArrayList<>();
     List<Item> ontologyAnnotations = new ArrayList<>();
     Map<String,Item> ontologyTerms = new HashMap<>();
@@ -77,7 +78,9 @@ public class GWASFileConverter extends DatastoreFileConverter {
             gwas.setAttribute("primaryIdentifier", readme.identifier);
             gwas.setAttribute("synopsis", readme.synopsis);
             gwas.setAttribute("description", readme.description);
-            gwas.setAttribute("genotypingPlatform", readme.genotyping_platform);
+            genotypingPlatform = createItem("GenotypingPlatform");
+            genotypingPlatform.setAttribute("primaryIdentifier", readme.genotyping_platform);
+            gwas.setReference("genotypingPlatform", genotypingPlatform);
             if (readme.genotyping_method!=null) gwas.setAttribute("genotypingMethod", readme.genotyping_method);
             // store |-delimited list of genotypes
             String genotypes = "";
@@ -113,6 +116,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
         storeCollectionItems();
         // add publication to Annotatables
         gwas.addToCollection("publications", publication);
+        genotypingPlatform.addToCollection("publications", publication);
         for (Item gwasResult : gwasResults) gwasResult.addToCollection("publications", publication);
         for (Item trait : traits.values()) trait.addToCollection("publications", publication);
         // associate GWAS with results (in case README not read first)
@@ -125,6 +129,7 @@ public class GWASFileConverter extends DatastoreFileConverter {
         }
         // store 'em
         store(gwas);
+        store(genotypingPlatform);
         store(gwasResults);
         store(traits.values());
         store(ontologyTerms.values());
@@ -232,7 +237,9 @@ public class GWASFileConverter extends DatastoreFileConverter {
      * Return a new or existing Trait Item keyed by name; primaryIdentifier is concocted from collection identifier and name.
      */
     Item getTrait(String name) {
-        String primaryIdentifier = readme.identifier + ":" + name.replace(' ', '_').replace(',', '_');
+        String primaryIdentifier = readme.identifier +
+            ":" +
+            name.replace(' ', '_').replace(',', '_');
         if (traits.containsKey(primaryIdentifier)) {
             return traits.get(primaryIdentifier);
         } else {

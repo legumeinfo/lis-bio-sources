@@ -301,7 +301,9 @@ public class QTLFileConverter extends DatastoreFileConverter {
      * Return a new or existing QTL Item keyed by identifier
      */
     Item getQTL(String identifier) {
-        String primaryIdentifier = readme.identifier + ":" + identifier.replace(' ', '_').replace(',', '_');
+        String primaryIdentifier = readme.identifier +
+            ":" +
+            identifier.replace(' ', '_').replace(',', '_');
         if (qtls.containsKey(primaryIdentifier)) {
             return qtls.get(primaryIdentifier);
         } else {
@@ -317,7 +319,9 @@ public class QTLFileConverter extends DatastoreFileConverter {
      * Return a new or existing LinkageGroup Item
      */
     Item getLinkageGroup(String identifier, String geneticMapIdentifier) {
-        String primaryIdentifier = geneticMapIdentifier+":"+identifier;
+        String primaryIdentifier = geneticMapIdentifier +
+            ":" +
+            identifier;
         if (linkageGroups.containsKey(primaryIdentifier)) {
             return linkageGroups.get(primaryIdentifier);
         } else {
@@ -349,7 +353,9 @@ public class QTLFileConverter extends DatastoreFileConverter {
      * Return a new or existing Trait Item keyed by name, with primaryIdentifier concocted from collection identifier and name.
      */
     Item getTrait(String name) {
-        String primaryIdentifier = readme.identifier + ":" + name.replace(' ', '_').replace(',', '_');
+        String primaryIdentifier = readme.identifier +
+            ":" +
+            name.replace(' ', '_').replace(',', '_');
         if (traits.containsKey(primaryIdentifier)) {
             return traits.get(primaryIdentifier);
         } else {
@@ -373,16 +379,6 @@ public class QTLFileConverter extends DatastoreFileConverter {
             ontologyTerms.put(identifier, ontologyTerm);
             return ontologyTerm;
         }
-    }
-
-    /**
-     * Return the collection identifier portion of the current file.
-     *     0     1          2   3                 4   5
-     * └── vigun.MAGIC-2017.qtl.Huynh_Ehlers_2018.qtl.tsv
-     */
-    String getCollectionIdentifier() {
-        String[] parts = getCurrentFile().getName().split("\\.");
-        return parts[1]+"."+parts[2]+"."+parts[3];
     }
 
     /**

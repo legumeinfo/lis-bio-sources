@@ -5,10 +5,10 @@
   <class name="GenotypingStudy" extends="Annotatable" is-interface="true">
     <attribute name="synopsis" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
-    <attribute name="genotypingPlatform" type="java.lang.String"/>
     <attribute name="genotypingMethod" type="java.lang.String"/>
     <attribute name="genotypes" type="java.lang.String"/>
     <attribute name="genbank" type="java.lang.String"/>
+    <reference name="genotypingPlatform" referenced-type="GenotypingPlatform"/>
     <reference name="organism" referenced-type="Organism"/>
     <reference name="dataSet" referenced-type="DataSet"/>
     <collection name="samples" referenced-type="GenotypingSample" reverse-reference="study"/>

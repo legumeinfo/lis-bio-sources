@@ -199,15 +199,14 @@ public abstract class DatastoreFileConverter extends FileConverter {
         // Organism
         organism = createItem("Organism");
         organism.setAttribute("taxonId", String.valueOf(taxonId));
-        // Publication
-        if (readme.publication_doi==null) {
-            throw new RuntimeException("README is missing required publication_doi.");
-        }
-        publication = createItem("Publication");
-        try {
-            populatePublication(readme.publication_doi);
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
+        // Publication - optional
+        if (readme.publication_doi!=null) {
+            publication = createItem("Publication");
+            try {
+                populatePublication(readme.publication_doi);
+            } catch (Exception ex) {
+                throw new RuntimeException(ex);
+            }
         }
         // DataSet
         dataSet = createItem("DataSet");
@@ -215,7 +214,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
         dataSet.setAttribute("name", dataSetName);
         dataSet.setAttribute("description", dataSetDescription);
         dataSet.setAttribute("synopsis", readme.synopsis);
-        dataSet.setReference("publication", publication);
+        if (publication!=null) dataSet.setReference("publication", publication);
         if (assemblyVersion!=null && annotationVersion!=null) {
             dataSet.setAttribute("version", assemblyVersion+"."+annotationVersion);
         } else if (assemblyVersion!=null) {

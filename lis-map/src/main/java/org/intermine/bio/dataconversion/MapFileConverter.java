@@ -36,6 +36,7 @@ public class MapFileConverter extends DatastoreFileConverter {
 
     // local Items to store
     Item geneticMap;
+    Item genotypingPlatform;
     List<Item> linkageGroupPositions = new LinkedList<>();
     Map<String,Item> linkageGroups = new HashMap<>();
  
@@ -77,7 +78,11 @@ public class MapFileConverter extends DatastoreFileConverter {
             geneticMap.setAttribute("primaryIdentifier", readme.genetic_map);
             geneticMap.setAttribute("synopsis", readme.synopsis);
             geneticMap.setAttribute("description", readme.description);
-            if (readme.genotyping_platform!=null) geneticMap.setAttribute("genotypingPlatform", readme.genotyping_platform);
+            if (readme.genotyping_platform!=null) {
+                genotypingPlatform = createItem("GenotypingPlatform");
+                genotypingPlatform.setAttribute("primaryIdentifier", readme.genotyping_platform);
+                geneticMap.setReference("genotypingPlatform", genotypingPlatform);
+            }
             if (readme.genotyping_method!=null) geneticMap.setAttribute("genotypingMethod", readme.genotyping_method);
             // store |-delimited list of genotypes
             String genotypes = "";
@@ -109,6 +114,7 @@ public class MapFileConverter extends DatastoreFileConverter {
         storeCollectionItems();
         // add publication to Annotatables 
         geneticMap.addToCollection("publications", publication);
+        if (genotypingPlatform != null) genotypingPlatform.addToCollection("publications", publication);
         for (Item linkageGroup : linkageGroups.values()) linkageGroup.addToCollection("publications", publication);
         // Set geneticMap reference (just in case)
         for (Item linkageGroup : linkageGroups.values()) {
@@ -116,6 +122,7 @@ public class MapFileConverter extends DatastoreFileConverter {
         }
         // store local items
         store(geneticMap);
+        if (genotypingPlatform != null) store(genotypingPlatform);
         store(linkageGroups.values());
         store(linkageGroupPositions);
     }
@@ -197,7 +204,9 @@ public class MapFileConverter extends DatastoreFileConverter {
      * Return a new or existing LinkageGroup
      */
     Item getLinkageGroup(String identifier) {
-        String primaryIdentifier = readme.identifier+":"+identifier;
+        String primaryIdentifier = readme.identifier +
+            ":" +
+            identifier;
         if (linkageGroups.containsKey(primaryIdentifier)) {
             return linkageGroups.get(primaryIdentifier);
         } else {
