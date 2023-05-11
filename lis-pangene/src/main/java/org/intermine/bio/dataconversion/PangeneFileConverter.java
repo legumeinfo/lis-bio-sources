@@ -30,11 +30,12 @@ import org.ncgr.zip.GZIPBufferedReader;
 
 
 /**
- * Loads data from an LIS datastore clister.tsv file, e.g. Cicer.pan1.SV8C.clust.tsv.gz.
- * Each row contains the PanGeneSet identifier and tab-separated protein identifiers.
+ * Loads data from an LIS datastore hsh.tsv file, e.g. Phaseolus.pan1.X2PC.hsh.tsv.gz.
+ * Each row contains the PanGeneSet identifier and a protein identifier.
  *
- * Cicer.pan1.pan00001 cicar.CDCFrontier.gnm3.ann1.Ca2g036100.1 cicar.CDCFrontier.gnm3.ann1.Ca2g036500.1 ...
- * Cicer.pan1.pan00002 cicar.CDCFrontier.gnm3.ann1.Ca3g160700.1 cicar.ICC4958.gnm2.ann1.Ca_06696.1 ...
+ * Phaseolus.pan1.pan00001	phaac.Frijol_Bayo.gnm1.ann1.Phacu.CVR.011G222700.1
+ * Phaseolus.pan1.pan00001	phaac.W6_15578.gnm2.ann1.Phacu.WLD.011G221300.1
+ * Phaseolus.pan1.pan00001	phalu.G27455.gnm1.ann1.Pl11G0000365800.1
  *
  * @author Sam Hokin
  */
@@ -74,7 +75,7 @@ public class PangeneFileConverter extends DatastoreFileConverter {
         }
         if (getCurrentFile().getName().startsWith("README")) {
             processReadme(reader);
-        } else if (getCurrentFile().getName().endsWith(".clust.tsv.gz")) {
+        } else if (getCurrentFile().getName().endsWith(".hsh.tsv.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processPangeneFile();
 	}
@@ -106,11 +107,11 @@ public class PangeneFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Process a hsh.tsv file which contains relationships between pan-gene sets and proteins.
+     * Process a hsh.tsv file which lists pan-gene set and protein identifiers.
      *
-     * 0                   1                                        2                                        ...
-     * identifier          protein 1                                protein 2                                ...
-     * Cicer.pan1.pan00001 cicar.CDCFrontier.gnm3.ann1.Ca2g036100.1 cicar.CDCFrontier.gnm3.ann1.Ca2g036500.1 ...
+     * 0                        1                                        2                                        ...
+     * identifier               protein
+     * Phaseolus.pan1.pan00001	phaac.Frijol_Bayo.gnm1.ann1.Phacu.CVR.011G222700.1
      */
     void processPangeneFile() throws IOException {
         // spin through the file
@@ -119,28 +120,25 @@ public class PangeneFileConverter extends DatastoreFileConverter {
         int linenumber = 0;
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#")) continue;
-            linenumber++;
             String[] fields = line.split("\t");
             Item pangeneSet = getPanGeneSet(fields[0]);
-            for (int i=1; i<fields.length; i++) {
-                Item protein = getProtein(fields[i]);
-                pangeneSet.addToCollection("proteins", protein);
-                Item gene = getGene(fields[i]);
-                pangeneSet.addToCollection("genes", gene);
-            }
+            Item protein = getProtein(fields[1]);
+            pangeneSet.addToCollection("proteins", protein);
+            Item gene = getGene(fields[1]);
+            pangeneSet.addToCollection("genes", gene);
         }
         br.close();
     }
 
     /**
-     * Get/add a Gene Item, keyed by identifier, given a protein identifier
+     * Get/add a Gene Item, keyed by identifier, given a protein identifier, by stripping the .N at the end.
      *
      * @param proteinIdentifier the identifier of the corresponding protein
      */
     public Item getGene(String proteinIdentifier) {
         String[] fields = proteinIdentifier.split("\\.");
         String geneIdentifier = fields[0];
-        for (int i=1; i<(fields.length-2); i++) {
+        for (int i=1; i<(fields.length-1); i++) {
             geneIdentifier += "." + fields[i];
         }
         if (genes.containsKey(geneIdentifier)) {
