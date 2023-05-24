@@ -727,7 +727,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Place a feature on a sequence, determining whether it's a Chromosome or Supercontig from its name and entries in datastore_config.properties.
+     * Place a feature on a sequence, determining whether it's a Chromosome or Supercontig from its name.
      */
     void placeFeatureOnSequence(Item feature, String seqname, Location location) throws RuntimeException {
         if (isChromosome(seqname)) {
