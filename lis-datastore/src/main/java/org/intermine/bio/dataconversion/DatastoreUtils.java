@@ -7,8 +7,7 @@ import javax.xml.parsers.ParserConfigurationException;
 import org.xml.sax.SAXException;
 
 import org.ncgr.datastore.Readme;
-import org.ncgr.pubmed.Pubmed;
-import org.ncgr.pubmed.Summary;
+import org.ncgr.pubmed.PubMedSummary;
 
 /**
  * Static utility methods for datastore loaders. 
@@ -212,15 +211,12 @@ public class DatastoreUtils {
      * @return the PubMed ID, or 0 if not found 
      */
     public static int getPubMedId(String doi) throws IOException, ParserConfigurationException, SAXException {
-        try {
-            Summary summary = Pubmed.searchSummaryDOI(doi, null);
-            if (summary != null) {
-                return Integer.parseInt(summary.getPMID());
-            } else {
-                return 0;
-            }
-        } catch (Exception ex) {
-            throw new RuntimeException(ex);
+        PubMedSummary summary = new PubMedSummary();
+        summary.searchDOI(doi, PUBMED_API_KEY);
+        if (summary.id!=0) {
+            return summary.id;
+        } else {
+            return 0;
         }
     }
     
