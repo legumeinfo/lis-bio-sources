@@ -196,9 +196,11 @@ public abstract class DatastoreFileConverter extends FileConverter {
                 supercontigPrefixes.add(prefix.trim());
             }
         }
-        // Organism
-        organism = createItem("Organism");
-        organism.setAttribute("taxonId", String.valueOf(taxonId));
+        // Organism - if not Fabacea, which isn't an organism
+        if (taxonId != 3803) {
+            organism = createItem("Organism");
+            organism.setAttribute("taxonId", String.valueOf(taxonId));
+        }
         // Publication - optional
         if (readme.publication_doi!=null) {
             publication = createItem("Publication");
@@ -283,10 +285,10 @@ public abstract class DatastoreFileConverter extends FileConverter {
         // store stuff
         store(dataSource);
         store(dataSet);
-        store(organism);
-        if (strain!=null) store(strain);
-        if (publication!=null) store(publication);
-        if (authors.size()>0) store(authors);
+        if (organism != null) store(organism);
+        if (strain != null) store(strain);
+        if (publication != null) store(publication);
+        if (authors.size() > 0) store(authors);
     }
 
     /**
