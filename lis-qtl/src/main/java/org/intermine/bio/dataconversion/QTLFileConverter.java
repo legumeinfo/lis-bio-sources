@@ -39,7 +39,7 @@ public class QTLFileConverter extends DatastoreFileConverter {
     Map<String,Item> qtls = new HashMap<>();
     Map<String,Item> traits = new HashMap<>();
     Map<String,Item> geneticMaps = new HashMap<>();
-    Map<String,Item> linkageGroups = new HashMap<>(); // keyed by geneticMapIdentifier_linkageGroupIdentifier
+    Map<String,Item> linkageGroups = new HashMap<>(); // keyed by geneticMapIdentifier:linkageGroupIdentifier
 
     // utility
     Map<String,String> qtlMarkers = new HashMap<>();
@@ -147,7 +147,7 @@ public class QTLFileConverter extends DatastoreFileConverter {
      * The qtl_name may not be unique across the mine. Same for trait. We index identifier,qtlStudy for that reason.
      *
      * 0                    1                2                        3              4      5     6         7                        8    9                 10         11        12
-     * #qtl_identifier      trait_name       genetic_map              linkage_group  start  end   qtl_peak  favorable_allele_source  lod  likelihood_ratio  marker_r2  total_r2  additivity
+     * #qtl_name            trait_name       genetic_map              linkage_group  start  end   qtl_peak  favorable_allele_source  lod  likelihood_ratio  marker_r2  total_r2  additivity
      * Early leaf spot 1-1  Early leaf spot  TT_Tifrunner_x_GT-C20_c  A08            100.7  102.9 102       GT-C20_c                 3.02 12.42             0.56       0.32      0.22
      */
     void processQTLFile() throws IOException {
@@ -160,18 +160,18 @@ public class QTLFileConverter extends DatastoreFileConverter {
                 throw new RuntimeException("ERROR: file "+getCurrentFile().getName()+" does not have five required fields: qtl_name, trait_name, lg, left_end, right_end here:"+line);
             }
             // required columns
-            String qtlIdentifier = fields[0];
+            String qtlName = fields[0];
             String traitName = fields[1];
             String geneticMapIdentifier = fields[2];
-            String linkageGroupIdentifier = fields[3];
+            String linkageGroupName = fields[3];
             double left = doubleOrZero(fields[4]);
             double right = doubleOrZero(fields[5]);
             // QTL.name
-            Item qtl = getQTL(qtlIdentifier);
+            Item qtl = getQTL(qtlName);
             // QTL.trait
             qtl.setReference("trait", getTrait(traitName));
             // QTL.linkageGroup (with geneticMap)
-            qtl.setReference("linkageGroup", getLinkageGroup(linkageGroupIdentifier, geneticMapIdentifier));
+            qtl.setReference("linkageGroup", getLinkageGroup(linkageGroupName, geneticMapIdentifier));
             // QTL.start
             qtl.setAttribute("start", String.valueOf(left));
             // QTL.end
@@ -218,19 +218,19 @@ public class QTLFileConverter extends DatastoreFileConverter {
         while ((line=br.readLine())!=null) {
             if (line.startsWith("#") || line.trim().length()==0) continue;
             String[] fields = line.split("\t");
-            String qtlIdentifier = fields[0];
+            String qtlName = fields[0];
             String traitName = fields[1];
             String geneticMapIdentifier = fields[2];
             String markerName = fields[3];
             // QTL
-	    Item qtl = getQTL(qtlIdentifier);
+	    Item qtl = getQTL(qtlName);
             // QTL.markerNames (append)
-            if (qtlMarkers.containsKey(qtlIdentifier)) {
-                String markerNames = qtlMarkers.get(qtlIdentifier) + "|" + markerName;
-                qtlMarkers.put(qtlIdentifier, markerNames);
+            if (qtlMarkers.containsKey(qtlName)) {
+                String markerNames = qtlMarkers.get(qtlName) + "|" + markerName;
+                qtlMarkers.put(qtlName, markerNames);
                 qtl.setAttribute("markerNames", markerNames);
             } else {
-                qtlMarkers.put(qtlIdentifier, markerName);
+                qtlMarkers.put(qtlName, markerName);
                 qtl.setAttribute("markerNames", markerName);
             }
 	}
@@ -300,17 +300,17 @@ public class QTLFileConverter extends DatastoreFileConverter {
     /**
      * Return a new or existing QTL Item keyed by identifier
      */
-    Item getQTL(String identifier) {
+    Item getQTL(String name) {
         String primaryIdentifier = readme.identifier +
             ":" +
-            identifier.replace(' ', '_').replace(',', '_');
+            name.replace(' ', '_').replace(',', '_');
         if (qtls.containsKey(primaryIdentifier)) {
             return qtls.get(primaryIdentifier);
         } else {
             Item qtl = createItem("QTL"); 
             qtls.put(primaryIdentifier, qtl);
-            qtl.setAttribute("identifier", identifier);
             qtl.setAttribute("primaryIdentifier", primaryIdentifier);
+            qtl.setAttribute("name", name);
             return qtl;
         }
     }
@@ -318,18 +318,18 @@ public class QTLFileConverter extends DatastoreFileConverter {
     /**
      * Return a new or existing LinkageGroup Item
      */
-    Item getLinkageGroup(String identifier, String geneticMapIdentifier) {
+    Item getLinkageGroup(String name, String geneticMapIdentifier) {
         String primaryIdentifier = geneticMapIdentifier +
             ":" +
-            identifier;
+            name;
         if (linkageGroups.containsKey(primaryIdentifier)) {
             return linkageGroups.get(primaryIdentifier);
         } else {
             Item geneticMap = getGeneticMap(geneticMapIdentifier);
             Item linkageGroup = createItem("LinkageGroup");
             linkageGroups.put(primaryIdentifier, linkageGroup);
-            linkageGroup.setAttribute("identifier", identifier);
             linkageGroup.setAttribute("primaryIdentifier", primaryIdentifier);
+            linkageGroup.setAttribute("name", name);
             linkageGroup.setReference("geneticMap", geneticMap);
             return linkageGroup;
         }

@@ -129,11 +129,10 @@ public class MapFileConverter extends DatastoreFileConverter {
     
     /**
      * Process an lg.tsv.gz file
-     * 0                            1       2
-     * #linkage_group               length  chromosome number (optional)
-     * TT_Tifrunner_x_GT-C20_c-A01  176.02  8
-     * TT_Tifrunner_x_GT-C20_c-A02  185.70  10
-     * TT_Tifrunner_x_GT-C20_c-A03  192.46  2
+     * 0               1       2
+     * #linkage_group  length  chromosome number (optional)
+     * A01             176.02  8
+     * A02             185.70  10
      */
     void processLgFile() throws IOException {
         BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
@@ -143,12 +142,12 @@ public class MapFileConverter extends DatastoreFileConverter {
             if (line.startsWith("#") || line.trim().length()==0) continue;
             String[] fields = line.split("\t");
             if (fields.length<2) {
-                throw new RuntimeException("File "+getCurrentFile().getName()+" data line does not contain two required fields: linkage_group, position:"+line);
+                throw new RuntimeException("File "+getCurrentFile().getName()+" data line does not contain two required fields: linkage_group, length:"+line);
             }
             
-            String identifier = fields[0].trim();
+            String name = fields[0].trim();
             double length = Double.parseDouble(fields[1]);
-            Item linkageGroup = getLinkageGroup(identifier);
+            Item linkageGroup = getLinkageGroup(name);
             linkageGroup.setAttribute("length", String.valueOf(length));
             if (fields.length>2) {
                 int number = Integer.parseInt(fields[2]);
@@ -203,16 +202,16 @@ public class MapFileConverter extends DatastoreFileConverter {
     /**
      * Return a new or existing LinkageGroup
      */
-    Item getLinkageGroup(String identifier) {
-        String primaryIdentifier = readme.identifier +
+    Item getLinkageGroup(String name) {
+        String primaryIdentifier = readme.genetic_map +
             ":" +
-            identifier;
+            name;
         if (linkageGroups.containsKey(primaryIdentifier)) {
             return linkageGroups.get(primaryIdentifier);
         } else {
             Item linkageGroup = createItem("LinkageGroup");
             linkageGroups.put(primaryIdentifier, linkageGroup);
-            linkageGroup.setAttribute("identifier", identifier);
+            linkageGroup.setAttribute("name", name);
             linkageGroup.setAttribute("primaryIdentifier", primaryIdentifier);
             return linkageGroup;
         }
