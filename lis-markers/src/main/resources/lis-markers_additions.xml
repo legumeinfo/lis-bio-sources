@@ -7,7 +7,6 @@
     <attribute name="alleles" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
     <attribute name="alias" type="java.lang.String"/>
-    <attribute name="genotypingPlatform" type="java.lang.String"/>
     <attribute name="motif" type="java.lang.String"/>
   </class>
   

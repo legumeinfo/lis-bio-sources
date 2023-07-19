@@ -85,6 +85,9 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
             processReadme(reader);
             setStrain();
             processGenomeReadme(getCurrentFile());
+            if (publication == null) {
+                throw new RuntimeException("README file does not contain a publication. Aborting.");
+            }
         } else if (getCurrentFile().getName().endsWith(".gff3.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processMarkerGFF3File();
@@ -98,7 +101,7 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException {
-        if (readme==null) {
+        if (readme == null) {
             throw new RuntimeException("README file not read. Aborting.");
         }
         if (geneticMarkers.size()==0) {
@@ -125,11 +128,9 @@ public class MarkerGFF3FileConverter extends DatastoreFileConverter {
             supercontig.setReference("strain", strain);
         }
         // add publication to Annotatables (but not chromosome/supercontig)
-        if (publication!=null) {
-            genotypingPlatform.addToCollection("publications", publication);
-            for (Item geneticMarker : geneticMarkers.values()) {
-                geneticMarker.addToCollection("publications", publication);
-            }
+        genotypingPlatform.addToCollection("publications", publication);
+        for (Item geneticMarker : geneticMarkers.values()) {
+            geneticMarker.addToCollection("publications", publication);
         }
         // collection items
         storeCollectionItems();

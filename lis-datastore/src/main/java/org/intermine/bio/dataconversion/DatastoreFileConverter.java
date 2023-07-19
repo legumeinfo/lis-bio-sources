@@ -186,12 +186,12 @@ public abstract class DatastoreFileConverter extends FileConverter {
         strainIdentifier = DatastoreUtils.extractStrainIdentifierFromCollection(readme.identifier);
         assemblyVersion = DatastoreUtils.extractAssemblyVersionFromCollection(readme.identifier);
         annotationVersion = DatastoreUtils.extractAnnotationVersionFromCollection(readme.identifier);
-        if (readme.chromosome_prefix!=null) {
+        if (readme.chromosome_prefix != null) {
             for (String prefix : readme.chromosome_prefix.split(",")) {
                 chromosomePrefixes.add(prefix.trim());
             }
         }
-        if (readme.supercontig_prefix!=null) {
+        if (readme.supercontig_prefix != null) {
             for (String prefix : readme.supercontig_prefix.split(",")) {
                 supercontigPrefixes.add(prefix.trim());
             }
@@ -554,15 +554,19 @@ public abstract class DatastoreFileConverter extends FileConverter {
                 File genomeReadmeFile = new File(genomeDir, genomeReadmeFilename);
                 System.out.println("## Processing " + genomeReadmeFilename);
                 Readme genomeReadme = Readme.parse(genomeReadmeFile);
-                if (genomeReadme.chromosome_prefix==null && genomeReadme.supercontig_prefix==null) {
+                if (genomeReadme.chromosome_prefix == null && genomeReadme.supercontig_prefix == null) {
                     throw new RuntimeException("Genome README "+genomeReadmeFilename+" has neither chromosome_prefix or supercontig_prefix.");
                 }
-                if (genomeReadme.chromosome_prefix!=null) {
+                if (genomeReadme.chromosome_prefix == null) {
+                    System.out.println("## Genome README.chromosome_prefix is missing.");
+                } else {
                     for (String prefix : genomeReadme.chromosome_prefix.split(",")) {
                         chromosomePrefixes.add(prefix.trim());
                     }
                 }
-                if (genomeReadme.supercontig_prefix!=null) {
+                if (genomeReadme.supercontig_prefix == null) {
+                    System.out.println("## Genome README.supercontig_prefix is missing.");
+                } else {
                     for (String prefix : genomeReadme.supercontig_prefix.split(",")) {
                         supercontigPrefixes.add(prefix.trim());
                     }
