@@ -152,7 +152,7 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
             getDirectDataLoader().store(strain);
             getDirectDataLoader().store(dataSource);
             getDirectDataLoader().store(dataSet);
-            getDirectDataLoader().store(publication);
+            if (publication != null) getDirectDataLoader().store(publication);
             for (Author author : authors) {
                 getDirectDataLoader().store(author);
             }
@@ -262,12 +262,15 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
         } else {
             dataSource.setDescription(dataSourceDescription);
         }
-        // Publication
-        publication = getDirectDataLoader().createObject(Publication.class);
-        try {
-            populatePublication(readme.publication_doi);
-        } catch (Exception ex) {
-            throw new BuildException(ex);
+        // Publication - optional!
+        if (readme.publication_doi == null) {
+            System.err.println("### WARNING: readme.publication_doi IS NULL!");
+        } else {
+            try {
+                createPublication();
+            } catch (Exception ex) {
+                throw new BuildException(ex);
+            }
         }
         // DataSet
         dataSet = getDirectDataLoader().createObject(DataSet.class);
@@ -276,7 +279,7 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
         dataSet.setSynopsis(readme.synopsis);
         dataSet.setDescription(readme.description);
         dataSet.setUrl(dataSetUrl); // required in project.xml
-        dataSet.setPublication(publication);
+        if (publication != null) dataSet.setPublication(publication);
         if (assemblyVersion!=null && annotationVersion!=null) {
             dataSet.setVersion(assemblyVersion+"."+annotationVersion);
         } else if (assemblyVersion!=null) {
@@ -559,14 +562,14 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
     }
 
     /**
-     * Populate the instance Publication from CrossRef.
-     *
-     * @param doi the publication's DOI
+     * Create the instance Publication from CrossRef using the README.publication_doi.
      */
-    void populatePublication(String doi) throws UnsupportedEncodingException, MalformedURLException, ParseException,
-                                                IOException, ParserConfigurationException, SAXException, ObjectStoreException {
+    void createPublication() throws UnsupportedEncodingException, MalformedURLException, ParseException,
+                                      IOException, ParserConfigurationException, SAXException, ObjectStoreException {
+        publication = getDirectDataLoader().createObject(Publication.class);
+        publication.setDoi(readme.publication_doi);
         // query CrossRef entry from DOI
-        WorksQuery wq = new WorksQuery(doi);
+        WorksQuery wq = new WorksQuery(readme.publication_doi);
         if (wq.getStatus()!=null && wq.getStatus().equals("ok")) {
             String title = wq.getTitle();
             int year = 0;
@@ -588,7 +591,12 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
             String volume = wq.getVolume();
             String issue = wq.getIssue();
             String pages = wq.getPage();
-            doi = wq.getDOI();
+            String doi = wq.getDOI();
+            if (!doi.equals(readme.publication_doi)) {
+                // use CrossRef DOI
+                System.err.println("### WARNING: CrossRef DOI " + doi + " does not match README.publication_doi " + readme.publication_doi);
+                publication.setDoi(doi);
+            }
             JSONArray authorsJSON = wq.getAuthors();
             String firstAuthor = null;
             if (authorsJSON!=null && authorsJSON.size()>0) {
@@ -611,7 +619,6 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
             if (volume!=null) publication.setVolume(volume);
             if (issue!=null) publication.setIssue(issue);
             if (pages!=null) publication.setPages(pages);
-            if (doi!=null) publication.setDoi(doi);
             if (year>0) publication.setYear(year);
             if (pubMedId>0) publication.setPubMedId(String.valueOf(pubMedId));
             // core IM model does not contain lastAuthor
@@ -667,6 +674,10 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
                     authors.add(author);
                 }
             }
+        } else {
+            // bail on WorksQuery and populate publication from README
+            System.err.println("### DOI: " + readme.publication_doi + "  WorksQuery status: " + wq.getStatus());
+            if (readme.publication_title != null) publication.setTitle(readme.publication_title);
         }
     }
     

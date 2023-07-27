@@ -206,7 +206,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
             System.err.println("### WARNING: readme.publication_doi IS NULL!");
         } else {
             try {
-                createPublication(readme.publication_doi);
+                createPublication();
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
@@ -429,14 +429,12 @@ public abstract class DatastoreFileConverter extends FileConverter {
     
     /**
      * Create the instance publication using CrossRef data. If CrossRef doesn't have the publication, use the README.publication_title.
-     *
-     * @param doi the publication's DOI
      */
-    void createPublication(String inputDOI) throws UnsupportedEncodingException, MalformedURLException, ParseException, IOException, ParserConfigurationException, SAXException {
+    void createPublication() throws UnsupportedEncodingException, MalformedURLException, ParseException, IOException, ParserConfigurationException, SAXException {
         publication = createItem("Publication");
-        publication.setAttribute("doi", inputDOI);
+        publication.setAttribute("doi", readme.publication_doi);
         // query CrossRef entry from DOI
-        WorksQuery wq = new WorksQuery(inputDOI);
+        WorksQuery wq = new WorksQuery(readme.publication_doi);
         if (wq.getStatus() != null && wq.getStatus().equals("ok")) {
             String title = wq.getTitle();
             int year = 0;
@@ -459,9 +457,9 @@ public abstract class DatastoreFileConverter extends FileConverter {
             String issue = wq.getIssue();
             String pages = wq.getPage();
             String doi = wq.getDOI();
-            if (!doi.equals(inputDOI)) {
+            if (!doi.equals(readme.publication_doi)) {
                 // use CrossRef DOI
-                System.err.println("### WARNING: CrossRef DOI " + doi + " does not match input DOI " + inputDOI);
+                System.err.println("### WARNING: CrossRef DOI " + doi + " does not match README.publication_doi " + readme.publication_doi);
                 publication.setAttribute("doi", doi);
             }
             JSONArray authorsJSON = wq.getAuthors();
@@ -543,7 +541,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
             }
         } else {
             // bail on WorksQuery and populate publication from README
-            System.err.println("### DOI: " + inputDOI + "  WorksQuery status: " + wq.getStatus());
+            System.err.println("### DOI: " + readme.publication_doi + "  WorksQuery status: " + wq.getStatus());
             if (readme.publication_title != null) publication.setAttribute("title", readme.publication_title);
         }
     }
