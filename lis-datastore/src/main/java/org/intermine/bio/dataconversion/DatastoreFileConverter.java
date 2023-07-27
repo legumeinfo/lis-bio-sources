@@ -201,11 +201,12 @@ public abstract class DatastoreFileConverter extends FileConverter {
             organism = createItem("Organism");
             organism.setAttribute("taxonId", String.valueOf(taxonId));
         }
-        // Publication - optional
-        if (readme.publication_doi!=null) {
-            publication = createItem("Publication");
+        // Publication - optional!
+        if (readme.publication_doi == null) {
+            System.err.println("### WARNING: readme.publication_doi IS NULL!");
+        } else {
             try {
-                populatePublication(readme.publication_doi);
+                createPublication(readme.publication_doi);
             } catch (Exception ex) {
                 throw new RuntimeException(ex);
             }
@@ -427,14 +428,16 @@ public abstract class DatastoreFileConverter extends FileConverter {
     }
     
     /**
-     * Populate the instance publication from CrossRef.
+     * Create the instance publication using CrossRef data. If CrossRef doesn't have the publication, use the README.publication_title.
      *
      * @param doi the publication's DOI
      */
-    void populatePublication(String doi) throws UnsupportedEncodingException, MalformedURLException, ParseException, IOException, ParserConfigurationException, SAXException {
+    void createPublication(String inputDOI) throws UnsupportedEncodingException, MalformedURLException, ParseException, IOException, ParserConfigurationException, SAXException {
+        publication = createItem("Publication");
+        publication.setAttribute("doi", inputDOI);
         // query CrossRef entry from DOI
-        WorksQuery wq = new WorksQuery(doi);
-        if (wq.getStatus()!=null && wq.getStatus().equals("ok")) {
+        WorksQuery wq = new WorksQuery(inputDOI);
+        if (wq.getStatus() != null && wq.getStatus().equals("ok")) {
             String title = wq.getTitle();
             int year = 0;
             try { year = wq.getJournalIssueYear(); } catch (Exception ex) { }
@@ -455,7 +458,12 @@ public abstract class DatastoreFileConverter extends FileConverter {
             String volume = wq.getVolume();
             String issue = wq.getIssue();
             String pages = wq.getPage();
-            doi = wq.getDOI();
+            String doi = wq.getDOI();
+            if (!doi.equals(inputDOI)) {
+                // use CrossRef DOI
+                System.err.println("### WARNING: CrossRef DOI " + doi + " does not match input DOI " + inputDOI);
+                publication.setAttribute("doi", doi);
+            }
             JSONArray authorsJSON = wq.getAuthors();
             String firstAuthor = null;
             if (authorsJSON!=null && authorsJSON.size()>0) {
@@ -478,7 +486,6 @@ public abstract class DatastoreFileConverter extends FileConverter {
             if (volume!=null) publication.setAttribute("volume", volume);
             if (issue!=null) publication.setAttribute("issue", issue);
             if (pages!=null) publication.setAttribute("pages", pages);
-            if (doi!=null) publication.setAttribute("doi", doi);
             if (year>0) publication.setAttribute("year", String.valueOf(year));
             if (pubMedId>0) publication.setAttribute("pubMedId", String.valueOf(pubMedId));
             // core IM model does not contain lastAuthor
@@ -534,6 +541,10 @@ public abstract class DatastoreFileConverter extends FileConverter {
                     authors.add(author);
                 }
             }
+        } else {
+            // bail on WorksQuery and populate publication from README
+            System.err.println("### DOI: " + inputDOI + "  WorksQuery status: " + wq.getStatus());
+            if (readme.publication_title != null) publication.setAttribute("title", readme.publication_title);
         }
     }
 

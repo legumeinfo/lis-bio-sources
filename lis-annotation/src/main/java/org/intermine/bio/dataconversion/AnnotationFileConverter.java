@@ -418,22 +418,15 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             if (fields.length>5) bestDomainScore = Double.parseDouble(fields[5]);
             // Gene Family
             Item geneFamily = getGeneFamily(geneFamilyIdentifier);
-            // scores go into GeneFamilyAssignment
-            Item gfa = createItem("GeneFamilyAssignment");
-            geneFamilyAssignments.add(gfa);
-            if (evalue>0.0) gfa.setAttribute("evalue", String.valueOf(evalue));
-            if (score>0.0) gfa.setAttribute("score", String.valueOf(score));
-            if (bestDomainScore>0.0) gfa.setAttribute("bestDomainScore", String.valueOf(bestDomainScore));
-            gfa.setReference("geneFamily", geneFamily);
             // Gene
             Item gene = getGene(geneIdentifier);
-            gene.addToCollection("geneFamilyAssignments", gfa);
             // Protein - this is just the primary transcript; there are other proteins associated with this gene that don't get the geneFamily reference
             Item protein = getProtein(proteinIdentifier);
-            protein.addToCollection("geneFamilyAssignments", gfa);
             // GeneFamily collections
             geneFamily.addToCollection("genes", gene);
             geneFamily.addToCollection("proteins", protein);
+            // scores go into GeneFamilyAssignment along with gene and protein
+            createGeneFamilyAssignment(geneFamily, gene, protein, evalue, score, bestDomainScore);
         }
     }
 
@@ -975,6 +968,22 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     }
 
     /**
+     * Create a GeneFamilyAssignment and add it to the list.
+     */
+    void createGeneFamilyAssignment(Item geneFamily, Item gene, Item protein, double evalue, double score, double bestDomainScore) {
+        Item gfa = createItem("GeneFamilyAssignment");
+        geneFamilyAssignments.add(gfa);
+        if (evalue>0.0) gfa.setAttribute("evalue", String.valueOf(evalue));
+        if (score>0.0) gfa.setAttribute("score", String.valueOf(score));
+        if (bestDomainScore>0.0) gfa.setAttribute("bestDomainScore", String.valueOf(bestDomainScore));
+        gfa.setReference("geneFamily", geneFamily);
+        gfa.setReference("gene", gene);
+        gfa.setReference("protein", protein);
+        gene.addToCollection("geneFamilyAssignments", gfa);
+        protein.addToCollection("geneFamilyAssignments", gfa);
+    }
+
+    /**
      * Get/add an OntologyTerm Item, associated with the given ontology and keyed by identifier.
      *
      * @param identifier the ontology term identifier
@@ -1052,5 +1061,5 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         }
         return null;
     }
-
+    
 }
