@@ -203,7 +203,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
         }
         // Publication - optional!
         if (readme.publication_doi == null) {
-            System.err.println("### WARNING: readme.publication_doi IS NULL!");
+            System.err.println(" x WARNING: readme.publication_doi IS NULL.");
         } else {
             try {
                 createPublication();
