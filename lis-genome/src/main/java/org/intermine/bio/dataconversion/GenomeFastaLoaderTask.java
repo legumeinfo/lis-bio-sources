@@ -97,6 +97,8 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
     DataSet dataSet;
     Publication publication;
     List<Author> authors = new ArrayList<>();
+
+    List<String> identifiers = new ArrayList<>();
     
     boolean fastaProcessed = false; // flag to indicate that we processed the FASTA
     boolean collectionValidated = false; // validate the collection first by storing a flag
@@ -355,6 +357,11 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
             identifier = tabChunks[0];
             symbol = tabChunks[1];
         }
+        // bail if we have a duplicate identifier
+        if (identifiers.contains(identifier)) {
+            throw new BuildException("Identifier " + identifier + " appears more than once in FASTA.");
+        }
+        identifiers.add(identifier);
         // Use prefix match to identifier to set the class to Chromosome or Supercontig.
         if (isChromosome(identifier)) {
             // store Chromosome
