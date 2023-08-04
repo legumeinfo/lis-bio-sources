@@ -480,9 +480,11 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         FeatureList featureList = GFF3Reader.read(TEMPGENEFILE);
         for (FeatureI featureI : featureList) {
             String seqname = featureI.seqname();
+            // check that we're on a recognized Chromosome or Supercontig, else bail
+            if (!isChromosome(seqname) && !isSupercontig(seqname)) continue;
             Location location = featureI.location();
             String type = featureI.type();
-            // spec attributes
+            // GFF spec attributes
             String id = getAttribute(featureI, "ID");
             String name = getAttribute(featureI, "Name");
             String alias = getAttribute(featureI, "Alias");
@@ -494,7 +496,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             String dbxref = getAttribute(featureI, "Dbxref");
             String ontology_term = getAttribute(featureI, "Ontology_term");
             String isCircular = getAttribute(featureI, "Is_circular");
-            // LIS attributes
+            // LIS-specific attributes
             String alleles = getAttribute(featureI, "alleles");
             String symbol = getAttribute(featureI, "symbol");
             // check that id exists and matches collection
@@ -758,7 +760,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             locations.add(supercontigLocation);
             feature.setReference("supercontigLocation", supercontigLocation);
         } else {
-            throw new RuntimeException("Sequence "+seqname+" is not recognized as a Chromosome or Supercontig.");
+            throw new RuntimeException("Attempted to place feature on sequence " + seqname + " not recognized as a Chromosome or Supercontig.");
         }
     }
 

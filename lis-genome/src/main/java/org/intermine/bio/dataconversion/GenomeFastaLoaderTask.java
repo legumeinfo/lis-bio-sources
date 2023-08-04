@@ -396,7 +396,7 @@ public class GenomeFastaLoaderTask extends FileDirectDataLoaderTask {
                 throw new BuildException(ex);
             }
         } else {
-            System.out.println("## skipping non-matching sequence: "+identifier);
+            System.out.println("## Skipping sequence without chromosome or supercontig prefix: "+identifier);
             return;
         }
     }
