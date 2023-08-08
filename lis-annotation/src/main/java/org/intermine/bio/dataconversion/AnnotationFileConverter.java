@@ -480,8 +480,11 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         FeatureList featureList = GFF3Reader.read(TEMPGENEFILE);
         for (FeatureI featureI : featureList) {
             String seqname = featureI.seqname();
-            // check that we're on a recognized Chromosome or Supercontig, else bail
-            if (!isChromosome(seqname) && !isSupercontig(seqname)) continue;
+            // check that we're on a recognized Chromosome or Supercontig, else bail with warning
+            if (!isChromosome(seqname) && !isSupercontig(seqname)) {
+                System.out.println("### feature ignored on sequence " + seqname + " because not recognized as chromosome or supercontig.");
+                continue;
+            }
             Location location = featureI.location();
             String type = featureI.type();
             // GFF spec attributes
