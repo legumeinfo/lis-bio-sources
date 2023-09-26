@@ -219,5 +219,97 @@ public class DatastoreUtils {
             return 0;
         }
     }
+
+    /**
+     * Return the Ensembl Plants / Plant Reactome name for a gene, given its LIS name
+     *
+     * R-ADU-1119289.1	Arginine degradation    Arachis duranensis      Aradu.16RQU.
+     * R-AIP-9030908.1	Underwater shoot and internode elongation	Arachis ipaensis	Araip.QX18T.
+     * R-CCA-1119495.1	Citrulline biosynthesis	Cajanus cajan	C.cajan_36043.1
+     * R-CAR-1119394.1	Pantothenate and coenzyme A biosynthesis III	Cicer arietinum	Ca_10073
+     * R-GMA-1119402.1	Phospholipid biosynthesis I	Glycine max	GLYMA_08G085800
+     * R-LAN-1119342.1	Gamma-glutamyl cycle	Lupinus angustifolius	TanjilG_00390
+     * R-MTR-1119438.1	Secologanin and strictosidine biosynthesis	Medicago truncatula	MTR_7g090310
+     * R-PVU-1119370.1	Sterol biosynthesis	Phaseolus vulgaris	PHAVU_004G160000g
+     * R-PSA-1119273.1	Lysine biosynthesis I	Pisum sativum	Psat4g004640
+     * R-TPR-1119583.1	Phytocassane biosynthesis	Trifolium pratense	Tp57577_TGAC_v2_gene3601
+     * R-VAN-1119374.1	Abscisic acid biosynthesis	Vigna angularis	LR48_Vigan05g014300
+     * R-VRA-1119351.1	Mitochondrial pyruvate metabolism	Vigna radiata	Vradi07g24310
+     * R-VUN-1119312.1	Photorespiration	Vigna unguiculata	Vigun04g097100.v1.2
+     *
+     * @param lisName the gene name from the LIS annotation GFF Name attribute
+     * @return the corresponding Ensembl gene name, or null
+     */
+    public static String getEnsemblName(String lisName) {
+        // Aradu.16RQU
+        if (lisName.startsWith("Aradu")) {
+            return lisName + ".";
+        }
+        // Araip.QX18T
+        if (lisName.startsWith("Araip")) {
+            return lisName + ".";
+        }
+        // cajca.C.cajan_36043 FIX!
+        if (lisName.startsWith("cajca.C.cajan")) {
+            return lisName.replace("cajca.", "") + ".1";
+        }
+        // C.cajan_36043
+        if (lisName.startsWith("C.cajan")) {
+            return lisName + ".1";
+        }
+        // cicar.CDCFrontier.Ca_06796 cicar.ICC4958.Ca_06796  FIX!
+        if (lisName.startsWith("cicar")) {
+            String[] dotparts = lisName.split("\\.");
+            return (dotparts[2]);
+        }
+        // Ca_06796
+        if (lisName.startsWith("Ca_")) {
+            return lisName;
+        }
+        // Glyma.08G085800
+        if (lisName.startsWith("Glyma")) {
+            return lisName.replace("Glyma.", "GLYMA_");
+        }
+        // lupan.Lup003900
+        if (lisName.startsWith("lupan.Lup")) {
+            String number = lisName.replace("lupan.Lup", "");
+            return "TanjilG_" + number;
+        }
+        // Medtr7g090310
+        if (lisName.startsWith("Medtr")) {
+            return lisName.replace("Medtr", "MTR_");
+        }
+        // Phvul.009G204800
+        if (lisName.startsWith("Phvul")) {
+            return lisName.replace("Phvul.", "PHAVU_") + "g";
+        }
+        // Psat4g004640
+        if (lisName.startsWith("Psat")) {
+            return lisName;
+        }
+        // tripr.gene36010 FIX?
+        if (lisName.startsWith("tripr.gene")) {
+            return "Tp57577_TGAC_V2_" + lisName.replace("tripr.", "");
+        }
+        // Vigan.05G014300
+        if (lisName.startsWith("Vigan.")) {
+            return "LR48_Vigan" + lisName.replace("Vigan.", "");
+        }
+        // Vradi07g24310
+        if (lisName.startsWith("Vradi")) {
+            return lisName;
+        }
+        // Vigun04g097100
+        if (lisName.startsWith("Vigun")) {
+            return lisName + ".v1.2";
+        }
+        // vigun.IT97K-499-35.Vigun04g097100 FIX!
+        if (lisName.startsWith("vigun.")) {
+            String[] dotparts = lisName.split("\\.");
+            return dotparts[2] + ".v1.2";
+        }
+        // default
+        return null;
+    }
     
 }
