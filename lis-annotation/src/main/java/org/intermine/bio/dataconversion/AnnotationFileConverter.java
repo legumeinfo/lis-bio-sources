@@ -53,7 +53,6 @@ import org.ncgr.zip.GZIPBufferedReader;
  *   cds.fna.gz
  *   mrna.fna.gz
  *   gfa.tsv.gz
- *   pathway.tsv.gz
  *   iprscan.gff3.gz
  *
  * @author Sam Hokin
@@ -68,7 +67,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     Map<String,Item> chromosomes = new HashMap<>();
     Map<String,Item> supercontigs = new HashMap<>();
     Map<String,Item> features = new HashMap<>();       // features other than genes and mRNAs
-    Map<String,Item> genes = new HashMap<>();          // also GFA, pathway, etc.
+    Map<String,Item> genes = new HashMap<>();          // also GFA
     Map<String,Item> mRNAs = new HashMap<>();          // mRNA sequences,length are FASTA-sourced
     Map<String,Item> ontologyTerms = new HashMap<>();
     Map<String,Item> proteinDomains = new HashMap<>();
@@ -77,7 +76,6 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
 
     // TSV sourced
     Map<String,Item> geneFamilies = new HashMap<>();
-    Map<String,Item> pathways = new HashMap<>();
 
     // GFA sourced
     List<Item> geneFamilyAssignments = new ArrayList<>();
@@ -87,7 +85,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     Map<String,Item> proteins = new HashMap<>(); // also GFA, etc.
     Map<String,Item> cdses = new HashMap<>();
 
-    // we require the main six files to store anything (pathway file is optional)
+    // we require the main six files to store anything
     boolean cdsFileExists = false;
     boolean mrnaFileExists = false;
     boolean proteinFileExists = false;
@@ -171,9 +169,6 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             System.out.println("## Processing "+getCurrentFile().getName());
             processMRNAFasta();
             mrnaFileExists = true;
-        } else if (getCurrentFile().getName().endsWith(".pathway.tsv.gz")) {
-            System.out.println("## Processing "+getCurrentFile().getName());
-            processPathwayFile();
         } else if (getCurrentFile().getName().endsWith(".iprscan.gff3.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processIPRScanGFF3();
@@ -265,7 +260,6 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         store(geneFamilies.values());
         store(ontologyAnnotations);
         store(ontologyTerms.values());
-        store(pathways.values());
         store(proteinDomains.values());
         store(locations);
         store(sequences);
@@ -431,32 +425,6 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Process a pathway.tsv file, associating genes with pathways.
-     * 0                1                               2
-     * R-1119260.1	Cardiolipin biosynthesis	lener.IG_72815.gnm1.ann1.Ler.1DRT.1g084550
-     */
-    void processPathwayFile() throws IOException {
-        // spin through the file
-        BufferedReader br = GZIPBufferedReader.getReader(getCurrentFile());
-        String line = null;
-        while ((line=br.readLine())!=null) {
-            if (line.startsWith("#")) continue;
-            String[] fields = line.split("\t");
-            if (fields.length==3) {
-                String pathwayIdentifier = fields[0];
-                String pathwayName = fields[1];
-                String geneIdentifier = fields[2];
-                Item pathway = getPathway(pathwayIdentifier);
-                pathway.setAttribute("name", pathwayName);
-                Item gene = getGene(geneIdentifier);
-                gene.addToCollection("pathways", pathway);
-            } else {
-                throw new RuntimeException("Pathway file "+getCurrentFile().getName()+" does not have three fields in this line:\n"+line);
-            }
-        }
-    }
-
-    /**
      * Process a gzipped GFF3 file.
      * Because GFFReader does not handle gzipped files, we have to dump the file to /tmp first and then read that.
      * Assumes that ID=gensp.strain.gnm.ann.identifier and Name=name.
@@ -521,6 +489,9 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 feature = getGene(id);
                 placeFeatureOnSequence(feature, seqname, location);
                 feature.setAttribute("length", String.valueOf(location.length()));
+                // set Gene.ensemblName, if available (else null)
+                String ensemblName = DatastoreUtils.getEnsemblName(name);
+                if (ensemblName != null) feature.setAttribute("ensemblName", ensemblName);
             } else if (featureClass.equals("MRNA")) {
                 feature = getMRNA(id);
                 placeFeatureOnSequence(feature, seqname, location);
@@ -808,27 +779,6 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             gene.setReference("organism", organism);
             gene.setReference("strain", strain);
             return gene;
-        }
-    }
-
-    /**
-     * Get/add a Pathway Item, keyed by primaryIdentifier like R-1119260.1.
-     * Also create a stable identifier like R-OSA-1119289.
-     */
-    Item getPathway(String primaryIdentifier) {
-        if (pathways.containsKey(primaryIdentifier)) {
-            return pathways.get(primaryIdentifier);
-        } else {
-            Item pathway = createItem("Pathway");
-            pathways.put(primaryIdentifier, pathway);
-            pathway.setAttribute("primaryIdentifier", primaryIdentifier);
-            String[] dash = primaryIdentifier.split("-");
-            String suffix = dash[1];
-            String[] dot = suffix.split("\\.");
-            String number = dot[0];
-            String stableIdentifier = "R-OSA-"+number;
-            pathway.setAttribute("stableIdentifier", stableIdentifier);
-            return pathway;
         }
     }
 
