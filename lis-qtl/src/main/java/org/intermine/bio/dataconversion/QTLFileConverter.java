@@ -363,6 +363,7 @@ public class QTLFileConverter extends DatastoreFileConverter {
             traits.put(primaryIdentifier, trait);
             trait.setAttribute("primaryIdentifier", primaryIdentifier);
             trait.setAttribute("name", name);
+            trait.setReference("organism", organism);
             return trait;
         }
     }
