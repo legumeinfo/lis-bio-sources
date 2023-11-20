@@ -31,7 +31,7 @@ import org.ncgr.zip.GZIPBufferedReader;
 
 /**
  * Loads data from an LIS datastore hsh.tsv file, e.g. Phaseolus.pan1.X2PC.hsh.tsv.gz.
- * Each row contains the PanGeneSet identifier and a protein identifier.
+ * Each row contains the PanGeneSet identifier and a transcript (mRNA) identifier.
  *
  * Phaseolus.pan1.pan00001	phaac.Frijol_Bayo.gnm1.ann1.Phacu.CVR.011G222700.1
  * Phaseolus.pan1.pan00001	phaac.W6_15578.gnm2.ann1.Phacu.WLD.011G221300.1
@@ -45,8 +45,7 @@ public class PangeneFileConverter extends DatastoreFileConverter {
 
     // local things to store
     Map<String,Item> pangeneSets = new HashMap<>();
-    Map<String,Item> genes = new HashMap<>();
-    Map<String,Item> proteins = new HashMap<>();
+    Map<String,Item> transcripts = new HashMap<>();
 
     // toggle for validator
     boolean collectionValidated = false;
@@ -89,12 +88,9 @@ public class PangeneFileConverter extends DatastoreFileConverter {
         // standard collection items
         storeCollectionItems();
         // add publication to Annotatables
-        if (publication!=null) {
-            for (Item gene : genes.values()) {
-                gene.addToCollection("publications", publication);
-            }
-            for (Item protein : proteins.values()) {
-                protein.addToCollection("publications", publication);
+        if (publication != null) {
+            for (Item transcript : transcripts.values()) {
+                transcript.addToCollection("publications", publication);
             }
             for (Item pangeneSet : pangeneSets.values()) {
                 pangeneSet.addToCollection("publications", publication);
@@ -102,15 +98,14 @@ public class PangeneFileConverter extends DatastoreFileConverter {
         }
         // local items
         store(pangeneSets.values());
-        store(genes.values());
-        store(proteins.values());
+        store(transcripts.values());
     }
 
     /**
-     * Process a hsh.tsv file which lists pan-gene set and protein identifiers.
+     * Process a hsh.tsv file which lists pan-gene set and transcript (mRNA) identifiers.
      *
-     * 0                        1                                        2                                        ...
-     * identifier               protein
+     * 0                        1
+     * identifier               transcript
      * Phaseolus.pan1.pan00001	phaac.Frijol_Bayo.gnm1.ann1.Phacu.CVR.011G222700.1
      */
     void processPangeneFile() throws IOException {
@@ -122,52 +117,26 @@ public class PangeneFileConverter extends DatastoreFileConverter {
             if (line.startsWith("#")) continue;
             String[] fields = line.split("\t");
             Item pangeneSet = getPanGeneSet(fields[0]);
-            Item protein = getProtein(fields[1]);
-            pangeneSet.addToCollection("proteins", protein);
-            Item gene = getGene(fields[1]);
-            pangeneSet.addToCollection("genes", gene);
+            Item transcript = getTranscript(fields[1]);
+            pangeneSet.addToCollection("transcripts", transcript);
         }
         br.close();
     }
 
     /**
-     * Get/add a Gene Item, keyed by identifier, given a protein identifier, by stripping the .N at the end.
-     *
-     * @param proteinIdentifier the identifier of the corresponding protein
+     * Get/add a transcript (mRNA) Item, keyed by identifier
      */
-    public Item getGene(String proteinIdentifier) {
-        String[] fields = proteinIdentifier.split("\\.");
-        String geneIdentifier = fields[0];
-        for (int i=1; i<(fields.length-1); i++) {
-            geneIdentifier += "." + fields[i];
-        }
-        if (genes.containsKey(geneIdentifier)) {
-            return genes.get(geneIdentifier);
+    public Item getTranscript(String identifier) {
+        if (transcripts.containsKey(identifier)) {
+            return transcripts.get(identifier);
         } else {
-            Item gene = createItem("Gene");
-            gene.setAttribute("primaryIdentifier", geneIdentifier);
-	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(geneIdentifier, true);
-	    if (secondaryIdentifier!=null) {
-                gene.setAttribute("secondaryIdentifier", secondaryIdentifier);
-            }
-            genes.put(geneIdentifier, gene);
-            return gene;
-        }
-    }
-
-    /**
-     * Get/add a Protein Item, keyed by identifier
-     */
-    public Item getProtein(String identifier) {
-        if (proteins.containsKey(identifier)) {
-            return proteins.get(identifier);
-        } else {
-            Item protein = createItem("Protein");
-            protein.setAttribute("primaryIdentifier", identifier);
+            // we store MRNA to avoid conflict with matching mRNAs loaded from GFF
+            Item transcript = createItem("MRNA");
+            transcript.setAttribute("primaryIdentifier", identifier);
 	    String secondaryIdentifier = DatastoreUtils.extractSecondaryIdentifier(identifier, true);
-	    if (secondaryIdentifier!=null) protein.setAttribute("secondaryIdentifier", secondaryIdentifier);
-            proteins.put(identifier, protein);
-            return protein;
+	    if (secondaryIdentifier!=null) transcript.setAttribute("secondaryIdentifier", secondaryIdentifier);
+            transcripts.put(identifier, transcript);
+            return transcript;
         }
     }
 

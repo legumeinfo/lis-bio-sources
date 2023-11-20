@@ -1,18 +1,3 @@
 <?xml version="1.0"?>
 <classes>
-
-  <class name="PanGeneSet" extends="Annotatable" is-interface="true">
-    <collection name="dataSets" referenced-type="DataSet"/>
-    <collection name="genes" referenced-type="Gene" reverse-reference="panGeneSets"/>
-    <collection name="proteins" referenced-type="Protein" reverse-reference="panGeneSets"/>
-  </class>
-
-  <class name="Protein" is-interface="true">
-    <collection name="panGeneSets" referenced-type="PanGeneSet" reverse-reference="proteins"/>
-  </class>
-
-  <class name="Gene" is-interface="true">
-    <collection name="panGeneSets" referenced-type="PanGeneSet" reverse-reference="genes"/>
-  </class>
-
 </classes>
