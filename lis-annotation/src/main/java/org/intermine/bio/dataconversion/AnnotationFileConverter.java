@@ -490,8 +490,10 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 placeFeatureOnSequence(feature, seqname, location);
                 feature.setAttribute("length", String.valueOf(location.length()));
                 // set Gene.ensemblName, if available (else null)
-                String ensemblName = DatastoreUtils.getEnsemblName(name);
-                if (ensemblName != null) feature.setAttribute("ensemblName", ensemblName);
+                if (name != null) {
+                    String ensemblName = DatastoreUtils.getEnsemblName(name);
+                    if (ensemblName != null) feature.setAttribute("ensemblName", ensemblName);
+                }
             } else if (featureClass.equals("MRNA")) {
                 feature = getMRNA(id);
                 placeFeatureOnSequence(feature, seqname, location);
