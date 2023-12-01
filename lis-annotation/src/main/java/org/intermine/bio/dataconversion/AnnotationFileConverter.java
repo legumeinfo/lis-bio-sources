@@ -71,6 +71,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     Map<String,Item> mRNAs = new HashMap<>();          // mRNA sequences,length are FASTA-sourced
     Map<String,Item> ontologyTerms = new HashMap<>();
     Map<String,Item> proteinDomains = new HashMap<>();
+    Map<String,Item> featureLocations = new HashMap<>(); // temp storage keyed by feature.primaryIdentifier
     List<Item> ontologyAnnotations = new ArrayList<>();
     List<Item> locations = new ArrayList<>();
 
@@ -98,7 +99,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     // map GFF types to InterMine classes; be sure to include extras in the additions file!
     Map<String,String> featureClasses = Map.ofEntries(entry("gene", "Gene"),
                                                       entry("mRNA", "MRNA"),
-                                                      entry("CDS", "CDSRegion"),
+                                                      entry("CDS", "CDS"),
                                                       entry("exon", "Exon"),
                                                       entry("intron", "Intron"),
                                                       entry("three_prime_UTR", "ThreePrimeUTR"),
@@ -471,19 +472,19 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             String alleles = getAttribute(featureI, "alleles");
             String symbol = getAttribute(featureI, "symbol");
             // check that id exists and matches collection
-            if (id==null) {
-                throw new RuntimeException("GFF line does not include ID: "+featureI.toString());
+            if (id == null) {
+                throw new RuntimeException("GFF record does not include ID: "+featureI.toString());
             }
             if (!matchesCollection(id)) {
-                throw new RuntimeException("ID "+id+" does not match collection "+readme.identifier);
+                throw new RuntimeException("ID " + id + " format does not match collection " + readme.identifier);
             }
             // get associated class
             String featureClass = featureClasses.get(type);
-            if (featureClass==null) {
-                throw new RuntimeException("GFF3 type "+type+" is not associated with a class in the featureClasses Map.");
+            if (featureClass == null) {
+                throw new RuntimeException("GFF3 type " + type + " is not associated with a class in the featureClasses Map.");
             }
             // get the feature, e.g. ID=glyma.Lee.gnm1.ann1.GlymaLee.02G198600;
-            // Gene and MRNA Items are stored separately for specific treatment
+            // Gene, MRNA, and CDS Items are stored separately for specific treatment
             Item feature = null;
             if (featureClass.equals("Gene")) {
                 feature = getGene(id);
@@ -498,6 +499,14 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 feature = getMRNA(id);
                 placeFeatureOnSequence(feature, seqname, location);
                 // don't set MRNA.length since that comes from FASTA
+            } else if (featureClass.equals("CDS")) {
+                // get id from parent
+                if (parent == null) {
+                    throw new RuntimeException("CDS record ID=" + id + " lacks Parent attribute.");
+                }
+                feature = getCDS(parent);
+                addToFeatureLocations(feature, seqname, location);
+                // don't set CDS.length since that comes from FASTA
             } else {
                 feature = getFeature(id, featureClass);
                 placeFeatureOnSequence(feature, seqname, location);
@@ -537,7 +546,8 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             }
             // Parent is not required but must already be loaded if present
             // This handles multiple parents
-            if (parent!=null) {
+            // Note: We use the parent identifier as the identifier of multiple CDS records, so don't do this stuff
+            if (parent != null && !featureClass.equals("CDS")) {
                 List<String> parents = new ArrayList<>();
                 if (parent.contains(",")) {
                     for (String p : parent.split(",")) parents.add(p);
@@ -698,45 +708,101 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     }
 
     /**
-     * Place a feature on a sequence, determining whether it's a Chromosome or Supercontig from its name.
+     * Place a feature on a sequence from its GFF Location, determining whether it's a Chromosome or Supercontig from its name.
      */
     void placeFeatureOnSequence(Item feature, String seqname, Location location) throws RuntimeException {
+        Item contig = null;
         if (isChromosome(seqname)) {
-            Item chromosome = getChromosome(seqname);
-            // reference feature on chromosome
-            feature.setReference("chromosome", chromosome);
-            // reference feature on new IM Location
-            Item chromosomeLocation = createItem("Location");
-            chromosomeLocation.setReference("feature", feature);
-            if (location.isNegative()) {
-                chromosomeLocation.setAttribute("strand", "-1");
-            } else {
-                chromosomeLocation.setAttribute("strand", "1");
-            }
-            chromosomeLocation.setAttribute("start", String.valueOf(location.bioStart()));
-            chromosomeLocation.setAttribute("end", String.valueOf(location.bioEnd()));
-            chromosomeLocation.setReference("locatedOn", chromosome);
-            locations.add(chromosomeLocation);
-            feature.setReference("chromosomeLocation", chromosomeLocation);
+            contig = getChromosome(seqname);
+            feature.setReference("chromosome", contig);
         } else if (isSupercontig(seqname)) {
-            Item supercontig = getSupercontig(seqname);
-            // reference feature on supercontig
-            feature.setReference("supercontig", supercontig);
-            // reference feature on new IM Location
-            Item supercontigLocation = createItem("Location");
-            supercontigLocation.setReference("feature", feature);
-            if (location.isNegative()) {
-                supercontigLocation.setAttribute("strand", "-1");
-            } else {
-                supercontigLocation.setAttribute("strand", "1");
-            }
-            supercontigLocation.setAttribute("start", String.valueOf(location.bioStart()));
-            supercontigLocation.setAttribute("end", String.valueOf(location.bioEnd()));
-            supercontigLocation.setReference("locatedOn", supercontig);
-            locations.add(supercontigLocation);
-            feature.setReference("supercontigLocation", supercontigLocation);
+            contig = getSupercontig(seqname);
+            feature.setReference("supercontig", contig);
         } else {
             throw new RuntimeException("Attempted to place feature on sequence " + seqname + " not recognized as a Chromosome or Supercontig.");
+        }
+        Item contigLocation = createItem("Location");
+        contigLocation.setReference("feature", feature);
+        if (location.isNegative()) {
+            contigLocation.setAttribute("strand", "-1");
+        } else {
+            contigLocation.setAttribute("strand", "1");
+        }
+        contigLocation.setAttribute("start", String.valueOf(location.bioStart()));
+        contigLocation.setAttribute("end", String.valueOf(location.bioEnd()));
+        contigLocation.setReference("locatedOn", contig);
+        locations.add(contigLocation);
+        if (isChromosome(seqname)) {
+            feature.setReference("chromosomeLocation", contigLocation);
+        } else {
+            feature.setReference("supercontigLocation", contigLocation);
+        }
+    }
+
+    /**
+     * Add a GFF Location to a feature's locations collection, updating its start, end, and strand.
+     */
+    void addToFeatureLocations(Item feature, String seqname, Location location) throws RuntimeException {
+        Item contig = null;
+        if (isChromosome(seqname)) {
+            contig = getChromosome(seqname);
+            feature.setReference("chromosome", contig);
+        } else if (isSupercontig(seqname)) {
+            contig = getSupercontig(seqname);
+            feature.setReference("supercontig", contig);
+        } else {
+            throw new RuntimeException("Attempted to place feature on sequence " + seqname + " not recognized as a Chromosome or Supercontig.");
+        }
+        // reference feature on new IM Location
+        Item contigLocation = createItem("Location");
+        contigLocation.setReference("feature", feature);
+        if (location.isNegative()) {
+            contigLocation.setAttribute("strand", "-1");
+        } else {
+            contigLocation.setAttribute("strand", "1");
+        }
+        contigLocation.setAttribute("start", String.valueOf(location.bioStart()));
+        contigLocation.setAttribute("end", String.valueOf(location.bioEnd()));
+        contigLocation.setReference("locatedOn", contig);
+        locations.add(contigLocation);
+        
+        feature.addToCollection("locations", contigLocation);
+
+        String primaryIdentifier = feature.getAttribute("primaryIdentifier").getValue();
+        if (featureLocations.containsKey(primaryIdentifier)) {
+            // update existing chromsomeLocation/supercontigLocation
+            Item featureLocation = featureLocations.get(primaryIdentifier);
+            if (location.isNegative()) {
+                featureLocation.setAttribute("strand", "-1");
+            } else {
+                featureLocation.setAttribute("strand", "1");
+            }
+            int start = Integer.parseInt(featureLocation.getAttribute("start").getValue());
+            int end = Integer.parseInt(featureLocation.getAttribute("end").getValue());
+            if (location.bioStart() < start) {
+                featureLocation.setAttribute("start", String.valueOf(location.bioStart()));
+            }
+            if (location.bioEnd() > end) {
+                featureLocation.setAttribute("end", String.valueOf(location.bioEnd()));
+            }
+        } else {
+            // create new chromosomeLocation/supercontigLocation
+            Item featureLocation = createItem("Location");
+            if (location.isNegative()) {
+                featureLocation.setAttribute("strand", "-1");
+            } else {
+                featureLocation.setAttribute("strand", "1");
+            }
+            featureLocation.setAttribute("start", String.valueOf(location.bioStart()));
+            featureLocation.setAttribute("end", String.valueOf(location.bioEnd()));
+            if (isChromosome(seqname)) {
+                feature.setReference("chromosomeLocation", featureLocation);
+            } else {
+                feature.setReference("supercontigLocation", featureLocation);
+            }
+            // add to storage maps
+            featureLocations.put(primaryIdentifier, featureLocation);
+            locations.add(featureLocation);
         }
     }
 
