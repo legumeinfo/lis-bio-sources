@@ -1,3 +1,32 @@
 <?xml version="1.0"?>
 <classes>
+
+  <class name="DataSet" is-interface="true">
+    <attribute name="synopsis" type="java.lang.String"/>
+  </class>
+
+  <!-- GeneFamily.size and tallies are populated by a post-processor since it has multiple annotations contributing -->
+  <!-- Gene and Protein have geneFamilyAssignments so no reverse-reference here -->
+  <class name="GeneFamily" extends="Annotatable" is-interface="true">
+    <attribute name="description" type="java.lang.String"/>
+    <attribute name="version" type="java.lang.String"/>
+    <attribute name="size" type="java.lang.Integer"/>
+    <collection name="dataSets" referenced-type="DataSet"/>
+    <collection name="tallies" referenced-type="GeneFamilyTally" reverse-reference="geneFamily"/>
+    <collection name="proteinDomains" referenced-type="ProteinDomain" reverse-reference="geneFamilies"/>
+  </class>
+
+  <!-- tally of genes per GeneFamily per Organism -->
+  <class name="GeneFamilyTally" is-interface="true">
+    <attribute name="totalCount" type="java.lang.Integer"/>
+    <attribute name="numAnnotations" type="java.lang.Integer"/>
+    <attribute name="averageCount" type="java.lang.Double"/>
+    <reference name="geneFamily" referenced-type="GeneFamily" reverse-reference="tallies"/>
+    <reference name="organism" referenced-type="Organism"/>
+  </class>
+
+  <class name="ProteinDomain" is-interface="true">
+    <collection name="geneFamilies" referenced-type="GeneFamily" reverse-reference="proteinDomains"/>
+  </class>
+  
 </classes>

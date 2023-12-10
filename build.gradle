@@ -69,6 +69,10 @@ subprojects {
         compile group: 'com.fasterxml.jackson.dataformat', name: 'jackson-dataformat-yaml', version: '2.13.1'
     }
 
+    compileJava {
+        options.deprecation = true
+    }
+
     dbModelConfig {
         objectStoreName = "os.bio-test"
         modelName = "genomic"

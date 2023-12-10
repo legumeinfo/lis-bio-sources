@@ -1,3 +1,43 @@
 <?xml version="1.0"?>
 <classes>
+
+  <class name="DataSet" is-interface="true">
+    <attribute name="synopsis" type="java.lang.String"/>
+  </class>
+
+  <class name="Phylotree" extends="Annotatable" is-interface="true">
+    <attribute name="numLeaves" type="java.lang.Integer"/>
+    <collection name="nodes" referenced-type="Phylonode" reverse-reference="tree"/>
+    <reference name="geneFamily" referenced-type="GeneFamily" reverse-reference="phylotree"/>
+    <collection name="dataSets" referenced-type="DataSet"/>
+  </class>
+  
+  <class name="Newick" is-interface="false" extends="java.lang.Object">
+    <attribute name="identifier" type="java.lang.String"/>
+    <attribute name="contents" type="java.lang.String"/>
+    <reference name="phylotree" referenced-type="Phylotree"/>
+    <reference name="geneFamily" referenced-type="GeneFamily"/>
+  </class>
+
+  <class name="Phylonode" is-interface="true">
+    <attribute name="identifier" type="java.lang.String"/>
+    <attribute name="length" type="java.lang.Double"/>
+    <attribute name="numChildren" type="java.lang.Integer"/>
+    <attribute name="isLeaf" type="java.lang.Boolean"/>
+    <attribute name="isRoot" type="java.lang.Boolean"/>
+    <reference name="tree" referenced-type="Phylotree" reverse-reference="nodes"/>
+    <reference name="protein" referenced-type="Protein" reverse-reference="phylonode"/>
+    <reference name="parent" referenced-type="Phylonode" reverse-reference="children"/>
+    <collection name="children" referenced-type="Phylonode" reverse-reference="parent"/>
+  </class>
+
+  <class name="GeneFamily" extends="Annotatable" is-interface="true">
+    <reference name="phylotree" referenced-type="Phylotree" reverse-reference="geneFamily"/>
+    <collection name="dataSets" referenced-type="DataSet"/>
+  </class>
+
+  <class name="Protein" is-interface="true">
+    <reference name="phylonode" referenced-type="Phylonode" reverse-reference="protein"/>
+  </class>
+
 </classes>

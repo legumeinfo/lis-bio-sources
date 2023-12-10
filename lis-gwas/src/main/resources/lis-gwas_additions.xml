@@ -1,3 +1,54 @@
 <?xml version="1.0"?>
 <classes>
+
+  <class name="DataSet" is-interface="true">
+    <attribute name="synopsis" type="java.lang.String"/>
+  </class>
+
+  <class name="GeneticMarker" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO_0001645">
+    <collection name="genotypingPlatforms" referenced-type="GenotypingPlatform" reverse-reference="markers"/>
+    <collection name="gwasResults" referenced-type="GWASResult" reverse-reference="markers"/>
+  </class>
+
+  <class name="GenotypingPlatform" extends="Annotatable" is-interface="true">
+    <collection name="markers" referenced-type="GeneticMarker" reverse-reference="genotypingPlatforms"/>
+  </class>
+
+  <!-- A Trait is an experimentally measured phenotype for a QTL or association and has ontologyAnnotations. -->
+  <!-- Because trait measurement/treatment is specific to an experiment, it has a unique reference to a QTLStudy or a GWAS. -->
+  <!-- Note 1: name is the given name e.g. "Seed weight" and isn't unique -->
+  <!-- Note 2: primaryIdentifier is concocted by the loader -->
+  <class name="Trait" extends="Annotatable" is-interface="true" term="https://browser.planteome.org/amigo/term/TO:0000387">
+    <attribute name="name" type="java.lang.String"/>
+    <attribute name="description" type="java.lang.String"/>
+    <reference name="organism" referenced-type="Organism"/>
+    <reference name="dataSet" referenced-type="DataSet"/>
+    <reference name="gwas" referenced-type="GWAS"/>
+    <collection name="gwasResults" referenced-type="GWASResult" reverse-reference="trait"/>
+  </class>
+
+  <!-- GWAS is a study from a publication containing GWASResults, one per marker association -->
+  <class name="GWAS" extends="Annotatable" is-interface="true">
+    <attribute name="genotypes" type="java.lang.String"/>
+    <attribute name="synopsis" type="java.lang.String"/>
+    <attribute name="description" type="java.lang.String"/>
+    <attribute name="genotypingMethod" type="java.lang.String"/>
+    <reference name="genotypingPlatform" referenced-type="GenotypingPlatform"/>
+    <reference name="organism" referenced-type="Organism"/>
+    <reference name="dataSet" referenced-type="DataSet"/>
+    <collection name="results" referenced-type="GWASResult" reverse-reference="gwas"/>
+  </class>
+
+  <!-- GWASResult relates a marker to a measured trait with a p-value -->
+  <!-- Since a marker may have several genomic mappings, we store markerName here -->
+  <!-- GWASResult.markers is populated with a post-processor -->
+  <class name="GWASResult" extends="Annotatable" is-interface="true">
+    <attribute name="markerName" type="java.lang.String"/>
+    <attribute name="pValue" type="java.lang.Double"/>
+    <reference name="gwas" referenced-type="GWAS" reverse-reference="results"/>
+    <reference name="trait" referenced-type="Trait" reverse-reference="gwasResults"/>
+    <collection name="markers" referenced-type="GeneticMarker" reverse-reference="gwasResults"/>
+    <reference name="dataSet" referenced-type="DataSet"/>
+  </class>
+
 </classes>

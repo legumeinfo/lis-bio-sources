@@ -1,11 +1,35 @@
 <?xml version="1.0"?>
 <classes>
 
+  <class name="DataSet" is-interface="true">
+    <attribute name="synopsis" type="java.lang.String"/>
+  </class>
+
+  <class name="Organism" is-interface="true">
+    <attribute name="abbreviation" type="java.lang.String"/>
+    <attribute name="description" type="java.lang.String"/>
+    <collection name="dataSets" referenced-type="DataSet"/>
+  </class>
+  
+  <class name="Gene" is-interface="true">
+    <attribute name="ensemblName" type="java.lang.String"/>
+    <collection name="proteinDomains" referenced-type="ProteinDomain" reverse-reference="genes"/>
+    <collection name="pathways" referenced-type="Pathway" reverse-reference="genes"/>
+    <collection name="geneFamilyAssignments" referenced-type="GeneFamilyAssignment" />
+  </class>
+
   <!-- primary transcript proteins are loaded from protein_primary.faa files -->
   <class name="Protein" is-interface="true">
     <attribute name="isPrimary" type="java.lang.Boolean"/>
+    <collection name="geneFamilyAssignments" referenced-type="GeneFamilyAssignment"/>
   </class>
 
+  <!-- NOTE: interpro loader modified to have ProteinDomain extend Annotatable -->
+  <class name="ProteinDomain" is-interface="true">
+    <collection name="genes" referenced-type="Gene" reverse-reference="proteinDomains"/>
+    <collection name="geneFamilies" referenced-type="GeneFamily" reverse-reference="proteinDomains"/>
+  </class>
+  
   <!-- primary transcripts are loaded from mrna_primary.fna files -->
   <class name="MRNA" is-interface="true">
     <attribute name="isPrimary" type="java.lang.Boolean"/>
@@ -14,6 +38,45 @@
   <!-- primary transcript CDSes are loaded from cds_primary.fna files -->
   <class name="CDS" is-interface="true">
     <attribute name="isPrimary" type="java.lang.Boolean"/>
+  </class>
+
+  <!-- stores a gene family assignment along with various measures -->
+  <class name="GeneFamilyAssignment" is-interface="true">
+    <attribute name="evalue" type="java.lang.Double"/>
+    <attribute name="score" type="java.lang.Double"/>
+    <attribute name="bestDomainScore" type="java.lang.Double"/>
+    <reference name="geneFamily" referenced-type="GeneFamily"/>
+    <reference name="gene" referenced-type="Gene" reverse-reference="geneFamilyAssignments"/>
+    <reference name="protein" referenced-type="Protein" reverse-reference="geneFamilyAssignments"/>
+  </class>
+
+  <!-- GeneFamily.size and tallies are populated by a post-processor since it has multiple annotations contributing -->
+  <!-- Gene and Protein have geneFamilyAssignments so no reverse-reference here -->
+  <class name="GeneFamily" extends="Annotatable" is-interface="true">
+    <attribute name="description" type="java.lang.String"/>
+    <attribute name="version" type="java.lang.String"/>
+    <attribute name="size" type="java.lang.Integer"/>
+    <collection name="dataSets" referenced-type="DataSet"/>
+    <collection name="genes" referenced-type="Gene"/>
+    <collection name="proteins" referenced-type="Protein"/>
+    <collection name="proteinDomains" referenced-type="ProteinDomain" reverse-reference="geneFamilies"/>
+    <collection name="tallies" referenced-type="GeneFamilyTally" reverse-reference="geneFamily"/>
+  </class>
+
+  <!-- tally of genes per GeneFamily per Organism -->
+  <class name="GeneFamilyTally" is-interface="true">
+    <attribute name="totalCount" type="java.lang.Integer"/>
+    <attribute name="numAnnotations" type="java.lang.Integer"/>
+    <attribute name="averageCount" type="java.lang.Double"/>
+    <reference name="geneFamily" referenced-type="GeneFamily" reverse-reference="tallies"/>
+    <reference name="organism" referenced-type="Organism"/>
+  </class>
+
+  <!-- Pathways are loaded by a post-processor off of Gene.ensemblName loaded here -->
+  <class name="Pathway" extends="Annotatable" is-interface="true" >
+    <attribute name="name" type="java.lang.String"/>
+    <collection name="genes" referenced-type="Gene" reverse-reference="pathways"/>
+    <collection name="dataSets" referenced-type="DataSet"/>
   </class>
   
 </classes>
