@@ -86,14 +86,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     Map<String,Item> proteins = new HashMap<>(); // also GFA, etc.
     Map<String,Item> cdses = new HashMap<>();
 
-    // we require the main six files to store anything
-    boolean cdsFileExists = false;
-    boolean mrnaFileExists = false;
-    boolean proteinFileExists = false;
-    boolean gfaFileExists = false;
-    boolean gff3FileExists = false;
-
-    // validate the collection first by storing a flag
+    // validate the collection first and only once by storing a flag
     boolean collectionValidated = false;
 
     // map GFF types to InterMine classes; be sure to include extras in the additions file!
@@ -153,23 +146,18 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
         } else if (getCurrentFile().getName().endsWith(".gene_models_main.gff3.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processGeneModelsMainGFF3File();
-            gff3FileExists = true;
         } else if (getCurrentFile().getName().endsWith(".gfa.tsv.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processGFAFile();
-            gfaFileExists = true;            
 	} else if (getCurrentFile().getName().endsWith(".protein.faa.gz") || getCurrentFile().getName().endsWith(".protein_primary.faa.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processProteinFasta();
-            proteinFileExists = true;
         } else if (getCurrentFile().getName().endsWith(".cds.fna.gz") || getCurrentFile().getName().endsWith(".cds_primary.fna.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processCDSFasta();
-            cdsFileExists = true;
         } else if (getCurrentFile().getName().endsWith(".mrna.fna.gz") || getCurrentFile().getName().endsWith(".mrna_primary.fna.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processMRNAFasta();
-            mrnaFileExists = true;
         } else if (getCurrentFile().getName().endsWith(".iprscan.gff3.gz")) {
             System.out.println("## Processing "+getCurrentFile().getName());
             processIPRScanGFF3();
@@ -183,45 +171,18 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
      */
     @Override
     public void close() throws ObjectStoreException, RuntimeException {
-        if (readme==null) {
-            throw new RuntimeException("README file not found. Aborting.");
-        }
-        boolean filesMissing = false;
-        if (!cdsFileExists && !mrnaFileExists) {
-            filesMissing = true;
-            System.err.println("ERROR: neither mrna nor cds FASTA file is present. One must be.");
-        }
-        if (!proteinFileExists) {
-            filesMissing = true;
-            System.err.println("ERROR: protein FASTA file is missing.");
-        }
-        if (!gfaFileExists) {
-            filesMissing = true;
-            System.err.println("ERROR: gfa file is missing.");
-        }
-        if (!gff3FileExists) {
-            filesMissing = true;
-            System.err.println("ERROR: GFF3 file is missing.");
-        }
-        if (filesMissing) {
-            throw new RuntimeException("Missing required annotation file(s). Aborting.");
-        }
-        // set references and collections for objects loaded from FASTAs based on matching identifiers
+        // set missing CDS.transcript reference and add to MRNA.CDSs collection based on matching identifiers
+        // (doing this here allows for CDS in GFF to have different parent mRNA identifier)
         for (String primaryIdentifier : cdses.keySet()) {
             Item cds = cdses.get(primaryIdentifier);
-            if (mRNAs.containsKey(primaryIdentifier)) cds.setReference("transcript", mRNAs.get(primaryIdentifier));
-            if (proteins.containsKey(primaryIdentifier)) cds.setReference("protein", proteins.get(primaryIdentifier));
+            if (cds.getReference("transcript").getRefId() == null && mRNAs.containsKey(primaryIdentifier)) {
+                Item mRNA = mRNAs.get(primaryIdentifier);
+                cds.setReference("transcript", mRNA);
+                mRNA.addToCollection("CDSs", cds);
+            }
+            // if (proteins.containsKey(primaryIdentifier)) cds.setReference("protein", proteins.get(primaryIdentifier));
         }
-        for (String primaryIdentifier : mRNAs.keySet()) {
-            Item mRNA = mRNAs.get(primaryIdentifier);
-            if (cdses.containsKey(primaryIdentifier)) mRNA.addToCollection("CDSs", cdses.get(primaryIdentifier));
-            if (proteins.containsKey(primaryIdentifier)) mRNA.setReference("protein", proteins.get(primaryIdentifier));
-        }
-        for (String primaryIdentifier : proteins.keySet()) {
-            Item protein = proteins.get(primaryIdentifier);
-            if (cdses.containsKey(primaryIdentifier)) protein.setReference("CDS", cdses.get(primaryIdentifier));
-            if (mRNAs.containsKey(primaryIdentifier)) protein.setReference("transcript", mRNAs.get(primaryIdentifier));
-        }
+
         // add publication to all Annotatables
         if (publication!=null) {
             for (Item chromosome : chromosomes.values()) {
@@ -249,7 +210,8 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 proteinDomain.addToCollection("publications", publication);
             }
         }
-        // store
+
+        // store our Items
         storeCollectionItems();
         store(chromosomes.values());
         store(supercontigs.values());
@@ -300,6 +262,12 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             protein.setAttribute("length", String.valueOf(residues.length()));
             protein.setAttribute("md5checksum", md5checksum);
             if (symbol!=null) protein.setAttribute("symbol", symbol);
+            // associated transcript
+            // Item mRNA = getMRNA(identifier);
+            // protein.setReference("transcript", mRNA);
+            // associated CDS
+            // Item cds = getCDS(identifier);
+            // protein.setReference("CDS", cds);
         }
     }
 
@@ -484,7 +452,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 throw new RuntimeException("GFF3 type " + type + " is not associated with a class in the featureClasses Map.");
             }
             // get the feature, e.g. ID=glyma.Lee.gnm1.ann1.GlymaLee.02G198600;
-            // Gene, MRNA, and CDS Items are stored separately for specific treatment
+            // Gene and MRNA Items are stored separately for specific treatment
             Item feature = null;
             if (featureClass.equals("Gene")) {
                 feature = getGene(id);
@@ -495,19 +463,68 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                     String ensemblName = DatastoreUtils.getEnsemblName(name);
                     if (ensemblName != null) feature.setAttribute("ensemblName", ensemblName);
                 }
+            } else if (featureClass.equals("CDS")) {
+                // CDS record must have a parent mRNA attribute
+                if (parent == null) throw new RuntimeException("CDS " + id + " lacks Parent attribute.");
+                // use the id of the parent for the CDS
+                feature = getCDS(parent);
+                // add this location to the CDS.locations collection
+                addToFeatureLocations(feature, seqname, location);
+                // don't set CDS.length since that comes from FASTA or stitching together CDSes
+                // set the CDS.transcript reference to the parent mRNA
+                if (mRNAs.containsKey(parent)) {
+                    Item mRNA = mRNAs.get(parent);
+                    feature.setReference("transcript", mRNA);
+                } else {
+                    throw new RuntimeException("CDS " + id + " parent mRNA " + parent + " has not yet been loaded. Is the GFF sorted?");
+                }
+            } else if (featureClass.equals("Exon")) {
+                // exon record must have a parent mRNA attribute
+                if (parent == null) throw new RuntimeException("Exon " + id + " lacks Parent attribute.");
+                feature = getFeature(id, featureClass);
+                placeFeatureOnSequence(feature, seqname, location);
+                feature.setAttribute("length", String.valueOf(location.length()));
+                // add the parent mRNA to the Exon.transcripts collection
+                if (mRNAs.containsKey(parent)) {
+                    Item mRNA = mRNAs.get(parent);
+                    feature.addToCollection("transcripts", mRNA);
+                } else {
+                    throw new RuntimeException("Exon " + id + " parent mRNA " + parent + " <has not yet been loaded. Is the GFF sorted?");
+                }
             } else if (featureClass.equals("MRNA")) {
+                // mRNAs must have a parent gene attribute
+                if (parent == null) throw new RuntimeException("mRNA " + id + " lacks Parent attribute.");
                 feature = getMRNA(id);
                 placeFeatureOnSequence(feature, seqname, location);
-                // don't set MRNA.length since that comes from FASTA
-            } else if (featureClass.equals("CDS")) {
-                // get id from parent
-                if (parent == null) {
-                    throw new RuntimeException("CDS record ID=" + id + " lacks Parent attribute.");
+                // don't set MRNA.length since that comes from FASTA or stitching together exons
+                // set the MRNA.gene reference to the parent Gene
+                if (genes.containsKey(parent)) {
+                    Item gene = genes.get(parent);
+                    feature.setReference("gene", gene);
+                    // set the MRNA.protein reference to the identifier-matching protein (which may not yet be loaded)
+                    Item protein = getProtein(id);
+                    feature.setReference("protein", protein);
+                    protein.setReference("transcript", feature);
+                    // since we have the gene and the protein, add it to the protein.genes collection
+                    protein.addToCollection("genes", gene);
+                } else {
+                    throw new RuntimeException("mRNA " + id + " parent gene " + parent + " has not yet been loaded. Is the GFF sorted?");
                 }
-                feature = getCDS(parent);
-                addToFeatureLocations(feature, seqname, location);
-                // don't set CDS.length since that comes from FASTA
+            } else if (featureClass.equals("ThreePrimeUTR") || featureClass.equals("FivePrimeUTR")) {
+                // UTRs must have a parent mRNA attribute
+                if (parent == null) throw new RuntimeException("UTR " + id + " lacks Parent attribute.");
+                feature = getFeature(id, featureClass);
+                placeFeatureOnSequence(feature, seqname, location);
+                feature.setAttribute("length", String.valueOf(location.length()));
+                // add the parent mRNA to the UTR.transcripts collection
+                if (mRNAs.containsKey(parent)) {
+                    Item mRNA = mRNAs.get(parent);
+                    feature.addToCollection("transcripts", mRNA);
+                } else {
+                    throw new RuntimeException("UTR " + id + " parent mRNA " + parent + " has not yet been loaded. Is the GFF sorted?");
+                }
             } else {
+                // just a plain vanilla feature
                 feature = getFeature(id, featureClass);
                 placeFeatureOnSequence(feature, seqname, location);
                 feature.setAttribute("length", String.valueOf(location.length()));
@@ -544,10 +561,10 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                     }
                 }
             }
-            // Parent is not required but must already be loaded if present
-            // This handles multiple parents
-            // Note: We use the parent identifier as the identifier of multiple CDS records, so don't do this stuff
-            if (parent != null && !featureClass.equals("CDS")) {
+
+            // add to childFeatures collection of parent
+            // parent must be loaded before this feature
+            if (parent != null) {
                 List<String> parents = new ArrayList<>();
                 if (parent.contains(",")) {
                     for (String p : parent.split(",")) parents.add(p);
@@ -557,33 +574,24 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 for (String p : parents) {
                     Item parentItem = null;
                     if (features.containsKey(p)) {
-                        // parent is not gene or mRNA
+                        // parent is not Gene or MRNA
                         parentItem = features.get(p);
                     } else if (genes.containsKey(p)) {
                         // parent is a gene
                         parentItem = genes.get(p);
-                        if (featureClass.equals("MRNA")) {
-                            // set the MRNA's gene reference
-                            feature.setReference("gene", parentItem);
-                            // set the corresponding CDS's gene reference
-                            Item cds = getCDS(id);
-                            cds.setReference("gene", parentItem);
-                            // add the gene to the corresponding protein's genes collection
-                            Item protein = getProtein(id);
-                            protein.addToCollection("genes", parentItem);
-                        }
                     } else if (mRNAs.containsKey(p)) {
-                        // parent is an mRNA, feature is probably an exon
+                        // parent is an mRNA
                         parentItem = mRNAs.get(p);
                     } else {
-                        throw new RuntimeException("Parent "+p+" not loaded before child "+id+". Is the GFF sorted?");
+                        throw new RuntimeException("Parent " + p + " not loaded before child " + id + ". Is the GFF sorted?");
                     }
                     // add this feature to the parent's children
                     parentItem.addToCollection("childFeatures", feature);
                 }
             }
-            // Ontology_term=GO:0005506,GO:0016705,GO:0020037,GO:0055114;
-            if (ontology_term!=null && ontology_term.trim().length()>0) {
+
+            // create ontology annotations for this feature from ontology_term attribute
+            if (ontology_term != null && ontology_term.trim().length()>0) {
                 String[] terms = ontology_term.split(",");
                 for (String term : terms) {
                     createOntologyAnnotation(feature, term);
@@ -956,7 +964,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             return cds;
         }
     }
-    
+
     /**
      * Get/add a MRNA Item, keyed by primaryIdentifier, with secondaryIdentifier from primaryIdentifier
      */
