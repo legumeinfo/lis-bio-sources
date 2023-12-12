@@ -22,6 +22,7 @@
   <class name="Protein" is-interface="true">
     <attribute name="isPrimary" type="java.lang.Boolean"/>
     <collection name="geneFamilyAssignments" referenced-type="GeneFamilyAssignment"/>
+    <collection name="proteinMatches" referenced-type="ProteinMatch" term="http://purl.obolibrary.org/obo/SO:0000349"/>
   </class>
 
   <!-- NOTE: interpro loader modified to have ProteinDomain extend Annotatable -->
@@ -29,6 +30,20 @@
     <collection name="genes" referenced-type="Gene" reverse-reference="proteinDomains"/>
     <collection name="geneFamilies" referenced-type="GeneFamily" reverse-reference="proteinDomains"/>
   </class>
+
+  <!-- InterPro terms from LIS -->
+  <class name="ProteinMatch" extends="BioEntity" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000349">
+    <attribute name="accession" type="java.lang.String"/>
+    <attribute name="source" type="java.lang.String"/>
+    <attribute name="status" type="java.lang.String"/>
+    <attribute name="date" type="java.lang.String"/>
+    <attribute name="target" type="java.lang.String"/>
+    <attribute name="signatureDesc" type="java.lang.String"/>
+    <attribute name="length" type="java.lang.Integer"/>
+    <reference name="protein" referenced-type="Protein" reverse-reference="proteinMatches"/>
+  </class>
+
+  <class name="ProteinHmmMatch" extends="ProteinMatch" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0001831"/>
   
   <!-- primary transcripts are loaded from mrna_primary.fna files -->
   <class name="MRNA" is-interface="true">
@@ -77,6 +92,11 @@
     <attribute name="name" type="java.lang.String"/>
     <collection name="genes" referenced-type="Gene" reverse-reference="pathways"/>
     <collection name="dataSets" referenced-type="DataSet"/>
+  </class>
+
+  <!-- Region with isCircular attribute -->
+  <class name="Region" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:SO:0000001">
+    <attribute name="isCircular" type="java.lang.Boolean"/>
   </class>
   
 </classes>
