@@ -265,6 +265,8 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             }
             // Protein Item
             Item protein = getProtein(identifier);
+            // we don't parse a name from the FASTA header, so...
+            protein.setAttribute("name", getSecondaryIdentifier(identifier));
             if (isPrimary()) protein.setAttribute("isPrimary", "true");
             protein.setReference("sequence", sequence);
             protein.setAttribute("length", String.valueOf(residues.length()));
@@ -434,7 +436,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             String type = featureI.type();
             // GFF spec attributes
             String id = getAttribute(featureI, "ID");
-            String name = getAttribute(featureI, "Name"); // if missing, default to derived secondaryIdentifier
+            String name = getAttribute(featureI, "Name"); // if missing, store derived secondaryIdentifier below
             String alias = getAttribute(featureI, "Alias");
             String parent = getAttribute(featureI, "Parent");
             String target = getAttribute(featureI, "Target");
