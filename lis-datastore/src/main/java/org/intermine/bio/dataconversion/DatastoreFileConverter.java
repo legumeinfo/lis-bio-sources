@@ -68,7 +68,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
     Item organism;
     Item strain;
     Item publication;
-    List<Item> authors = new ArrayList<>();
+    Map<String,Item> authors = new HashMap<>(); // keyed by name
 
     // There is only one DataSource, set in project.xml, or default
     String dataSourceName;         // required
@@ -217,13 +217,13 @@ public abstract class DatastoreFileConverter extends FileConverter {
         dataSet.setAttribute("name", dataSetName);
         dataSet.setAttribute("description", dataSetDescription);
         dataSet.setAttribute("synopsis", readme.synopsis);
-        if (publication!=null) dataSet.setReference("publication", publication);
-        if (assemblyVersion!=null && annotationVersion!=null) {
+        if (publication != null) dataSet.setReference("publication", publication);
+        if (assemblyVersion != null && annotationVersion != null) {
             dataSet.setAttribute("version", assemblyVersion+"."+annotationVersion);
-        } else if (assemblyVersion!=null) {
+        } else if (assemblyVersion != null) {
             dataSet.setAttribute("version", assemblyVersion);
         }
-        if (dataSetLicence!=null) {
+        if (dataSetLicence != null) {
             dataSet.setAttribute("licence", dataSetLicence);
         } else {
             dataSet.setAttribute("licence", DEFAULT_DATASET_LICENCE);
@@ -237,7 +237,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
      * Set the instance DataSource from project.xml properties or defaults.
      */
     void setDataSource() {
-        if (dataSource!=null) return;
+        if (dataSource != null) return;
         // set defaults for LIS if not given in project.xml
         if (dataSourceName==null) dataSourceName = DEFAULT_DATASOURCE_NAME;
         if (dataSourceUrl==null) dataSourceUrl = DEFAULT_DATASOURCE_URL;
@@ -255,7 +255,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
      * Since collections aren't always associated with a single strain, (e.g. "mixed" or "strain1_x_strain2") we don't set strain in processReadme().
      */
     void setStrain() {
-        if (strain!=null) return;
+        if (strain != null) return;
         if (readme==null) {
             throw new RuntimeException("ERROR: attempted to setStrain() before README has been read.");
         }
@@ -289,7 +289,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
         if (organism != null) store(organism);
         if (strain != null) store(strain);
         if (publication != null) store(publication);
-        if (authors.size() > 0) store(authors);
+        if (authors.size() > 0) store(authors.values());
     }
 
     /**
@@ -448,9 +448,9 @@ public abstract class DatastoreFileConverter extends FileConverter {
                 try { month = String.valueOf(wq.getIssuedMonth()); } catch (Exception ex) { }
             }
             String journal = null;
-            if (wq.getShortContainerTitle()!=null) {
+            if (wq.getShortContainerTitle() != null) {
                 journal = wq.getShortContainerTitle();
-            } else if (wq.getContainerTitle()!=null) {
+            } else if (wq.getContainerTitle() != null) {
                 journal = wq.getContainerTitle();
             }
             String volume = wq.getVolume();
@@ -464,10 +464,10 @@ public abstract class DatastoreFileConverter extends FileConverter {
             }
             JSONArray authorsJSON = wq.getAuthors();
             String firstAuthor = null;
-            if (authorsJSON!=null && authorsJSON.size()>0) {
+            if (authorsJSON != null && authorsJSON.size()>0) {
                 JSONObject firstAuthorObject = (JSONObject) authorsJSON.get(0);
                 firstAuthor = (String) firstAuthorObject.get("family");
-                if (firstAuthorObject.get("given")!=null) firstAuthor += ", " + (String) firstAuthorObject.get("given");
+                if (firstAuthorObject.get("given") != null) firstAuthor += ", " + (String) firstAuthorObject.get("given");
             }
             // get PubMed ID from PubMed API
             int pubMedId = DatastoreUtils.getPubMedId(doi);
@@ -477,20 +477,20 @@ public abstract class DatastoreFileConverter extends FileConverter {
             //     lastAuthor = lastAuthorObject.get("family")+", "+lastAuthorObject.get("given");
             // }
             // update publication object
-            if (title!=null) publication.setAttribute("title", title);
-            if (firstAuthor!=null) publication.setAttribute("firstAuthor", firstAuthor);
-            if (month!=null && !month.equals("0")) publication.setAttribute("month", month);
-            if (journal!=null) publication.setAttribute("journal", journal);
-            if (volume!=null) publication.setAttribute("volume", volume);
-            if (issue!=null) publication.setAttribute("issue", issue);
-            if (pages!=null) publication.setAttribute("pages", pages);
+            if (title != null) publication.setAttribute("title", title);
+            if (firstAuthor != null) publication.setAttribute("firstAuthor", firstAuthor);
+            if (month != null && !month.equals("0")) publication.setAttribute("month", month);
+            if (journal != null) publication.setAttribute("journal", journal);
+            if (volume != null) publication.setAttribute("volume", volume);
+            if (issue != null) publication.setAttribute("issue", issue);
+            if (pages != null) publication.setAttribute("pages", pages);
             if (year>0) publication.setAttribute("year", String.valueOf(year));
             if (pubMedId>0) publication.setAttribute("pubMedId", String.valueOf(pubMedId));
             // core IM model does not contain lastAuthor
-            // if (lastAuthor!=null) publication.setAttribute("lastAuthor", lastAuthor);
+            // if (lastAuthor != null) publication.setAttribute("lastAuthor", lastAuthor);
                 
             // populate publication.authors
-            if (authorsJSON!=null) {
+            if (authorsJSON != null) {
                 for (Object authorObject : authorsJSON)  {
                     JSONObject authorJSON = (JSONObject) authorObject;
                     // IM Author attributes from CrossRef fields
@@ -529,14 +529,9 @@ public abstract class DatastoreFileConverter extends FileConverter {
                     if (firstName.length()==2 && firstName.charAt(1)=='.') {
                         firstName = String.valueOf(firstName.charAt(0));
                     }
-                    String name = firstName+" "+lastName;
-                    Item author = createItem("Author");
-                    author.setAttribute("firstName", firstName);
-                    author.setAttribute("lastName", lastName);
-                    author.setAttribute("name", name);
-                    if (initials!=null) author.setAttribute("initials", initials);
+                    // add this publication to this Author.publications collection
+                    Item author = getAuthor(firstName, initials, lastName);
                     author.addToCollection("publications", publication);
-                    authors.add(author);
                 }
             }
         } else {
@@ -582,6 +577,35 @@ public abstract class DatastoreFileConverter extends FileConverter {
                 }
             }
         }
+    }
+
+    /**
+     * Get an existing or create a new Author Item, keyed by name.
+     *
+     * @param firstName the author's first name
+     * @param initials the author's optional middle initials
+     * @param lastName the author's last name
+     * @return an Author Item
+     */
+    Item getAuthor(String firstName, String initials, String lastName) {
+        String name = null;
+        if (initials != null) {
+            name =  firstName + " " + initials + " " + lastName;
+        } else {
+            name = firstName + " " + lastName;
+        }
+        Item author = null;
+        if (authors.containsKey(name)) {
+            author = authors.get(name);
+        } else {
+            author = createItem("Author");
+            author.setAttribute("firstName", firstName);
+            if (initials != null) author.setAttribute("initials", initials);
+            author.setAttribute("lastName", lastName);
+            author.setAttribute("name", name);
+            authors.put(name, author);
+        }
+        return author;
     }
     
 }
