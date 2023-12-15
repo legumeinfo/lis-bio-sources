@@ -142,7 +142,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             AnnotationCollectionValidator validator = new AnnotationCollectionValidator(getCurrentFile().getParent());
             validator.validate();
             if (!validator.isValid()) {
-                throw new RuntimeException("Collection "+getCurrentFile().getParent()+" does not pass validation.");
+                throw new RuntimeException("Collection " + getCurrentFile().getParent() + " does not pass validation.");
             }
             collectionValidated = true;
         }
@@ -476,9 +476,12 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                     if (ensemblName != null) feature.setAttribute("ensemblName", ensemblName);
                 }
             } else if (featureClass.equals("CDS")) {
-                // CDS record must have a parent transcript attribute
+                // CDS record must have a parent attribute for CDS.transcript reference
                 if (parent == null) {
                     throw new RuntimeException("CDS " + id + " lacks Parent transcript attribute.");
+                }
+                if (!mRNAs.containsKey(parent)) {
+                    throw new RuntimeException("CDS " + id + " parent mRNA " + parent + " has not yet been loaded. Is the GFF sorted?");
                 }
                 // use the id of the parent for the CDS - this should match the id in the CDS FASTAs
                 feature = getCDS(parent);
@@ -486,9 +489,6 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 placeCDSOnContig(parent, seqname, location);
                 // don't set CDS.length since that comes from FASTA or stitching together CDS.locations
                 // set the CDS.transcript reference to the parent mRNA
-                if (!mRNAs.containsKey(parent)) {
-                    throw new RuntimeException("CDS " + id + " parent mRNA " + parent + " has not yet been loaded. Is the GFF sorted?");
-                }
                 Item mRNA = mRNAs.get(parent);
                 feature.setReference("transcript", mRNA);
                 // set name = mRNA.name
@@ -496,31 +496,31 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                     name = mRNA.getAttribute("name").getValue();
                 }
             } else if (featureClass.equals("Exon")) {
-                // exon record must have a parent mRNA attribute
+                // exon record must have a parent attribute for Exon.transcripts collection
                 if (parent == null) {
                     throw new RuntimeException("Exon " + id + " lacks Parent attribute.");
+                }
+                if (!mRNAs.containsKey(parent)) {
+                    throw new RuntimeException("Exon " + id + " parent mRNA " + parent + " <has not yet been loaded. Is the GFF sorted?");
                 }
                 feature = getFeature(id, featureClass);
                 placeFeatureOnContig(feature, seqname, location);
                 feature.setAttribute("length", String.valueOf(location.length()));
                 // add the parent mRNA to the Exon.transcripts collection
-                if (!mRNAs.containsKey(parent)) {
-                    throw new RuntimeException("Exon " + id + " parent mRNA " + parent + " <has not yet been loaded. Is the GFF sorted?");
-                }
                 Item mRNA = mRNAs.get(parent);
                 feature.addToCollection("transcripts", mRNA);
             } else if (featureClass.equals("MRNA")) {
-                // mRNAs must have a parent gene attribute
+                // mRNA record must have a parent attribute for Transcript.gene reference
                 if (parent == null) {
                     throw new RuntimeException("mRNA " + id + " lacks Parent attribute.");
+                }
+                if (!genes.containsKey(parent)) {
+                    throw new RuntimeException("mRNA " + id + " parent gene " + parent + " has not yet been loaded. Is the GFF sorted?");
                 }
                 feature = getMRNA(id);
                 placeFeatureOnContig(feature, seqname, location);
                 // don't set MRNA.length since that comes from FASTA or stitching together exons
                 // set the MRNA.gene reference to the parent Gene
-                if (!genes.containsKey(parent)) {
-                    throw new RuntimeException("mRNA " + id + " parent gene " + parent + " has not yet been loaded. Is the GFF sorted?");
-                }
                 Item gene = genes.get(parent);
                 feature.setReference("gene", gene);
                 // set the MRNA.protein reference to the identifier-matching protein (which may not yet be loaded)
@@ -530,17 +530,17 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 // since we have the gene and the protein, add it to the protein.genes collection
                 protein.addToCollection("genes", gene);
             } else if (featureClass.equals("ThreePrimeUTR") || featureClass.equals("FivePrimeUTR")) {
-                // UTRs must have a parent mRNA attribute
+                // UTR record must have a parent attribute for UTR.transcripts collection
                 if (parent == null) {
                     throw new RuntimeException("UTR " + id + " lacks Parent attribute.");
+                }
+                if (!mRNAs.containsKey(parent)) {
+                    throw new RuntimeException("UTR " + id + " parent mRNA " + parent + " has not yet been loaded. Is the GFF sorted?");
                 }
                 feature = getFeature(id, featureClass);
                 placeFeatureOnContig(feature, seqname, location);
                 feature.setAttribute("length", String.valueOf(location.length()));
                 // add the parent mRNA to the UTR.transcripts collection
-                if (!mRNAs.containsKey(parent)) {
-                    throw new RuntimeException("UTR " + id + " parent mRNA " + parent + " has not yet been loaded. Is the GFF sorted?");
-                }
                 Item mRNA = mRNAs.get(parent);
                 feature.addToCollection("transcripts", mRNA);
             } else {
