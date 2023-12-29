@@ -22,7 +22,6 @@
     <attribute name="name" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
     <reference name="organism" referenced-type="Organism"/>
-    <reference name="dataSet" referenced-type="DataSet"/>
     <reference name="gwas" referenced-type="GWAS"/>
     <collection name="gwasResults" referenced-type="GWASResult" reverse-reference="trait"/>
   </class>
@@ -35,7 +34,6 @@
     <attribute name="genotypingMethod" type="java.lang.String"/>
     <reference name="genotypingPlatform" referenced-type="GenotypingPlatform"/>
     <reference name="organism" referenced-type="Organism"/>
-    <reference name="dataSet" referenced-type="DataSet"/>
     <collection name="results" referenced-type="GWASResult" reverse-reference="gwas"/>
   </class>
 
@@ -48,7 +46,6 @@
     <reference name="gwas" referenced-type="GWAS" reverse-reference="results"/>
     <reference name="trait" referenced-type="Trait" reverse-reference="gwasResults"/>
     <collection name="markers" referenced-type="GeneticMarker" reverse-reference="gwasResults"/>
-    <reference name="dataSet" referenced-type="DataSet"/>
   </class>
 
 </classes>

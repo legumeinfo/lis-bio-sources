@@ -9,7 +9,6 @@
     <attribute name="numLeaves" type="java.lang.Integer"/>
     <collection name="nodes" referenced-type="Phylonode" reverse-reference="tree"/>
     <reference name="geneFamily" referenced-type="GeneFamily" reverse-reference="phylotree"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
   </class>
   
   <class name="Newick" is-interface="false" extends="java.lang.Object">
@@ -33,7 +32,6 @@
 
   <class name="GeneFamily" extends="Annotatable" is-interface="true">
     <reference name="phylotree" referenced-type="Phylotree" reverse-reference="geneFamily"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
   </class>
 
   <class name="Protein" is-interface="true">

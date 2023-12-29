@@ -10,7 +10,6 @@
     <attribute name="genotypingMethod" type="java.lang.String"/>
     <reference name="genotypingPlatform" referenced-type="GenotypingPlatform"/>
     <reference name="organism" referenced-type="Organism"/>
-    <reference name="dataSet" referenced-type="DataSet"/>
     <collection name="samples" referenced-type="GenotypingSample" reverse-reference="study"/>
   </class>
   
@@ -24,14 +23,12 @@
     <reference name="organism" referenced-type="Organism"/>
     <reference name="strain" referenced-type="Strain"/>
     <reference name="study" referenced-type="GenotypingStudy" reverse-reference="samples"/>
-    <reference name="dataSet" referenced-type="DataSet"/>
   </class>
 
   <!-- represents a row for a specific marker in the MSTmap genotype file -->
   <class name="GenotypingRecord" is-interface="true">
     <attribute name="markerName" type="java.lang.String"/>
     <reference name="study" referenced-type="GenotypingStudy"/>
-    <reference name="dataSet" referenced-type="DataSet"/>
   </class>
 
   <!-- simple object providing a value on the genotyping matrix -->

@@ -189,6 +189,7 @@ public class SyntenyFileConverter extends DatastoreFileConverter {
                     String medianKs = attributes.get("median_Ks").get(0);
                     // associate the two regions with this synteny block
                     Item syntenyBlock = createItem("SyntenyBlock");
+                    syntenyBlock.setAttribute("primaryIdentifier", sourceIdentifier + "|" + targetIdentifier);
                     syntenyBlock.setAttribute("medianKs", medianKs);
                     syntenyBlock.addToCollection("syntenicRegions", sourceRegion);
                     syntenyBlock.addToCollection("syntenicRegions", targetRegion);

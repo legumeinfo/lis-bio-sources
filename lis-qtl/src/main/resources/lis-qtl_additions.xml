@@ -11,7 +11,6 @@
     <attribute name="description" type="java.lang.String"/>
     <attribute name="genotypes" type="java.lang.String"/>
     <reference name="organism" referenced-type="Organism"/>
-    <reference name="dataSet" referenced-type="DataSet"/>
     <collection name="qtls" referenced-type="QTL" reverse-reference="qtlStudy"/>
   </class>
 
@@ -32,7 +31,6 @@
     <reference name="trait" referenced-type="Trait" reverse-reference="qtls"/>
     <collection name="markers" referenced-type="GeneticMarker" reverse-reference="qtls"/>
     <reference name="linkageGroup" referenced-type="LinkageGroup" reverse-reference="qtls"/>
-    <reference name="dataSet" referenced-type="DataSet"/>
     <collection name="genes" referenced-type="Gene"/>
   </class>
 
@@ -44,7 +42,6 @@
     <attribute name="name" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
     <reference name="organism" referenced-type="Organism"/>
-    <reference name="dataSet" referenced-type="DataSet"/>
     <reference name="qtlStudy" referenced-type="QTLStudy"/>
     <collection name="qtls" referenced-type="QTL" reverse-reference="trait"/>
   </class>
@@ -60,7 +57,6 @@
     <attribute name="number" type="java.lang.Integer"/>
     <attribute name="length" type="java.lang.Double"/>
     <reference name="geneticMap" referenced-type="GeneticMap" reverse-reference="linkageGroups"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
     <collection name="qtls" referenced-type="QTL" reverse-reference="linkageGroup"/>
   </class>
 
@@ -70,7 +66,6 @@
     <attribute name="description" type="java.lang.String"/>
     <attribute name="genotypes" type="java.lang.String"/>
     <reference name="organism" referenced-type="Organism"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
     <collection name="linkageGroups" referenced-type="LinkageGroup" reverse-reference="geneticMap"/>
   </class>
   

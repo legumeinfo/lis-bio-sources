@@ -225,7 +225,7 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
         if (readme.genbank_accession!=null) study.setGenbank(readme.genbank_accession);
         // references
         study.setOrganism(organism);
-        study.setDataSet(dataSet);
+        study.addDataSets(dataSet);
         study.addPublications(publication);
     }
 
@@ -260,7 +260,6 @@ public class MSTMapFileLoaderTask extends FileDirectDataLoaderTask {
                 GenotypingRecord record = getDirectDataLoader().createObject(org.intermine.model.bio.GenotypingRecord.class);
                 record.setMarkerName(markerName);
                 record.setStudy(study);
-                record.setDataSet(dataSet);
                 getDirectDataLoader().store(record);
                 // Genotype
                 for (int i=1; i<fields.length; i++) {

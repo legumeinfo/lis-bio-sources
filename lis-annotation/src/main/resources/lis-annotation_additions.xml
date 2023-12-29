@@ -55,6 +55,21 @@
     <attribute name="isPrimary" type="java.lang.Boolean"/>
   </class>
 
+  <!-- from SO -->
+  <class name="UTR" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000203">
+    <collection name="transcripts" referenced-type="Transcript" reverse-reference="UTRs"/>
+  </class>
+
+  <class name="Transcript" is-interface="true">
+    <collection name="UTRs" referenced-type="UTR" reverse-reference="transcripts" term="http://purl.obolibrary.org/obo/SO:0000203"/>
+  </class>
+
+  <!-- five_prime_UTR is loaded from GFF -->
+  <class name="FivePrimeUTR" extends="UTR" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000204" />
+
+  <!-- three_prime_UTR is loaded from GFF -->
+  <class name="ThreePrimeUTR" extends="UTR" is-interface="true" term="http://purl.obolibrary.org/obo/SO:0000205" />
+  
   <!-- stores a gene family assignment along with various measures -->
   <class name="GeneFamilyAssignment" is-interface="true">
     <attribute name="evalue" type="java.lang.Double"/>
@@ -71,7 +86,6 @@
     <attribute name="description" type="java.lang.String"/>
     <attribute name="version" type="java.lang.String"/>
     <attribute name="size" type="java.lang.Integer"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
     <collection name="genes" referenced-type="Gene"/>
     <collection name="proteins" referenced-type="Protein"/>
     <collection name="proteinDomains" referenced-type="ProteinDomain" reverse-reference="geneFamilies"/>
@@ -91,7 +105,6 @@
   <class name="Pathway" extends="Annotatable" is-interface="true" >
     <attribute name="name" type="java.lang.String"/>
     <collection name="genes" referenced-type="Gene" reverse-reference="pathways"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
   </class>
 
   <!-- Region with isCircular attribute -->

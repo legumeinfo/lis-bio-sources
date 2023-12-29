@@ -13,7 +13,6 @@
     <attribute name="genotypingMethod" type="java.lang.String"/>
     <reference name="genotypingPlatform" referenced-type="GenotypingPlatform"/>
     <reference name="organism" referenced-type="Organism"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
     <collection name="linkageGroups" referenced-type="LinkageGroup" reverse-reference="geneticMap"/>
   </class>
 
@@ -23,7 +22,6 @@
     <attribute name="number" type="java.lang.Integer"/>
     <attribute name="length" type="java.lang.Double"/>
     <reference name="geneticMap" referenced-type="GeneticMap" reverse-reference="linkageGroups"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
   </class>
 
   <!-- A marker's position (in cM) on a linkage group, referenced by name -->

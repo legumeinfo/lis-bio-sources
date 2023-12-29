@@ -11,7 +11,6 @@
     <attribute name="description" type="java.lang.String"/>
     <attribute name="version" type="java.lang.String"/>
     <attribute name="size" type="java.lang.Integer"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
     <collection name="tallies" referenced-type="GeneFamilyTally" reverse-reference="geneFamily"/>
     <collection name="proteinDomains" referenced-type="ProteinDomain" reverse-reference="geneFamilies"/>
   </class>

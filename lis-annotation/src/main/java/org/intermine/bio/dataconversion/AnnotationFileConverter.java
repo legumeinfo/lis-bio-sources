@@ -543,6 +543,8 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 // add the parent mRNA to the UTR.transcripts collection
                 Item mRNA = mRNAs.get(parent);
                 feature.addToCollection("transcripts", mRNA);
+                // add the UTR to the MRNA.UTRs collection
+                mRNA.addToCollection("UTRs", feature);
             } else {
                 // just a plain vanilla feature
                 feature = getFeature(id, featureClass);
