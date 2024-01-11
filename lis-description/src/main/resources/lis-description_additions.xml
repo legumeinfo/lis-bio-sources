@@ -1,16 +1,3 @@
 <?xml version="1.0"?>
 <classes>
-
-  <!-- synopsis from README -->
-  <class name="DataSet" is-interface="true">
-    <attribute name="synopsis" type="java.lang.String"/>
-  </class>
-
-  <!-- Organism.abbreviation = gensp -->
-  <class name="Organism" is-interface="true">
-    <attribute name="abbreviation" type="java.lang.String"/>
-    <attribute name="description" type="java.lang.String"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
-  </class>
-
 </classes>

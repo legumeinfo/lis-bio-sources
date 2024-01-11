@@ -1,10 +1,6 @@
 <?xml version="1.0"?>
 <classes>
 
-  <class name="DataSet" is-interface="true">
-    <attribute name="synopsis" type="java.lang.String"/>
-  </class>
-
   <!-- A GeneticMap represents a set of LinkageGroups and GeneticMarkers mapped to them -->
   <class name="GeneticMap" extends="Annotatable" is-interface="true" term="http://purl.bioontology.org/ontology/EDAM?conceptid=http%3A%2F%2Fedamontology.org%2Fdata_1278">
     <attribute name="synopsis" type="java.lang.String"/>

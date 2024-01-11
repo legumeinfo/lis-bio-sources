@@ -1,10 +1,6 @@
 <?xml version="1.0"?>
 <classes>
 
-  <class name="DataSet" is-interface="true">
-    <attribute name="synopsis" type="java.lang.String"/>
-  </class>
-
   <!-- Alleles=A/T in GFF attributes. type=SNP if length=1 -->
   <class name="GeneticMarker" extends="SequenceFeature" is-interface="true" term="http://purl.obolibrary.org/obo/SO_0001645">
     <attribute name="type" type="java.lang.String"/>

@@ -1,10 +1,6 @@
 <?xml version="1.0"?>
 <classes>
 
-  <class name="DataSet" is-interface="true">
-    <attribute name="synopsis" type="java.lang.String"/>
-  </class>
-
   <!-- a QTLStudy represents a particular QTL study from a DataSet/Publication -->
   <class name="QTLStudy" extends="Annotatable" is-interface="true">
     <attribute name="synopsis" type="java.lang.String"/>

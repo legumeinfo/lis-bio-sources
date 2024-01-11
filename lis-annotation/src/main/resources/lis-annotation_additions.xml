@@ -1,15 +1,5 @@
 <?xml version="1.0"?>
 <classes>
-
-  <class name="DataSet" is-interface="true">
-    <attribute name="synopsis" type="java.lang.String"/>
-  </class>
-
-  <class name="Organism" is-interface="true">
-    <attribute name="abbreviation" type="java.lang.String"/>
-    <attribute name="description" type="java.lang.String"/>
-    <collection name="dataSets" referenced-type="DataSet"/>
-  </class>
   
   <class name="Gene" is-interface="true">
     <attribute name="ensemblName" type="java.lang.String"/>

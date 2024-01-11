@@ -1,10 +1,6 @@
 <?xml version="1.0"?>
 <classes>
 
-  <class name="DataSet" is-interface="true">
-    <attribute name="synopsis" type="java.lang.String"/>
-  </class>
-
   <class name="ExpressionSource" extends="Annotatable" is-interface="true">
     <attribute name="synopsis" type="java.lang.String"/>
     <attribute name="description" type="java.lang.String"/>
