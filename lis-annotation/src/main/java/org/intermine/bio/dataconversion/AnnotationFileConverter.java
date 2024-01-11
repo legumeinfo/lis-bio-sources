@@ -96,6 +96,9 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
     // validate the collection first and only once by storing a flag
     boolean collectionValidated = false;
 
+    // Supercontig needs SOTerm added manually here
+    Item supercontigSOTerm;
+
     // map GFF types to InterMine classes; be sure to include extras in the additions file!
     Map<String,String> featureClasses = Map.ofEntries(entry("gene", "Gene"),
                                                       entry("mRNA", "MRNA"),
@@ -220,6 +223,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
 
         // store our Items
         storeCollectionItems();
+        store(supercontigSOTerm);
         store(chromosomes.values());
         store(supercontigs.values());
         store(features.values());
@@ -930,8 +934,13 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
 
     /**
      * Get/add a Supercontig Item, keyed by primaryIdentifier with secondaryIdentifier from primaryIdentifier.
+     * Note: have to add SOTerm reference since for some reason doesn't happen automatically.
      */
     Item getSupercontig(String primaryIdentifier) throws RuntimeException {
+        if (supercontigSOTerm == null) {
+            supercontigSOTerm = createItem("SOTerm");
+            supercontigSOTerm.setAttribute("name", "supercontig");
+        }
         if (supercontigs.containsKey(primaryIdentifier)) {
             return supercontigs.get(primaryIdentifier);
         } else {
@@ -945,6 +954,7 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             supercontig.setAttribute("assemblyVersion", assemblyVersion);
             supercontig.setReference("organism", organism);
             supercontig.setReference("strain", strain);
+            supercontig.setReference("sequenceOntologyTerm", supercontigSOTerm);
             return supercontig;
         }
     }
