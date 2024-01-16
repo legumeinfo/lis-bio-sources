@@ -279,6 +279,7 @@ public class PhylotreeFileConverter extends DatastoreFileConverter {
             phylonode.setAttribute("identifier", key);
             phylonode.setAttribute("isRoot", "true");  // default
             phylonode.setAttribute("isLeaf", "false"); // default
+            phylonode.setAttribute("numChildren", String.valueOf(0)); // default
             phylonodes.put(key, phylonode);
         }
         if (node.isFeature()) {
