@@ -271,7 +271,11 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             Item protein = getProtein(identifier);
             // we don't parse a name from the FASTA header, so...
             protein.setAttribute("name", getSecondaryIdentifier(identifier));
-            if (isPrimary()) protein.setAttribute("isPrimary", "true");
+            if (isPrimary()) {
+                protein.setAttribute("isPrimary", "true");
+            } else {
+                protein.setAttribute("isPrimary", "false");
+            }
             protein.setReference("sequence", sequence);
             protein.setAttribute("length", String.valueOf(residues.length()));
             protein.setAttribute("md5checksum", md5checksum);
@@ -313,7 +317,11 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             }
             // CDS Item
             Item cds = getCDS(identifier);
-            if (isPrimary()) cds.setAttribute("isPrimary", "true");
+            if (isPrimary()) {
+                cds.setAttribute("isPrimary", "true");
+            } else {
+                cds.setAttribute("isPrimary", "false");
+            }
             cds.setReference("sequence", sequence);
             cds.setAttribute("length", String.valueOf(residues.length()));
             if (symbol != null) cds.setAttribute("symbol", symbol);
@@ -353,7 +361,11 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
             }
             // MRNA Item
             Item mRNA = getMRNA(identifier);
-            if (isPrimary()) mRNA.setAttribute("isPrimary", "true");
+            if (isPrimary()) {
+                mRNA.setAttribute("isPrimary", "true");
+            } else {
+                mRNA.setAttribute("isPrimary", "false");
+            }                
             mRNA.setReference("sequence", sequence);
             mRNA.setAttribute("length", String.valueOf(residues.length()));
             if (symbol != null) mRNA.setAttribute("symbol", symbol);
