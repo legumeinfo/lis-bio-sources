@@ -12,7 +12,7 @@
   <class name="Protein" is-interface="true">
     <attribute name="isPrimary" type="java.lang.Boolean"/>
     <collection name="geneFamilyAssignments" referenced-type="GeneFamilyAssignment"/>
-    <collection name="proteinMatches" referenced-type="ProteinMatch" term="http://purl.obolibrary.org/obo/SO:0000349"/>
+    <collection name="proteinMatches" referenced-type="ProteinMatch" reverse-reference="protein" term="http://purl.obolibrary.org/obo/SO:0000349"/>
   </class>
 
   <!-- NOTE: interpro loader modified to have ProteinDomain extend Annotatable -->
