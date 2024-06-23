@@ -516,15 +516,17 @@ public class AnnotationFileConverter extends DatastoreFileConverter {
                 if (parent == null) {
                     throw new RuntimeException("Exon " + id + " lacks Parent attribute.");
                 }
-                if (!mRNAs.containsKey(parent)) {
-                    throw new RuntimeException("Exon " + id + " parent mRNA " + parent + " <has not yet been loaded. Is the GFF sorted?");
-                }
-                feature = getFeature(id, featureClass);
-                placeFeatureOnContig(feature, seqname, location);
-                feature.setAttribute("length", String.valueOf(location.length()));
-                // add the parent mRNA to the Exon.transcripts collection
-                Item mRNA = mRNAs.get(parent);
-                feature.addToCollection("transcripts", mRNA);
+		feature = getFeature(id, featureClass);
+		placeFeatureOnContig(feature, seqname, location);
+		feature.setAttribute("length", String.valueOf(location.length()));
+		for (String parentPart : parent.split(",")) {
+			if (!mRNAs.containsKey(parentPart)) {
+			    throw new RuntimeException("Exon " + id + " parent mRNA " + parentPart + " <has not yet been loaded. Is the GFF sorted?");
+			}
+			// add the parent mRNA to the Exon.transcripts collection
+			Item mRNA = mRNAs.get(parentPart);
+			feature.addToCollection("transcripts", mRNA);
+		}
             } else if (featureClass.equals("MRNA")) {
                 // mRNA record must have a parent attribute for Transcript.gene reference
                 if (parent == null) {
