@@ -52,7 +52,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
 
     // defaults for LIS datasource
     public static final String DEFAULT_DATASOURCE_NAME = "LIS Datastore";
-    public static final String DEFAULT_DATASOURCE_URL = "https://legumeinfo.org/data/v2/";
+    public static final String DEFAULT_DATASOURCE_URL = "https://data.legumeinfo.org/";
     public static final String DEFAULT_DATASOURCE_DESCRIPTION =
         "A collaborative, community resource to facilitate crop improvement by integrating genetic, genomic, and trait data across legume species.";
     public static final String DEFAULT_DATASET_LICENCE = "ODC Public Domain Dedication and Licence (PDDL)";
