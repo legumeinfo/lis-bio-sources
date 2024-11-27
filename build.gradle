@@ -1,14 +1,17 @@
 buildscript {
     repositories {
         mavenLocal()
-        jcenter()
+        mavenCentral()
         maven {
-            url "https://oss.jfrog.org/artifactory/oss-snapshot-local"
+            url "https://groovy.jfrog.io/artifactory/libs-release"
+        }
+        maven {
+            url "https://oss.jfrog.org/artifactory/jfrog-jars"
         }
     }
     dependencies {
         classpath group: 'org.intermine', name: 'plugin', version: System.getProperty("imVersion")
-        classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.0"
+        classpath "com.jfrog.bintray.gradle:gradle-bintray-plugin:1.8.5"
         classpath "org.jfrog.buildinfo:build-info-extractor-gradle:4.6.2"
     }
 }
@@ -35,7 +38,7 @@ subprojects {
 
     repositories {
         mavenLocal()
-        jcenter()
+        mavenCentral()
         maven {
             url 'https://www.ebi.ac.uk/Tools/maven/repos/content/groups/ebi-repo/'
         }
