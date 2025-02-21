@@ -49,3 +49,5 @@ Loads gene pathway membership from an LIS /annotations/ collection.
 #### lis-phylotree
 Loads the LIS gene family phylotrees.
 
+### lis-genefunction
+LIS gene function curation datamodel and scripts for preparing Items XML for loading
