@@ -80,6 +80,7 @@ public abstract class DatastoreFileConverter extends FileConverter {
     String dataSetDescription;     // optional
     String dataSetUrl;             // required in project.xml
     String dataSetLicence;         // optional
+    String skipValidation = "FALSE";
 
     // other attributes we may need for Items
     int taxonId;
@@ -141,6 +142,20 @@ public abstract class DatastoreFileConverter extends FileConverter {
      */
     public void setDataSetUrl(String url) {
         this.dataSetUrl = url;
+    }
+
+    /**
+     * skipValidation can be set in project.xml
+     */
+    public void setSkipValidation(String skipValidation) {
+        this.skipValidation = skipValidation;
+    }
+
+    /**
+     * skipValidation can be set in project.xml
+     */
+    public String getSkipValidation() {
+        return this.skipValidation;
     }
 
     /**
@@ -430,14 +445,14 @@ public abstract class DatastoreFileConverter extends FileConverter {
     /**
      * Create the instance publication using CrossRef data. 
      */
-    Item createPublication(String publication_doi) throws UnsupportedEncodingException, MalformedURLException, ParseException, IOException, ParserConfigurationException, SAXException {
+    protected Item createPublication(String publication_doi) throws UnsupportedEncodingException, MalformedURLException, ParseException, IOException, ParserConfigurationException, SAXException {
         return createPublication(publication_doi, null);
     }
 
     /**
      * Create the instance publication using CrossRef data. If CrossRef doesn't have the publication, use the README.publication_title.
      */
-    Item createPublication(String publication_doi, String publication_title) throws UnsupportedEncodingException, MalformedURLException, ParseException, IOException, ParserConfigurationException, SAXException {
+    protected Item createPublication(String publication_doi, String publication_title) throws UnsupportedEncodingException, MalformedURLException, ParseException, IOException, ParserConfigurationException, SAXException {
 	Item publication = createItem("Publication");
         publication.setAttribute("doi", publication_doi);
         // query CrossRef entry from DOI
@@ -615,5 +630,5 @@ public abstract class DatastoreFileConverter extends FileConverter {
         }
         return author;
     }
-    
+
 }
