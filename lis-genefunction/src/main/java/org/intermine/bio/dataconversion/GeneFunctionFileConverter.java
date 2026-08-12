@@ -80,6 +80,7 @@ public class GeneFunctionFileConverter extends DatastoreFileConverter {
         // store our Items
         //storeCollectionItems();
         store(publications.values());
+        store(authors.values());
     }
 
     /**
@@ -91,9 +92,12 @@ public class GeneFunctionFileConverter extends DatastoreFileConverter {
         while ((line = reader.readLine()) != null) {
             String[] fields = line.split("\t");
             String doi = fields[0];
+            String citation = fields[2];
 	    if (publications.get(doi) == null) {
                 try {
-                    publications.put(doi, createPublication(doi));
+                    Item publication = createPublication(doi);
+                    publication.setAttribute("citation", citation);
+                    publications.put(doi, publication);
                 } catch (Exception ex) {
                     throw new RuntimeException(ex);
                 }
